@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Annotation profile for exemplo" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+        </processorPath>
+        <module name="exemplo.persistence.impl" />
+        <module name="exemplo.app.other.console" />
+        <module name="exemplo.app.utente.console" />
+        <module name="exemplo.app.backoffice.console" />
+        <module name="exemplo.core" />
+        <module name="exemplo.bootstrappers" />
+        <module name="exemplo.app.bootstrap" />
+        <module name="exemplo.app.common.console" />
+        <module name="exemplo.infrastructure.application" />
+      </profile>
+    </annotationProcessing>
+  </component>
+</project>
