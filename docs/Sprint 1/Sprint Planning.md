@@ -118,5 +118,4 @@ Establish foundational project infrastructure and create a well-designed domain 
     - Presentation of domain model and architectural decisions
     - Team retrospective to identify improvements for Sprint 2
 
-
 ---
