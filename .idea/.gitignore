@@ -12,5 +12,6 @@
 # IntelliJ IDEA
 .idea/
 *.iml
+*.xml
 /copilot.data.migration.ask2agent.xml
 
