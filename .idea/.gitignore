@@ -8,3 +8,9 @@
 /dataSources.local.xml
 # Editor-based HTTP Client requests
 /httpRequests/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+/copilot.data.migration.ask2agent.xml
+
