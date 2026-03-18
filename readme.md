@@ -14,7 +14,7 @@ The system is designed to be scalable and support many simultaneous flights, wit
 
 ## 2. Planning and Technical Documentation
 
-[Planning and Technical Documentation](docs/readme.md)
+[Planning and Technical Documentation](docs/Sprint1/SprintPlanning.md)
 
 ## 3. How to Build
 
