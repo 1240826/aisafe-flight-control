@@ -86,7 +86,7 @@ Establish foundational project infrastructure and create a well-designed domain 
     - Peer review all domain model design documentation
     - Verify consistency between domain model diagram and glossary
     - Update technical documentation in "docs" folder (markdown format)
-    - Prepare EAPLI deliverables (see Deliverables section)
+    - Prepare EAPLI deliverables
 
 ### Week 4 (30 March - 5 April)
 
@@ -102,8 +102,8 @@ Establish foundational project infrastructure and create a well-designed domain 
 
 * **Team Activities:**
     - Ensure all commits maintain system in valid, compilable state
-    - Final review of domain model UML diagrams
-    - Generate complete UML documentation (PlantUML source + PNG diagrams)
+    - Final review of domain model UML diagram
+    - Generate complete UML documentation
     - Complete documentation in "docs" folder (markdown format)
     - Finalize glossary with all domain concepts
 
