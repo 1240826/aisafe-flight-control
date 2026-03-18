@@ -1,85 +1,43 @@
-# US 666
-
-*This is an example template*
+# US001 – Technical Constraints
+ 
+As Project Manager, I want the team to follow the technical constraints and concerns of the project.
+These constraints and concerns are described in section 5.
 
 ## 1. Context
 
-*Explain the context for this task. It is the first time the task is assigned to be developed or this tasks was incomplete in a previous sprint and is to be completed in this sprint? Are we fixing some bug?*
+This is an initial organizational user story. Its purpose is to ensure that the team follows all technical constraints and concerns defined in **Section 5 (Non-Functional Requirements)** of the project statement.
 
-### 1.1 List of issues
+This US does not involve feature development but establishes mandatory rules that guide all future work.
 
-Analysis:
-
-Design:
-
-Implement:
-
-Test:
-
+---
 
 ## 2. Requirements
 
-*In this section you should present the functionality that is being developed, how do you understand it, as well as possible correlations to other requirements (i.e., dependencies). You should also add acceptance criteria.*
+**US001** As Project Manager, I want the team to follow the technical constraints and concerns of the project.
 
-*Example*
+### Acceptance Criteria:
 
-**US G101** As {Ator} I Want...
+- **US001.1** The team must follow Scrum methodology (NFR01).
+- **US001.2** All documentation must be maintained in the repository under `/docs` in Markdown format (NFR02).
+- **US001.3** The project must use GitHub for version control (NFR04).
+- **US001.4** The main programming language must be Java (NFR10).
+- **US001.5** The system must support authentication and authorization (NFR09).
+- **US001.6** The system must support configurable persistence (in-memory and RDBMS) (NFR08).
 
-**Acceptance Criteria:**
+---
 
-- US666.1 The system should...Blá Blá Blá ...
+## 3. Implementation
 
-- US666.2. Blá Blá Blá ...
+- Constraints were extracted from Section 5 and documented.
+- These rules are enforced through:
+    - code reviews
+    - repository structure
+    - development workflow
 
-**Dependencies/References:**
+---
 
-*Regarding this requirement we understand that it relates to...*
+## 4. Observations
 
-## 3. Analysis
+This US is transversal to all others and must be continuously validated throughout the project.
 
-*In this section, the team should report the study/analysis/comparison that was done in order to take the best design decisions for the requirement. This section should also include supporting diagrams/artifacts (such as domain model; use case diagrams, etc.),*
-
-## 4. Design
-
-*In this sections, the team should present the solution design that was adopted to solve the requirement. This should include, at least, a diagram of the realization of the functionality (e.g., sequence diagram) and the specification of the main tests used to validade the functionality. A class diagram may be useful to describe the classes involved.*
-
-### 4.1. Realization
-
-![a class diagram](class-diagram-01.svg "A Class Diagram")
-
-
-### 4.2. Acceptance Tests
-
-Include here the main tests used to validate the functionality. Focus on how they relate to the acceptance criteria. May be automated or manual tests.
-
-**Test 1:** *Verifies that it is not possible to ...*
-
-**Refers to Acceptance Criteria:** US666.1
-
-
-```
-@Test(expected = IllegalArgumentException.class)
-public void ensureXxxxYyyy() {
-	...
-}
-````
-
-## 5. Implementation
-
-*In this section the team should present, if necessary, some evidencies that the implementation is according to the design. It should also describe and explain other important artifacts necessary to fully understand the implementation like, for instance, configuration files.*
-
-*It is also a best practice to include a listing (with a brief summary) of the major commits regarding this requirement.*
-
-## 6. Integration/Demonstration
-
-*In this section the team should describe the efforts realized in order to integrate this functionality with the other parts/components of the system*
-
-*It is also important to explain any scripts or instructions required to execute an demonstrate this functionality*
-
-## 7. Observations
-
-*This section should be used to include any content that does not fit any of the previous sections.*
-
-*The team should present here, for instance, a critical prespective on the developed work including the analysis of alternative solutioons or related works*
-
-*The team should include in this section statements/references regarding third party works that were used in the development this work.*
+---
