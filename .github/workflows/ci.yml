@@ -1,0 +1,80 @@
+name: CI – AISafe Build & Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Nightly build at 02:00 UTC (NFR05)
+    - cron: "0 2 * * *"
+
+jobs:
+  build:
+    name: Build & Test – Java 21
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Set up JDK 21 (Temurin) ─────────────────────────────────────────
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: maven
+
+      # ── 3. Make all shell scripts executable ───────────────────────────────
+      #    (Windows does not preserve the executable bit in Git)
+      - name: Make scripts executable
+        working-directory: aisafe.base
+        run: chmod +x *.sh
+
+      # ── 4. Full build ──────────────────────────────────────────────────────
+      #    Equivalent to running build-all.sh with "clean" argument:
+      #      mvn clean package dependency:copy-dependencies
+      #           surefire-report:report -Daggregate=true
+      #           checkstyle:checkstyle-aggregate
+      - name: Build, test & checkstyle (build-all.sh clean)
+        working-directory: aisafe.base
+        run: ./build-all.sh clean
+
+      # ── 5. Generate JaCoCo coverage reports ───────────────────────────────
+      #    The root pom.xml only configures prepare-agent; the report goal
+      #    must be triggered explicitly to produce the HTML/XML output.
+      - name: Generate JaCoCo coverage report
+        if: always()
+        working-directory: aisafe.base
+        run: mvn jacoco:report -Dmaven.javadoc.skip=true --no-transfer-progress
+
+      # ── 6. Upload JaCoCo coverage reports ─────────────────────────────────
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: aisafe.base/**/target/site/jacoco/
+          retention-days: 14
+
+      # ── 7. Upload Surefire aggregate test report ───────────────────────────
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: |
+            aisafe.base/**/target/surefire-reports/
+            aisafe.base/target/site/surefire-report.html
+          retention-days: 14
+
+      # ── 8. Upload Checkstyle aggregate report ──────────────────────────────
+      - name: Upload checkstyle reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-reports
+          path: aisafe.base/**/target/checkstyle-result.xml
+          retention-days: 14
