@@ -1,0 +1,350 @@
+@startuml domain-model
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam classFontSize 12
+skinparam packageFontSize 13
+skinparam packageBorderColor #888888
+skinparam classBackgroundColor #FAFAFA
+skinparam classBorderColor #AAAAAA
+skinparam ArrowColor #555555
+hide empty members
+
+' ─────────────────────────────────────────
+' AGGREGATE: Manufacturer
+' ─────────────────────────────────────────
+package "Manufacturer" <<aggregate>> {
+  class Manufacturer <<entity>> <<root>> {
+    + name
+    + country
+  }
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: EngineModel
+' ─────────────────────────────────────────
+package "EngineModel" <<aggregate>> {
+  class EngineModel <<entity>> <<root>> {
+    + name
+    + type : MotorizationType
+    + power
+  }
+  class Thrust <<value object>> {
+    + value
+    + unit
+    + speedReference
+  }
+  class TSFC <<value object>> {
+    + value
+    + unit
+  }
+  class MotorizationType <<value object>> {
+    turboprop
+    turbofan
+    turbojet
+    ramjet
+    electricPropeller
+  }
+  EngineModel *-- Thrust : characterisedBy
+  EngineModel *-- TSFC : characterisedBy
+  EngineModel --> MotorizationType : ofType
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: AircraftModel
+' ─────────────────────────────────────────
+package "AircraftModel" <<aggregate>> {
+  class AircraftModel <<entity>> <<root>> {
+    + modelID
+    + type
+    + emptyWeight
+    + MTOW
+    + MZFW
+    + maxFuelCapacity
+    + serviceCeiling
+    + cruiseSpeed
+    + wingArea
+    + dragCoefficient
+    + liftCoefficient
+  }
+  class AircraftVariant <<entity>> {
+  }
+  AircraftModel *-- AircraftVariant : comprises
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: Aircraft
+' ─────────────────────────────────────────
+package "Aircraft" <<aggregate>> {
+  class Aircraft <<entity>> <<root>> {
+    + registrationNumber
+    + registrationCountry
+    + numberOfFlightCrewMembers
+  }
+  class CabinConfiguration <<value object>> {
+    + seatsPerClass
+  }
+  class OperationalStatus <<value object>> {
+    active
+    decommissioned
+  }
+  Aircraft *-- CabinConfiguration : configuredWith
+  Aircraft --> OperationalStatus : hasStatus
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: AirControlArea
+' ─────────────────────────────────────────
+package "AirControlArea" <<aggregate>> {
+  class AirControlArea <<entity>> <<root>> {
+    + areaCode
+    + name
+  }
+  class Coordinates_ACA <<value object>> {
+    + latitude
+    + longitude
+  }
+  note top of Coordinates_ACA : Coordinates\n(same class as in\nAirport, Segment, Node)
+  AirControlArea *-- Coordinates_ACA : boundedBy
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: Airport
+' ─────────────────────────────────────────
+package "Airport" <<aggregate>> {
+  class Airport <<entity>> <<root>> {
+    + name
+    + town
+    + country
+    + elevation
+  }
+  class IATACode <<value object>> {
+    + code
+  }
+  class ICAOCode <<value object>> {
+    + code
+  }
+  class Coordinates_Airport <<value object>> {
+    + latitude
+    + longitude
+  }
+  note top of Coordinates_Airport : Coordinates\n(same class as in\nAirControlArea, Segment, Node)
+  Airport *-- IATACode : identifiedBy
+  Airport *-- ICAOCode : identifiedBy
+  Airport *-- Coordinates_Airport : locatedAt
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: AirTransportCompany
+' ─────────────────────────────────────────
+package "AirTransportCompany" <<aggregate>> {
+  class AirTransportCompany <<entity>> <<root>> {
+    + name
+  }
+  class IATACode_ATC <<value object>> {
+    + code
+  }
+  class ICAOCode_ATC <<value object>> {
+    + code
+  }
+  note top of IATACode_ATC : IATACode\n(same class as in Airport)
+  note top of ICAOCode_ATC : ICAOCode\n(same class as in Airport)
+  AirTransportCompany *-- IATACode_ATC : identifiedBy
+  AirTransportCompany *-- ICAOCode_ATC : identifiedBy
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: Collaborator
+' ─────────────────────────────────────────
+package "Collaborator" <<aggregate>> {
+  abstract class Collaborator <<entity>> <<root>> {
+    + name
+    + position
+  }
+  class ATCCollaborator <<entity>> {
+  }
+  class Pilot <<entity>> {
+  }
+  class FlightControlOperator <<entity>> {
+  }
+  class WeatherPerson <<entity>> {
+  }
+  class SecurityClearance <<value object>> {
+    + clearanceLevel
+    + expiryDate
+  }
+  class SkillsAssessment <<value object>> {
+    + assessmentDate
+    + result
+  }
+  class SystemUser <<entity>> {
+  }
+  note right of SystemUser : EAPLI framework boundary.\nInternal details (login,\npassword, email) managed\nby framework.
+
+  Collaborator <|-- ATCCollaborator
+  Collaborator <|-- Pilot
+  Collaborator <|-- FlightControlOperator
+  Collaborator <|--- WeatherPerson
+
+  Collaborator *-- SecurityClearance : hasActive
+  Collaborator *-- SkillsAssessment : assessed
+  Collaborator --> SystemUser : linkedTo
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: FlightRoute
+' ─────────────────────────────────────────
+package "FlightRoute" <<aggregate>> {
+  class FlightRoute <<entity>> <<root>> {
+    + name
+    + deactivationDate
+  }
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: FlightPlan
+' Segment and Node are Value Objects —
+' confirmed by client: not independently
+' managed, part of the flight plan document.
+' ─────────────────────────────────────────
+package "FlightPlan" <<aggregate>> {
+  class FlightPlan <<entity>> <<root>> {
+    + identifier
+    + totalFuelLoad
+  }
+  class FlightPlanStatus <<value object>> {
+    draft
+    validated
+  }
+  class FlightLeg <<entity>> {
+    + sequenceNumber
+    + scheduledDepartureDateTime
+    + scheduledArrivalDateTime
+  }
+  class FuelLoad <<value object>> {
+    + quantity
+    + unit
+  }
+  class Segment <<value object>> {
+    + startCoordinates
+    + endCoordinates
+  }
+  class AltitudeSlot <<value object>> {
+    + altitude
+    + width
+  }
+  class WindCondition_FP <<value object>> {
+    + directionAngle
+    + speed
+  }
+  note right of WindCondition_FP : WindCondition\n(same class as in\nWeatherData aggregate)
+  class Node <<value object>> {
+    + coordinates
+  }
+  note right of Node : Per client: nodes are\nnot independently\nmanaged. Part of\nflight plan spec only.
+  note right of Segment : Per client: segments\nnot stored independently.\nPart of flight plan\ndocument specification.
+
+  FlightPlan --> FlightPlanStatus : hasStatus
+  FlightPlan *-- FlightLeg : composedOf
+  FlightLeg *-- FuelLoad : carriesFuel
+  FlightLeg *-- Segment : routedThrough
+  Segment *-- AltitudeSlot : permitsAltitude
+  Segment *-- WindCondition_FP : exposedTo
+  FlightLeg *-- Node : connectedBy
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: Flight
+' ─────────────────────────────────────────
+package "Flight" <<aggregate>> {
+  class Flight <<entity>> <<root>> {
+    + departureDayOrDate
+    + scheduledArrivalTime
+  }
+  class FlightDesignator <<value object>> {
+    + airlineDesignator
+    + flightNumber
+    + operationalSuffix
+  }
+  class FlightType <<value object>> {
+    regular
+    charter
+  }
+  Flight *-- FlightDesignator : identifiedBy
+  Flight --> FlightType : ofType
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: WeatherData
+' WindCondition enriched with coordinates
+' and altitude — client confirmed weather
+' varies within an area by location/altitude.
+' ─────────────────────────────────────────
+package "WeatherData" <<aggregate>> {
+  class WeatherData <<entity>> <<root>> {
+    + recordedDateTime
+    + sourceProvider
+  }
+  class WindCondition_W <<value object>> {
+    + directionAngle
+    + speed
+    + coordinates
+    + altitude
+  }
+  note top of WindCondition_W : WindCondition\nEnriched with coordinates\nand altitude per client:\nweather varies within\nan air control area.
+  WeatherData *-- WindCondition_W : records
+}
+
+' ─────────────────────────────────────────
+' AGGREGATE: Simulation
+' ─────────────────────────────────────────
+package "Simulation" <<aggregate>> {
+  class Simulation <<entity>> <<root>> {
+    + timeRange
+    + safetyThreshold
+    + status
+  }
+  class SimulationReport <<entity>> {
+    + totalFlights
+    + validationResult
+    + generatedAt
+  }
+  class SafetyViolation <<entity>> {
+    + detectedAt
+    + positions
+    + velocityVectors
+  }
+  Simulation *-- SimulationReport : produces
+  SimulationReport *-- SafetyViolation : records
+}
+
+' ─────────────────────────────────────────
+' CROSS-AGGREGATE REFERENCES (roots only)
+' ─────────────────────────────────────────
+
+AircraftVariant "*" ..> "1" EngineModel : certifiedEngine >
+AircraftModel "*" ..> "1" Manufacturer : madeBy >
+EngineModel "*" ..> "1" Manufacturer : madeBy >
+Aircraft "*" ..> "1" AircraftVariant : ofVariant >
+Aircraft "*" ..> "1" AirTransportCompany : operatedBy >
+Airport "*" ..> "1" AirControlArea : locatedIn >
+ATCCollaborator "*" ..> "1" AirTransportCompany : employedBy >
+Pilot "*" ..> "1" AirTransportCompany : employedBy >
+Pilot "*" ..> "*" AircraftModel : certifiedFor >
+FlightControlOperator "*" ..> "1" AirControlArea : worksFor >
+WeatherPerson "*" ..> "1" AirControlArea : worksFor >
+FlightRoute "*" ..> "1" Airport : originAirport >
+FlightRoute "*" ..> "1" Airport : destinationAirport >
+FlightRoute "*" ..> "1" AirTransportCompany : ownedBy >
+FlightPlan "*" ..> "1" FlightRoute : follows >
+FlightPlan "*" ..> "1" Aircraft : usesAircraft >
+FlightPlan "*" ..> "1" Pilot : assignedTo >
+FlightLeg "*" ..> "1" Airport : departureAirport >
+FlightLeg "*" ..> "1" Airport : arrivalAirport >
+Flight "*" ..> "1" FlightRoute : instantiates >
+Flight "*" ..> "1" FlightPlan : executedAs >
+WeatherData "*" ..> "1" AirControlArea : forArea >
+Simulation "*" ..> "1" AirControlArea : coversArea >
+Simulation "*" ..> "*" Flight : includes >
+Simulation "*" ..> "*" WeatherData : usesWeather >
+
+@enduml
