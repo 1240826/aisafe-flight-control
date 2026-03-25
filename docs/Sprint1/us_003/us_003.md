@@ -32,6 +32,19 @@ This task was assigned in Sprint 1 as an initial setup requirement. It is the fi
 
 ## 3. Analysis
 
+### 3.0 LLM Assistance
+
+**Prompt used for LLM-assisted analysis:**
+
+> "We are developing a Java-based system called AISafe as part of a university project integrating multiple course units: EAPLI (DDD/Java), LPROG (DSL/ANTLR), SCOMP (C language), and RCOMP (networking). We need to define a clean repository and Maven multi-module project structure that supports all these components. The project is based on an existing template called eapli.base. What is the best way to organise the repository and the Maven modules, considering that SCOMP uses C and RCOMP involves network configurations — neither of which are managed by Maven? Also, how should ANTLR4 support be set up for a future DSL module?"
+
+**LLM suggestions adopted:**
+- Keep `eapli.base` as an untouched reference and work on a copy (`aisafe.base`)
+- Place `scomp/` and `rcomp/` at the repository root, outside the Maven project
+- Create a dedicated `aisafe.dsl` module for ANTLR4, separate from `exemplo.core`
+
+**No changes were made to the LLM suggestions** — the proposed structure was evaluated by the team and accepted as-is, as it aligned with clean architecture principles and the project requirements.
+
 ### 3.1 Repository Structure
 
 The project integrates components from multiple course units (EAPLI, LPROG, SCOMP, RCOMP), each with different technologies and build systems. Placing all components inside a single Maven project would be incorrect — Maven does not manage C code (SCOMP) and network configurations (RCOMP) have no place in a Java build system.
@@ -143,8 +156,8 @@ The following was set up:
 
 - `aisafe.base/` — multi-module Maven project copied and adapted from the `eapli.base` template
 - Root `pom.xml` updated with:
-    - `<antlr4.version>4.13.1</antlr4.version>` property
-    - `<module>aisafe.dsl</module>` entry
+  - `<antlr4.version>4.13.1</antlr4.version>` property
+  - `<module>aisafe.dsl</module>` entry
 - `aisafe.dsl/pom.xml` created with ANTLR4 runtime dependency, ANTLR4 Maven plugin with visitor and listener generation enabled, and dependency on `exemplo.core`
 - `scomp/` folder created at repository root with `README.md` and `Makefile`
 - `rcomp/` folder created at repository root with `README.md`
