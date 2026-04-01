@@ -15,7 +15,7 @@ This task was assigned in Sprint 1 (Sprint A). It is the first time this task is
 
 ## 2. Requirements
 
-**US010** As Project Manager, I want the team to elaborate a Domain Model using DDD. Because AISafe domain is complex, involving distinct areas and complex business rules. We will adopt DDD as a framework for tackling complexity in our software solution, and ensure the software is a valid implementa tion of the business needs.
+**US010** As Project Manager, I want the team to elaborate a Domain Model using DDD. Because AISafe domain is complex, involving distinct areas and complex business rules. We will adopt DDD as a framework for tackling complexity in our software solution, and ensure the software is a valid implementation of the business needs.
 
 **Acceptance Criteria:**
 
@@ -48,92 +48,125 @@ The domain model was elaborated following the process described in the *Processo
 
 The model reflects the **EAPLI Java application scope only**. The following are explicitly outside scope: SystemUser internals (EAPLI framework), C simulation execution (SCOMP), DSL grammar and parser (LPROG), network protocols (RCOMP).
 
-### 3.2 Entity vs Value Object Classification
+### 3.2 Theoretical Foundation
 
-The key criterion applied: **if a concept has a business rule (format, uniqueness, validation, invariant), it should be a value object — not a plain attribute.** A value object is the information expert for its own validation.
+#### 3.2.1 Entity vs Value Object
+
+An **Entity** is a domain concept with its own business identity and an independent lifecycle. It is tracked by its identity, not its attributes — two entities with the same attributes are still distinct objects.
+
+A **Value Object** is a domain concept that characterises or describes another concept. It has no identity of its own — two VOs with the same attributes are considered equal. VOs are immutable and follow the **Information Expert** principle: they encapsulate and validate their own data. If a concept has a business rule (format, uniqueness, validation, invariant), it should be a Value Object rather than a plain attribute.
+
+A Value Object can have multiple attributes when they form a cohesive concept. A Value Object can also be an enumeration when it represents a fixed set of domain values.
+
+In practical terms in Java: Entity → class with identity and a Repository; Value Object → immutable class with no ID; Value Object enum → Java `enum`.
+
+#### 3.2.2 Aggregate
+
+An aggregate is a cluster of entities and value objects that must be manipulated together to enforce business invariants, with a single root entity that controls all access. The rules applied:
+
+- Nothing outside the aggregate boundary can hold a reference to anything inside — only roots are referenced externally, by ID.
+- Only aggregate roots can be obtained directly with database queries (via Repositories as interfaces).
+- A delete operation removes everything within the aggregate boundary at once.
+- When any change within the aggregate is committed, all invariants of the whole aggregate must be satisfied.
+- One use case should only update one aggregate — ACID within the aggregate, BASE between aggregates.
+
+#### 3.2.3 Composition vs Association
+
+- **Composition (`*--`)**: the part cannot exist without the whole. Used for all constitutive VOs and internal entities.
+- **Association (`-->`)**: used for enumerations (referenced values, not owned) and for SystemUser (lifecycle managed by the EAPLI framework).
+- All associations are unidirectional — no bidirectional associations.
+
+#### 3.2.4 Enum vs Hierarchy of Value Objects
+
+When a concept has multiple cases with **different data structures**, a hierarchy of VOs is used. When cases are simply **state values with no distinct structure**, an enum is used.
+
+### 3.3 Entity vs Value Object Classification
 
 **Entities** — have business identity and an independent lifecycle:
 Manufacturer, EngineModel, AircraftModel, AircraftVariant, Aircraft, AirControlArea, Airport, AirTransportCompany, Collaborator (abstract), ATCCollaborator, Pilot, FlightControlOperator, WeatherPerson, SystemUser (framework boundary), FlightRoute, Flight, FlightPlan, WeatherData, Simulation, SimulationReport, SafetyViolation.
 
 **Value Objects — constitutive (composition \*--)** — characterise an entity, no independent lifecycle:
-EngineName, Power, Thrust, TSFC, ModelID, AircraftWeights, AircraftPerformance, AerodynamicCoefficients, RegistrationNumber, CabinConfiguration, AreaCode, Coordinates, IATACode, ICAOCode, Elevation, CompanyName, CollaboratorName, Position, SecurityClearance, SkillsAssessment, RouteName, FlightDesignator, DepartureSchedule, RegularSchedule, CharterSchedule, FuelQuantity, SimulationTimeRange, SafetyThreshold, VelocityVector, WindCondition.
+EngineName, Power, Thrust, TSFC, ModelID, AircraftWeights, AircraftPerformance, AerodynamicCoefficients, RegistrationNumber, CabinConfiguration, AreaCode, Coordinates, Coordinates_ACA, IATACode, ICAOCode, Elevation, CompanyName, CollaboratorName, Position, SecurityClearance, SkillsAssessment, RouteName, FlightDesignator, DepartureSchedule, RegularSchedule, ScheduleEntry, CharterSchedule, FuelQuantity, SimulationTimeRange, SafetyThreshold, VelocityVector, WindCondition.
 
 **Value Objects — enumerations (association -->)** — fixed sets of domain values:
 MotorizationType, AircraftType, OperationalStatus, FlightType, FlightPlanStatus, ValidationResult.
 
-### 3.3 Key Design Decisions
+### 3.4 Key Design Decisions
 
 **Decision 1 — Enumerations use association (-->) not composition (\*--)**
-Enumerations are referenced values, not parts owned by an entity. The entity references an enum value but does not manage its lifecycle. Applied to: MotorizationType, AircraftType, OperationalStatus, FlightType, FlightPlanStatus, ValidationResult.
+Enumerations are referenced values, not parts owned by an entity. Applied to: MotorizationType, AircraftType, OperationalStatus, FlightType, FlightPlanStatus, ValidationResult.
 
-**Decision 2 — Enum vs hierarchy of Value Objects**
-When cases of a concept have different data structures, a hierarchy of VOs is used. When cases are only state values with no distinct structure, an enum is used.
-- DepartureSchedule uses a hierarchy: RegularSchedule (daysOfWeek) and CharterSchedule (departureDate) have structurally different data. The requirements state explicitly: *"Departure day (or days of the week for regular flights and actual date for a charter)"* (sec. 3.2).
-- FlightPlanStatus uses an enum: draft and validated are state values with no distinct structure.
+**Decision 2 — DepartureSchedule as a VO hierarchy**
+Section 3.2: *"Departure day (or days of the week for regular flights and actual date for a charter) and time."*
 
-**Decision 3 — Collaborator is abstract**
-Collaborator is abstract because a generic collaborator never exists in the system — there is always a concrete specialisation: ATCCollaborator, Pilot, FlightControlOperator, or WeatherPerson. The requirements identify collaborators always by their specific role.
+Client clarification: *"Charter flights will have only a single instance. Regular flights have a recurring schedule — the day of the week and the time for each flight instance. For example: Monday 12:00; Tuesday 12:30; Thursday 11:30."*
 
-**Decision 4 — certifiedFor association on Collaborator root (not Pilot)**
-US075 states: *"A pilot is certified to pilot one or more aircraft models."* The certification belongs semantically to Pilot. However, Pilot is an internal entity of the Collaborator aggregate. DDD rule: nothing outside the aggregate boundary can hold a reference to anything inside — cross-aggregate references must use the root. Therefore the association is declared on the Collaborator root with multiplicity \* (zero or more), knowing that in code only the Pilot class implements the certification list. ATCCollaborator, FCO, and WeatherPerson have empty lists.
+The two cases have structurally different data, so a VO hierarchy is used rather than a single VO with optional fields or an enum:
+- `CharterSchedule` — one departure date and one departure time.
+- `RegularSchedule` — a container for 1..* `ScheduleEntry` instances. Each entry has a `dayOfWeek` and a `departureTime` because each day can have a different time.
+- `DepartureSchedule` abstract base has no attributes — it exists solely to allow `Flight` to have one polymorphic composition, so a flight always has exactly one schedule regardless of type.
 
-**Decision 5 — Pilot is not a separate aggregate**
-Although Pilot has specific behaviour (certifications, invariant from US077: cannot deactivate with assigned flight plans), the data of Pilot and Collaborator are always manipulated together. Creating a Pilot is creating a Collaborator with certifications in one operation. The DDD criterion for a separate aggregate — entities that must be manipulated together with their own invariants — is not met independently of the Collaborator context.
+**Decision 3 — Collaborator is abstract, certifiedFor on root**
+Collaborator is abstract because a generic collaborator never exists — always a concrete specialisation (ATCCollaborator, Pilot, FlightControlOperator, WeatherPerson).
 
-**Decision 6 — Admin and Backoffice Operator not modelled**
-These are internal actors managed by the EAPLI framework with no domain-specific business rules beyond authentication and authorisation. They are not collaborators of external customers. Only the four collaborator types that belong to external customers (ATCCollaborator, Pilot, FCO, WeatherPerson) are modelled.
+US075: *"A pilot is certified to pilot one or more aircraft models."* The certifiedFor association is declared on the Collaborator root because Pilot is an internal entity and DDD rules prevent internal entities from crossing aggregate boundaries. In code, only Pilot implements the certification list — the other specialisations have empty lists. This is a known trade-off when modelling hierarchies in DDD.
 
-**Decision 7 — email and phoneNumber not in Collaborator**
-Section 3.1.1 states: *"A user also has a name and phone number."* Section 3.1.3 states: *"Email, name and position will probably be enough."* These attributes belong to SystemUser (EAPLI framework). Duplicating them in Collaborator would violate the framework boundary. They are referenced in the SystemUser note.
+**Decision 4 — Pilot is not a separate aggregate**
+Although Pilot has specific behaviour (certifications, US077 invariant), the data of Pilot and Collaborator are always manipulated together — creating a Pilot means creating a Collaborator with certifications in one operation. The criterion for a separate aggregate is not met independently of the Collaborator context.
 
-**Decision 8 — SecurityClearance with expiryDate only**
-Section 3.1.1 states: *"An AISafe user needs to have an active security clearance that automatically expires at a given date."* Only the expiry date is mentioned. No clearance level is mentioned in the requirements.
+**Decision 5 — Admin and Backoffice Operator not modelled**
+Internal actors with no domain-specific business rules beyond authentication. Not collaborators of external customers. The four modelled collaborator types (ATCCollaborator, Pilot, FCO, WeatherPerson) all belong to external customers.
 
-**Decision 9 — SkillsAssessment with assessmentDate only**
-Section 3.1.1 states: *"They also need to have periodic (per regulations 5 years) skills assessment."* Only the date is needed to verify the 5-year period. No result is mentioned in the requirements.
+**Decision 6 — email and phoneNumber not in Collaborator**
+These attributes belong to SystemUser (EAPLI framework). Section 3.1.1 and 3.1.3 mention them in the context of system users, not domain collaborators. Duplicating them in Collaborator would violate the framework boundary — they are referenced in the SystemUser note in the diagram.
 
-**Decision 10 — AircraftVariant as internal entity**
-US057 explicitly introduces this concept: *"An aircraft model might have several aircraft variants (combinations of model and engine configuration)."* AircraftVariant holds a reference to EngineModel by ID only (not by object reference), respecting aggregate boundaries. It exists only within AircraftModel and has no independent lifecycle — composition.
+**Decision 7 — AircraftVariant as internal entity**
+US057: *"An aircraft model might have several aircraft variants (combinations of model and engine configuration)."* AircraftVariant is an entity (not a VO) because it has local identity within the aggregate — each combination is individually identifiable and can be added or removed independently. It holds a reference to EngineModel by ID only, respecting aggregate boundaries.
 
-**Decision 11 — FlightLeg, Segment, Node, AltitudeSlot absent from model**
-Client clarification: *"I sincerely doubt we will need Flight Legs in the DDD Domain Model."* On Segment/Node: *"Can they be only part of a flight plan specification? Storing and managing all segments would be a lot of pain... can we avoid that?"* and *"I believe we don't have any user story about managing nodes/junctions."* These concepts belong to the DSL specification (LPROG) and are not managed independently by the Java application.
+**Decision 8 — FlightLeg, Segment, Node, AltitudeSlot absent**
+Client: *"I sincerely doubt we will need Flight Legs in the DDD Domain Model."* and *"Storing and managing all segments would be a lot of pain... can we avoid that?"* and *"I believe we don't have any user story about managing nodes/junctions."* These belong to the DSL specification (LPROG) and are not managed by the Java application.
 
-**Decision 12 — departureDayOrDate in Flight, not FlightPlan**
-Section 3.2 lists departure day/time as a characterising attribute of Flight: *"Departure day (or days of the week for regular flights and actual date for a charter) and time."* This is what distinguishes different flights of the same route. Promoted to DepartureSchedule VO hierarchy (see Decision 2).
+**Decision 9 — DepartureSchedule in Flight, not FlightPlan**
+Section 3.2 lists departure day/time as an attribute of Flight. A flight may have multiple FlightPlans (client: *"one can have multiple Flight Plans, albeit just one approved/validated"*) — if the departure schedule were in FlightPlan, different plans for the same flight could have different schedules, which makes no sense.
 
-**Decision 13 — WeatherData does not link to Collaborator**
-No user story or requirement states the need to track which WeatherPerson registered each WeatherData record. sourceProvider covers the external data source. Adding a link to Collaborator would introduce a cross-aggregate dependency without justification in the requirements.
+**Decision 10 — AircraftWeights and AerodynamicCoefficients as grouped VOs**
+`AircraftWeights` groups emptyWeight, MTOW, MZFW, and maxFuelCapacity because they share the same unit and have a joint invariant: MTOW > MZFW > emptyWeight (section 3.2). The VO is the information expert for this invariant.
 
-**Decision 14 — SimulationStatus not modelled**
-US100 lists simulation parameters: *"time range, geographic area, included flights, weather conditions, safety thresholds, performance settings."* No lifecycle status is mentioned. Not in the requirements — not modelled.
+`AerodynamicCoefficients` groups wingArea, Cd, and Cl because they are always used together in the lift and drag formulas (section 3.3): L = Cl × A × ρv²/2 and D = Cd × A × ρv²/2.
 
-**Decision 15 — generatedAt not in SimulationReport**
-Not mentioned in any US or requirement. SimulationTimeRange already provides start and end datetime of the simulation, which is sufficient to know when the simulation occurred.
+**Decision 11 — Thrust has speedReference**
+Section 3.3: *"Thrust is a parameter supplied by the manufacturer at two speeds: stopped and at cruise."* An EngineModel has two Thrust values. `speedReference` identifies which of the two each instance represents.
 
-**Decision 16 — AirControlArea has no name attribute**
-US050 states: *"The area code must be unique in the system. Geographic boundaries must be valid."* No name is mentioned. Not modelled.
+**Decision 12 — AirControlArea boundary as rectangle**
+Client clarification: *"In real life, an air control area is a polygon. For sake of simplicity, in the project it may be a rectangle."* Therefore `Coordinates_ACA` represents a rectangle (minLatitude, maxLatitude, minLongitude, maxLongitude), distinct from `Coordinates` used elsewhere which represents a single point. Additional invariants confirmed: boundaries cannot overlap; airport coordinates must fall within its area's boundary.
 
-**Decision 17 — One use case updates one aggregate (ACID/BASE)**
-Each use case modifies exactly one aggregate. Cross-aggregate references are read-only (for validation or navigation). Consistency between aggregates is eventual (BASE), not transactional.
+**Decision 13 — SimulationReport and SafetyViolation as internal entities**
+Both have identity within the simulation context. SimulationReport accumulates SafetyViolation events over time and is not replaceable as a whole. Neither has a lifecycle outside the Simulation aggregate — internal entities by composition.
 
-**Decision 18 — No Services or Repositories in the domain model**
-The domain model is a conceptual model of the business domain. Services and Repositories are implementation concerns — they appear in code (Repositories as interfaces per CO3) and sequence diagrams, not in the conceptual domain model.
+**Decision 14 — WeatherData Coordinates represent a point**
+Client: *"Weather conditions are not the same everywhere inside an air control area."* Each WindCondition reading is localised to a specific point (latitude + longitude) within the area where it was measured, not to a sub-area.
 
-### 3.4 Client Clarifications Applied
+**Decision 15 — No Services or Repositories in the domain model**
+The domain model is a conceptual model of business concepts and rules. Services and Repositories are implementation concerns — they appear in code and sequence diagrams, not in the conceptual model. In code, every aggregate root will have a corresponding Repository interface (CO3).
+
+### 3.5 Client Clarifications Applied
 
 | Clarification | Impact |
 |---|---|
 | *"A pilot only works for an ATC at a time."* | Collaborator --> AirTransportCompany multiplicity 0..1 |
 | *"You cannot simulate an aircraft behaviour without the engines."* | AircraftVariant internal entity linking model to engine |
 | *"Route - 1:N - Flight - 1:N - Flight Plan."* | FlightPlan --> Flight --> FlightRoute direction confirmed |
-| *"A route is owned by an ATC. Its ID includes the company ID."* | FlightRoute --> AirTransportCompany, RouteName VO with format rule |
+| *"A route is owned by an ATC. Its ID includes the company ID."* | FlightRoute --> AirTransportCompany; RouteName VO with format rule |
 | *"A route has two endpoints."* | FlightRoute hasOrigin and hasDestination to Airport |
 | *"Weather conditions are not the same everywhere inside an air control area."* | WindCondition carries Coordinates and altitude |
 | *"I sincerely doubt we will need Flight Legs in the DDD Domain Model."* | FlightLeg absent |
 | *"Storing and managing all segments would be a lot of pain."* | Segment, Node, AltitudeSlot absent |
-| *"You have to send information to run the simulation and receive feedback."* | Simulation aggregate present with SimulationReport and SafetyViolation |
+| *"You have to send information to run the simulation and receive feedback."* | Simulation aggregate with SimulationReport and SafetyViolation |
 | *"You don't need to detail performance settings in sprint 1."* | Generic SafetyThreshold and SimulationTimeRange only |
 | *"Yes, it [Manufacturer] can [be both aircraft and engine maker]."* | Single Manufacturer entity covers both roles |
+| *"Charter flights will have only a single instance. Regular flights: day of the week and time for each instance."* | DepartureSchedule hierarchy: CharterSchedule and RegularSchedule with ScheduleEntry |
+| *"For sake of simplicity, [boundary] may be a rectangle. Boundaries cannot overlap. Airport coordinates must fall within its area."* | Coordinates_ACA as rectangle (minLat, maxLat, minLon, maxLon) |
+| *"The requirements document mentions 'cabin configuration'."* | CabinConfiguration with seatsPerClass only — no type-specific attributes |
 
 ---
 
@@ -148,11 +181,11 @@ The domain model diagram was produced using PlantUML and is available at:
 Source: `docs/Sprint1/us_010/domain_model_ddd.puml`
 
 **Notation conventions:**
-- Package named `X_Aggregate` = aggregate boundary (suffix required so PlantUML renders cross-aggregate arrows from root class, not from package border)
+- Package `X_Aggregate` = aggregate boundary. The `_Aggregate` suffix is required — without it, PlantUML renders cross-aggregate arrows from the package border rather than from the root class.
 - `*--` = composition (part cannot exist without the whole)
-- `-->` = association (enum referenced but not owned, or framework boundary)
+- `-->` = association (enum or framework boundary)
 - `<|--` = inheritance (specialisation)
-- Cross-aggregate associations declared outside packages, root to root only, with `>` reading direction indicator
+- `>` on cross-aggregate labels = reading direction indicator
 
 **Cross-aggregate associations:**
 
@@ -183,9 +216,7 @@ Source: `docs/Sprint1/us_010/domain_model_ddd.puml`
 
 **Test 1 — All use cases navigable through the domain model**
 
-Navigate each use case and confirm required concepts and relationships exist:
-
-- US050 Register air control area → AirControlArea, AreaCode, Coordinates
+- US050 Register air control area → AirControlArea, AreaCode, Coordinates_ACA
 - US052 Create airport → Airport, IATACode, ICAOCode, Coordinates, Elevation, AirControlArea
 - US055 Create aircraft model → AircraftModel, ModelID, AircraftWeights, AircraftPerformance, AerodynamicCoefficients
 - US056 Create engine model → EngineModel, EngineName, Power, Thrust, TSFC, MotorizationType
@@ -231,7 +262,10 @@ Generate the diagram:
 sh generate-plantuml-diagrams.sh
 ```
 
-Major commits: (e41f07e5970bf6064cc802ba4cf23f37cd0e81d0)
+Major commits:
+- 8fda0356f42c54443813577c61b99c1d1c4ba86a
+- c94d92a0e8b75a9da5ce8fec9a100667bf059306
+- 82a6e21bcd11f3ec7433f999619b0713d2dcebb3
 
 ---
 
@@ -241,7 +275,7 @@ The domain model is the foundation for all subsequent sprints. Before implementi
 
 1. Verify the domain model supports the use case by navigating it.
 2. If new concepts are identified during implementation, update the domain model, glossary, and aggregate justification before writing code.
-3. Java domain classes must remain synchronous with the domain model at all times (CO3 assessment criterion).
+3. Java domain classes must remain synchronised with the domain model at all times (CO3 assessment criterion).
 
 ---
 
@@ -249,6 +283,8 @@ The domain model is the foundation for all subsequent sprints. Before implementi
 
 The domain model covers the EAPLI Java application scope only.
 
-**On the _Aggregate suffix in PlantUML:** When a package name equals the root class name, PlantUML renders cross-aggregate arrows from the package border instead of from the root class. The `_Aggregate` suffix disambiguates the two, ensuring correct arrow rendering from root to root.
+**On Repositories and Services:** In code, every aggregate root will have a corresponding Repository declared as a Java interface (CO3). Neither Repositories nor Services appear in the conceptual domain model.
 
-**On the one-aggregate-per-use-case rule:** Each use case modifies exactly one aggregate (ACID within aggregate, BASE between aggregates). Cross-aggregate references are read-only — for validation or navigation — never for writing to two aggregates in the same transaction.
+**On the one-aggregate-per-use-case rule:** Each use case modifies exactly one aggregate. Cross-aggregate references are read-only — never for writing to two aggregates in the same transaction.
+
+**On VOs duplicated in the diagram:** Coordinates, IATACode, and ICAOCode appear in multiple aggregates for presentation clarity. In code there is a single class for each.
