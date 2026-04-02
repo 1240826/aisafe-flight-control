@@ -6,6 +6,13 @@ As Project Manager, I want the team to configure the project structure to facili
 
 This task was assigned in Sprint 1 as an initial setup requirement. It is the first time this task is being developed. The goal is to configure the project structure to support the envisioned architecture and facilitate the development of all upcoming user stories, including support for adopted technologies such as ANTLR.
 
+### 1.1 List of Issues
+
+- Analysis: #16
+- Design: #16
+- Implement: #16
+- Test: N/A
+
 ---
 
 ## 2. Requirements
@@ -161,6 +168,13 @@ The following was set up:
 - `aisafe.dsl/pom.xml` created with ANTLR4 runtime dependency, ANTLR4 Maven plugin with visitor and listener generation enabled, and dependency on `exemplo.core`
 - `scomp/` folder created at repository root with `README.md` and `Makefile`
 - `rcomp/` folder created at repository root with `README.md`
+
+
+*Major commits:*
+
+- c3e86d365646b2126653798b5d927036a310fdcc
+- ce0a8b885b301f6240e8fb50b0817a3e3c5662b0
+- 002d9a5696b997dbf0136a5ec6d5f14d648ed88f
 
 ---
 

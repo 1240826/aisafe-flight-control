@@ -6,6 +6,12 @@ As Project Manager, I want the team to use the defined project repository in Git
 
 This is an initial setup task to ensure the team uses the official GitHub repository and adopts proper project management practices.
 
+### 1.1 List of Issues
+
+- Analysis: #14
+- Design: #14
+- Implement: #14
+- Test: N/A
 ---
 
 ## 2. Requirements
@@ -60,6 +66,10 @@ Custom **Insights charts** were also configured:
 - Work Assigned per Team Member
 - Work Assigned per UC
 
+### LLM Assistance
+
+There was no need for LLM assistance so no prompts were created.
+
 ---
 ## 4. Implementation
 
@@ -75,6 +85,10 @@ The following was set up:
     - GitHub Actions / CI pipeline rules
     - Code coverage requirements (≥90%)
     - Documentation standards
+
+*Major commits:*
+
+- 86986deca3f3664fd50d570e65962cd6838353ce
 
 ---
 

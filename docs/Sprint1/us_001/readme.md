@@ -9,6 +9,13 @@ This is an initial organizational user story. Its purpose is to ensure that the 
 
 This US does not involve feature development but establishes mandatory rules that guide all future work.
 
+### 1.1 List of Issues
+
+- Analysis: #13
+- Design: #13
+- Implement: #13
+- Test: N/A
+
 ---
 
 ## 2. Requirements
@@ -25,8 +32,13 @@ This US does not involve feature development but establishes mandatory rules tha
 - *US001.6* The system must support configurable persistence (in-memory and RDBMS) (NFR08).
 
 ---
+## 3. Analysis
 
-## 3. Implementation
+### 3.0 LLM Assistance
+
+There was no need for LLM assistance so no prompts were created.
+
+## 4. Implementation
 
 - Constraints were extracted from Section 5 and documented.
 - These rules are enforced through:
@@ -34,9 +46,13 @@ This US does not involve feature development but establishes mandatory rules tha
     - repository structure
     - development workflow
 
+*Major commits:*
+
+- 6accec0ce1a8e32bb028cf983800b69af10ac2f6
+
 ---
 
-## 4. Observations
+## 5. Observations
 
 This US is transversal to all others and must be continuously validated throughout the project.
 For more information view the [Non-Functional Requirements](docs/NonFunctionalRequirements.md) document.

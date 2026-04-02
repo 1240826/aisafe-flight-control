@@ -53,6 +53,12 @@ The scripts operate on the assumption that:
 | run-other.sh / run-other.bat | Runs the other console application |
 | generate-plantuml-diagrams.sh | Generates PlantUML diagrams from .puml source files |
 
+### LLM Assistance
+
+**Prompt used for LLM-assisted analysis:**
+
+> "Can you validate our drafted shell scripts to ensure they fully cover the requirements of US005? Specifically, check if they handle all major build, deployment, and execution tasks required to run the Java and C applications effortlessly on a Unix machine."
+
 ---
 
 ## 4. Design
@@ -116,9 +122,10 @@ All scripts are located at the root of aisafe.base/ and were provided as part of
 
 The scripts were not modified from the template — they cover all required tasks as specified in NFR07.
 
-*Major commits related to this US:*
+*Major commits:*
 
-(add commit hashes/links here)
+- dca375908aa731d80e23b7b278a08e1c3492a670
+- d48f986a60de3b29c8c26914487efa515cf84d5e
 
 ---
 

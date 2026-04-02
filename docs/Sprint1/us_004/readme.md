@@ -6,6 +6,12 @@ As Project Manager, I want the team to setup a continuous integration server.
 
 This task was assigned in Sprint 1 as an initial infrastructure requirement. It is the first time this task is being developed. The goal is to configure a Continuous Integration (CI) pipeline using GitHub Actions so that every change pushed to the repository is automatically built, tested, and analysed — ensuring the project always remains in a valid, compilable, and testable state as required by NFR06.
 
+### 1.1 List of Issues
+
+- Analysis: #17
+- Design: #17
+- Implement: #17
+- Test: N/A
 ---
 
 ## 2. Requirements
@@ -33,6 +39,16 @@ This task was assigned in Sprint 1 as an initial infrastructure requirement. It 
 ---
 
 ## 3. Analysis
+
+### 3.0 LLM Assistance
+
+**Prompt used for LLM-assisted analysis:**
+
+> "Can you generate the GitHub Actions workflow script required for US004 to automate our Java Maven builds, tests, and coverage reporting?"
+
+**LLM suggestions adopted:**
+- The LLM generated the initial script based on our requirements.
+- The generated script was then reviewed, tested, and validated by the team to ensure it met all acceptance criteria and project constraints before being merged into the repository.
 
 ### 3.1 CI Tool Selection
 
@@ -140,6 +156,11 @@ The following was created:
   - **Build step:** `./build-all.sh clean` inside `aisafe.base/`, running `mvn clean package dependency:copy-dependencies surefire-report:report -Daggregate=true checkstyle:checkstyle-aggregate`.
   - **JaCoCo report step:** explicit `mvn jacoco:report` to generate HTML/XML coverage output (the `prepare-agent` goal alone does not produce reports).
   - **Artifact uploads** (`if: always()`): `jacoco-reports`, `surefire-reports`, `checkstyle-reports`, all retained for 14 days.
+
+
+*Major commits:*
+
+- 3ef1075d752ef3425529200685d85a027a9a22f8
 
 ---
 
