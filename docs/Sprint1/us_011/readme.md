@@ -1,85 +1,104 @@
-# US 666
-
-*This is an example template*
+# US011 — Aggregate Justification
 
 ## 1. Context
 
-*Explain the context for this task. It is the first time the task is assigned to be developed or this tasks was incomplete in a previous sprint and is to be completed in this sprint? Are we fixing some bug?*
+This task was assigned in Sprint 1 (Sprint A). It is the first time this task is being developed. It depends directly on US010 (Domain Model) and provides explicit justification for each aggregate design decision, demonstrating the invariant each aggregate enforces.
 
-### 1.1 List of issues
+### 1.1 List of Issues
 
-Analysis:
+- Analysis: #20
+- Design: #20
+- Implement: N/A — design artefact
+- Test: N/A
 
-Design:
-
-Implement:
-
-Test:
-
+---
 
 ## 2. Requirements
 
-*In this section you should present the functionality that is being developed, how do you understand it, as well as possible correlations to other requirements (i.e., dependencies). You should also add acceptance criteria.*
+*US011* As Project Manager, I want the team to illustrate one representative scenario per aggregate with a sequence diagram and a short explanation, so that the aggregate's responsibility is demonstrated through an invariant it enforces. This justification will make aggregate design decisions more explicit and easier to review by the project manager.
 
-*Example*
+*Acceptance Criteria:*
 
-**US G101** As {Ator} I Want...
+- US011.1 One sequence diagram per aggregate must be provided.
+- US011.2 Each sequence diagram must demonstrate a business invariant enforced by the aggregate root.
+- US011.3 A short justification must accompany each diagram explaining the aggregate boundary and the invariant shown.
 
-**Acceptance Criteria:**
+*Dependencies/References:*
 
-- US666.1 The system should...Blá Blá Blá ...
+- US010 — The domain model must be complete before aggregate justification can be produced.
 
-- US666.2. Blá Blá Blá ...
-
-**Dependencies/References:**
-
-*Regarding this requirement we understand that it relates to...*
+---
 
 ## 3. Analysis
 
-*In this section, the team should report the study/analysis/comparison that was done in order to take the best design decisions for the requirement. This section should also include supporting diagrams/artifacts (such as domain model; use case diagrams, etc.),*
+### 3.1 What is an Aggregate?
+
+An aggregate is a cluster of entities and value objects with a single root entity that controls all access to the internal objects. The boundary is defined by business invariants that must be enforced atomically.
+
+The rules applied in the design:
+
+- Nothing outside the aggregate boundary can hold a reference to anything inside — only roots are referenced externally.
+- Only aggregate roots can be obtained directly with database queries (via Repositories).
+- A delete operation removes everything within the aggregate boundary at once.
+- When any change within the aggregate is committed, all invariants of the whole aggregate must be satisfied.
+- One use case should only update one aggregate (ACID within aggregate, BASE between aggregates).
+
+### 3.2 Aggregate Justification
+
+See the dedicated document: docs/Sprint1/us_011/aggregate-justification.md
+
+---
 
 ## 4. Design
 
-*In this sections, the team should present the solution design that was adopted to solve the requirement. This should include, at least, a diagram of the realization of the functionality (e.g., sequence diagram) and the specification of the main tests used to validade the functionality. A class diagram may be useful to describe the classes involved.*
-
 ### 4.1. Realization
 
-![a class diagram](class-diagram-01.svg "A Class Diagram")
+Sequence diagrams illustrating the invariant enforcement for each aggregate:
 
+| Aggregate | Sequence Diagram | Invariant Demonstrated |
+|---|---|---|
+| Manufacturer | docs/Sprint1/us_011/sd_manufacturer.puml | Name must not be empty |
+| EngineModel | docs/Sprint1/us_011/sd_enginemodel.puml | Name + manufacturer unique (US056) |
+| AircraftModel | docs/Sprint1/us_011/sd_aircraftmodel.puml | Same engine cannot be added twice (US057) |
+| Aircraft | docs/Sprint1/us_011/sd_aircraft.puml | Registration number unique worldwide (US070) |
+| AirControlArea | docs/Sprint1/us_011/sd_aircontrolarea.puml | AreaCode unique in system (US050) |
+| Airport | docs/Sprint1/us_011/sd_airport.puml | IATA code unique worldwide (US052) |
+| AirTransportCompany | docs/Sprint1/us_011/sd_airtransportcompany.puml | Company name unique (US060) |
+| Collaborator | docs/Sprint1/us_011/sd_collaborator.puml | SecurityClearance must be active |
+| Pilot | docs/Sprint1/us_011/sd_pilot.puml | Cannot deactivate with assigned flights (US077) |
+| FlightRoute | docs/Sprint1/us_011/sd_flightroute.puml | RouteName unique with format (US073) |
+| Flight | docs/Sprint1/us_011/sd_flight.puml | FlightDesignator unique; schedule matches FlightType |
+| WeatherData | docs/Sprint1/us_011/sd_weatherdata.puml | recordedDateTime valid |
+| Simulation | docs/Sprint1/us_011/sd_simulation.puml | SimulationTimeRange start < end (US100) |
 
 ### 4.2. Acceptance Tests
 
-Include here the main tests used to validate the functionality. Focus on how they relate to the acceptance criteria. May be automated or manual tests.
+*Test 1 — Each aggregate enforces its invariant*
 
-**Test 1:** *Verifies that it is not possible to ...*
+For each aggregate, verify that attempting to violate the invariant results in an exception thrown by the root entity, not by an external service or controller.
 
-**Refers to Acceptance Criteria:** US666.1
-
-
-```
-@Test(expected = IllegalArgumentException.class)
-public void ensureXxxxYyyy() {
-	...
-}
-````
+---
 
 ## 5. Implementation
 
-*In this section the team should present, if necessary, some evidencies that the implementation is according to the design. It should also describe and explain other important artifacts necessary to fully understand the implementation like, for instance, configuration files.*
+This user story produces design artefacts only.
 
-*It is also a best practice to include a listing (with a brief summary) of the major commits regarding this requirement.*
+Major commits: #20
+
+---
 
 ## 6. Integration/Demonstration
 
-*In this section the team should describe the efforts realized in order to integrate this functionality with the other parts/components of the system*
+The aggregate justifications inform the implementation of domain classes in subsequent sprints. Each justification defines:
 
-*It is also important to explain any scripts or instructions required to execute an demonstrate this functionality*
+- Which classes belong inside the aggregate boundary
+- Which invariant the root enforces
+- How external aggregates reference this aggregate (root only, by ID)
+
+These patterns must be followed consistently in code to satisfy CO3 (DDD Tactical Patterns).
+
+---
 
 ## 7. Observations
 
-*This section should be used to include any content that does not fit any of the previous sections.*
-
-*The team should present here, for instance, a critical prespective on the developed work including the analysis of alternative solutioons or related works*
-
-*The team should include in this section statements/references regarding third party works that were used in the development this work.*
+Each aggregate in this system modifies only one aggregate per use case, consistent with the rule: "One use case should only update one aggregate." Cross-aggregate references are read-only — for validation or navigation — never for writing to two aggregates in the same transaction. This ensures ACID within the aggregate and BASE between aggregates.
