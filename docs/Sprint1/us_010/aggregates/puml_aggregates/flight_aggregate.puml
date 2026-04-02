@@ -1,0 +1,173 @@
+@startuml flight_aggregate
+left to right direction
+skinparam packageStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 60
+hide empty members
+
+package "Aircraft_Aggregate" <<aggregate>> {
+  class Aircraft <<entity>> <<root>> {
+    numberOfFlightCrewMembers
+  }
+  class RegistrationNumber <<value object>> {
+    number
+    registrationCountry
+  }
+  note right of RegistrationNumber : unique worldwide (US070)
+  class CabinConfiguration <<value object>> {
+  }
+  class SeatClass <<value object>> {
+    className
+    numberOfSeats
+  }
+  CabinConfiguration *-- "1..*" SeatClass : contains
+  note right of CabinConfiguration : total seats cannot exceed\nmodel capacity (US070)
+  enum OperationalStatus {
+    active
+    decommissioned
+  }
+  Aircraft *-- RegistrationNumber : identifiedBy
+  Aircraft *-- CabinConfiguration : configuredWith
+  Aircraft --> OperationalStatus : hasStatus
+}
+
+package "Pilot_Aggregate" <<aggregate>> {
+  class Pilot <<entity>> <<root>> {
+  }
+}
+Pilot ---|> Collaborator : extends
+
+package "FlightRoute_Aggregate" <<aggregate>> {
+  class FlightRoute <<entity>> <<root>> {
+    deactivationDate
+  }
+  class RouteName <<value object>> {
+    name
+  }
+  note right of RouteName : 2 letters + up to 4 digits\n(e.g. TP123). unique (US073)
+  FlightRoute *--- RouteName : identifiedBy
+}
+
+package "Flight_Aggregate" <<aggregate>> {
+
+  class Flight <<entity>> <<root>> {
+    scheduledArrivalTime
+  }
+
+  class FlightDesignator <<value object>> {
+    airlineDesignator
+    flightNumber
+    operationalSuffix
+  }
+  note left of FlightDesignator : Format: xxn(n)(n)(n)(a)\nunique (sec. 3.2)
+
+  enum FlightType {
+    regular
+    charter
+  }
+  note right of FlightType : Invariant: if regular then\nDepartureSchedule must be\nRegularSchedule, and vice versa.
+
+  abstract class DepartureSchedule <<value object>> {
+  }
+
+  class RegularSchedule <<value object>> {
+  }
+  note right of RegularSchedule : Used when FlightType = regular
+
+  class ScheduleEntry <<value object>> {
+    dayOfWeek
+    departureTime
+  }
+  note right of ScheduleEntry : Client: "Monday 12:00;\nTuesday 12:30; Thursday 11:30"
+
+  class CharterSchedule <<value object>> {
+    departureDate
+    departureTime
+  }
+  note right of CharterSchedule : Used when FlightType = charter.\nClient: "single instance."
+
+  class FlightPlan <<entity>> {
+  }
+  note right of FlightPlan : Lifecycle: draft -> validated\nUS080 creates, US082 adds\nweather, US085 validates.
+
+  enum FlightPlanStatus {
+    draft
+    validated
+  }
+
+  class FuelQuantity <<value object>> {
+    value
+    unit
+  }
+  note right of FuelQuantity : must be positive (US080)
+
+  Flight *-- FlightDesignator : identifiedBy
+  Flight ---> FlightType : ofType
+  Flight *--- DepartureSchedule : scheduledAt
+  DepartureSchedule <|-- RegularSchedule
+  DepartureSchedule <|-- CharterSchedule
+  RegularSchedule *- "1..*" ScheduleEntry : composedOf
+  Flight *--- "1..*" FlightPlan : hasPlan
+  FlightPlan --> FlightPlanStatus : hasStatus
+  FlightPlan *-- FuelQuantity : carries
+
+}
+
+Flight "*" --> "1" FlightRoute : instantiates >
+Flight "*" --> "1" Aircraft : uses >
+Flight "*" --> "1" Pilot : assignedTo >
+
+package "WeatherData_Aggregate" <<aggregate>> {
+  class WeatherData <<entity>> <<root>> {
+    recordedDateTime
+    sourceProvider
+  }
+  note right of WeatherData : US042: "data might be from\nmultiple external providers"
+  class WindCondition <<value object>> {
+    directionAngle
+    speed
+  }
+  class Coordinates_WD <<value object>> {
+    latitude
+    longitude
+  }
+  note right of Coordinates_WD : Coordinates (same class as\nin Airport and Simulation).\nCarries location: "weather\nnot same everywhere in area"
+  WeatherData *-- "1..*" WindCondition : records
+  WindCondition *-- Coordinates_WD : locatedAt
+}
+
+Flight "*" ---> "0..1" WeatherData : usesWeather >
+note on link : US082: weather added\nto flight plan.\nRises to root — FlightPlan\nis internal entity.
+
+package "Simulation_Aggregate" <<aggregate>> {
+  class Simulation <<entity>> <<root>> {
+  }
+  class SimulationTimeRange <<value object>> {
+    startDateTime
+    endDateTime
+  }
+  note right of SimulationTimeRange : Invariant: start < end (US100)
+  class SafetyThreshold <<value object>> {
+    value
+    unit
+  }
+  class SimulationReport <<value object>> {
+    totalFlights
+  }
+  note right of SimulationReport : Final document received\nfrom C module. Immutable.\nUS109/US111
+  enum ValidationResult {
+    passed
+    failed
+  }
+
+  Simulation *-- SimulationTimeRange : scheduledFor
+  Simulation *-- SafetyThreshold : boundedBy
+  Simulation *-- SimulationReport : produces
+  SimulationReport --> ValidationResult : concludes
+}
+
+
+Simulation "*" --> "1..*" Flight : includes >
+
+
+@enduml

@@ -1,0 +1,137 @@
+@startuml flightRoute_aggregate
+left to right direction
+skinparam packageStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 60
+hide empty members
+
+package "AirTransportCompany_Aggregate" <<aggregate>> {
+  class AirTransportCompany <<entity>> <<root>> {
+  }
+  class CompanyName <<value object>> {
+    name
+  }
+  note right of CompanyName : unique (US060)
+  class IATACode_ATC <<value object>> {
+    code
+  }
+  class ICAOCode_ATC <<value object>> {
+    code
+  }
+  note right of IATACode_ATC : IATACode (same class as in Airport)
+  note right of ICAOCode_ATC : ICAOCode (same class as in Airport)
+  AirTransportCompany *-- CompanyName : namedAs
+  AirTransportCompany *-- IATACode_ATC : identifiedBy
+  AirTransportCompany *-- ICAOCode_ATC : identifiedBy
+}
+
+package "Airport_Aggregate" <<aggregate>> {
+  class Airport <<entity>> <<root>> {
+    name
+    town
+    country
+  }
+  class IATACode <<value object>> {
+    code
+  }
+  class ICAOCode <<value object>> {
+    code
+  }
+  class Coordinates_Apt <<value object>> {
+    latitude
+    longitude
+  }
+  note right of Coordinates_Apt : Coordinates\n(same class as in Simulation)
+  class Elevation <<value object>> {
+    value
+    unit
+  }
+  note right of Elevation : metres above sea level (US052)
+  Airport *-- IATACode : identifiedBy
+  Airport *-- ICAOCode : identifiedBy
+  Airport *-- Coordinates_Apt : locatedAt
+  Airport *-- Elevation : situatedAt
+}
+
+package "FlightRoute_Aggregate" <<aggregate>> {
+  class FlightRoute <<entity>> <<root>> {
+    deactivationDate
+  }
+  class RouteName <<value object>> {
+    name
+  }
+  note right of RouteName : 2 letters + up to 4 digits\n(e.g. TP123). unique (US073)
+  FlightRoute *--- RouteName : identifiedBy
+}
+
+package "Flight_Aggregate" <<aggregate>> {
+
+  class Flight <<entity>> <<root>> {
+    scheduledArrivalTime
+  }
+
+  class FlightDesignator <<value object>> {
+    airlineDesignator
+    flightNumber
+    operationalSuffix
+  }
+  note left of FlightDesignator : Format: xxn(n)(n)(n)(a)\nunique (sec. 3.2)
+
+  enum FlightType {
+    regular
+    charter
+  }
+  note right of FlightType : Invariant: if regular then\nDepartureSchedule must be\nRegularSchedule, and vice versa.
+
+  abstract class DepartureSchedule <<value object>> {
+  }
+
+  class RegularSchedule <<value object>> {
+  }
+  note right of RegularSchedule : Used when FlightType = regular
+
+  class ScheduleEntry <<value object>> {
+    dayOfWeek
+    departureTime
+  }
+  note right of ScheduleEntry : Client: "Monday 12:00;\nTuesday 12:30; Thursday 11:30"
+
+  class CharterSchedule <<value object>> {
+    departureDate
+    departureTime
+  }
+  note right of CharterSchedule : Used when FlightType = charter.\nClient: "single instance."
+
+  class FlightPlan <<entity>> {
+  }
+  note right of FlightPlan : Lifecycle: draft -> validated\nUS080 creates, US082 adds\nweather, US085 validates.
+
+  enum FlightPlanStatus {
+    draft
+    validated
+  }
+
+  class FuelQuantity <<value object>> {
+    value
+    unit
+  }
+  note right of FuelQuantity : must be positive (US080)
+
+  Flight *-- FlightDesignator : identifiedBy
+  Flight ---> FlightType : ofType
+  Flight *--- DepartureSchedule : scheduledAt
+  DepartureSchedule <|-- RegularSchedule
+  DepartureSchedule <|-- CharterSchedule
+  RegularSchedule *- "1..*" ScheduleEntry : composedOf
+  Flight *--- "1..*" FlightPlan : hasPlan
+  FlightPlan --> FlightPlanStatus : hasStatus
+  FlightPlan *-- FuelQuantity : carries
+
+}
+
+Flight "*" ---> "1" FlightRoute : instantiates >
+FlightRoute "*" --> "1" Airport : hasOrigin >
+FlightRoute "*" ---> "1" Airport : hasDestination >
+FlightRoute "*" ---> "1" AirTransportCompany : ownedBy >
+
+@enduml

@@ -1,0 +1,136 @@
+@startuml aircraftmodel_aggregate
+left to right direction
+skinparam packageStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 60
+hide empty members
+
+
+package "Manufacturer_Aggregate" <<aggregate>> {
+  class Manufacturer <<entity>> <<root>> {
+    name
+    country
+  }
+}
+
+package "EngineModel_Aggregate" <<aggregate>> {
+  class EngineModel <<entity>> <<root>> {
+  fuelType
+  }
+  class EngineName <<value object>> {
+    name
+  }
+  note right of EngineName : name + manufacturer\nmust be unique (US056)
+  class Power <<value object>> {
+    value
+    unit
+  }
+  class Thrust <<value object>> {
+    value
+    unit
+    speedReference
+  }
+  note right of Thrust : Manufacturer-supplied at\nstatic and cruise speed.\nDecreases with altitude (sec. 3.3)
+  class TSFC <<value object>> {
+    value
+    unit
+  }
+  enum MotorizationType {
+    turboprop
+    turbofan
+    turbojet
+    ramjet
+    electricPropeller
+  }
+  EngineModel --> MotorizationType : ofType
+  EngineModel *-- EngineName : identifiedBy
+  EngineModel *-- Power : ratedAt
+  EngineModel *-- "2" Thrust : characterisedBy
+  EngineModel *-- TSFC : ratedBy
+
+}
+
+package "AircraftModel_Aggregate" <<aggregate>> {
+  class AircraftModel <<entity>> <<root>> {
+  }
+  class ModelID <<value object>> {
+    id
+  }
+  note right of ModelID : name + manufacturer\nmust be unique (US055)
+  enum AircraftType {
+    passenger
+    cargo
+    mixed
+  }
+  class AircraftWeights <<value object>> {
+    emptyWeight
+    MTOW
+    MZFW
+    maxFuelCapacity
+  }
+  note right of AircraftWeights : Invariant:\nMTOW > MZFW > emptyWeight\nAll values positive (sec. 3.2)
+  class AircraftPerformance <<value object>> {
+    serviceCeiling
+    cruiseSpeed
+    maximumRange
+  }
+  note right : Each value has its own unit\ndefined at implementation time
+
+  class AerodynamicCoefficients <<value object>> {
+    wingArea
+    dragCoefficient
+    liftCoefficient
+  }
+  note right of AerodynamicCoefficients : Used in lift/drag\nformulas (sec. 3.3)
+  class AircraftVariant <<entity>> {
+  }
+  note right of AircraftVariant : US057: "combination of\nmodel and engine configuration"
+  AircraftModel *--- ModelID : identifiedBy
+  AircraftModel ---> AircraftType : ofType
+  AircraftModel *--- AircraftWeights : weights
+  AircraftModel *--- AircraftPerformance : performs
+  AircraftModel *--- AerodynamicCoefficients : characterisedBy
+  AircraftModel *--- AircraftVariant : comprises
+}
+
+
+package "Aircraft_Aggregate" <<aggregate>> {
+  class Aircraft <<entity>> <<root>> {
+    numberOfFlightCrewMembers
+  }
+  class RegistrationNumber <<value object>> {
+    number
+    registrationCountry
+  }
+  note right of RegistrationNumber : unique worldwide (US070)
+  class CabinConfiguration <<value object>> {
+  }
+  class SeatClass <<value object>> {
+    className
+    numberOfSeats
+  }
+  CabinConfiguration *-- "1..*" SeatClass : contains
+  note right of CabinConfiguration : total seats cannot exceed\nmodel capacity (US070)
+  enum OperationalStatus {
+    active
+    decommissioned
+  }
+  Aircraft *-- RegistrationNumber : identifiedBy
+  Aircraft *-- CabinConfiguration : configuredWith
+  Aircraft --> OperationalStatus : hasStatus
+}
+
+
+package "Pilot_Aggregate" <<aggregate>> {
+  class Pilot <<entity>> <<root>> {
+  }
+}
+
+
+AircraftModel "*" --> "1" Manufacturer : manufacturedBy >
+AircraftModel "*" --> "1..*" EngineModel : certifies >
+
+Aircraft "*" --> "1" AircraftModel : ofModel >
+Pilot "*" --> "1..*" AircraftModel : certifiedFor >
+
+@enduml

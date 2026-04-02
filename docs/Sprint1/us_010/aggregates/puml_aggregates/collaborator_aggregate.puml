@@ -1,0 +1,86 @@
+@startuml collaborator_aggregate
+left to right direction
+skinparam packageStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 60
+hide empty members
+
+package "AirTransportCompany_Aggregate" <<aggregate>> {
+  class AirTransportCompany <<entity>> <<root>> {
+  }
+  class CompanyName <<value object>> {
+    name
+  }
+  note right of CompanyName : unique (US060)
+  class IATACode_ATC <<value object>> {
+    code
+  }
+  class ICAOCode_ATC <<value object>> {
+    code
+  }
+  note right of IATACode_ATC : IATACode (same class as in Airport)
+  note right of ICAOCode_ATC : ICAOCode (same class as in Airport)
+  AirTransportCompany *-- CompanyName : namedAs
+  AirTransportCompany *-- IATACode_ATC : identifiedBy
+  AirTransportCompany *-- ICAOCode_ATC : identifiedBy
+}
+
+package "AirControlArea_Aggregate" <<aggregate>> {
+  class AirControlArea <<entity>> <<root>> {
+  }
+  class AreaCode <<value object>> {
+    code
+  }
+  note right of AreaCode : unique in system (US050)
+  class Coordinates_ACA <<value object>> {
+    minLatitude
+    maxLatitude
+    minLongitude
+    maxLongitude
+  }
+  note right of Coordinates_ACA : Rectangle boundary.\nClient: "for sake of simplicity,\na rectangle"
+
+  AirControlArea *---- AreaCode : identifiedBy
+  AirControlArea *---- Coordinates_ACA : boundedBy
+}
+
+package "Collaborator_Aggregate" <<aggregate>> {
+  abstract class Collaborator <<entity>> <<root>> {
+    name
+    position
+  }
+
+  class ATCCollaborator <<entity>> {
+  }
+  class FlightControlOperator <<entity>> {
+  }
+  class WeatherPerson <<entity>> {
+  }
+  class SecurityClearance <<value object>> {
+    expiryDate
+  }
+  note right of SecurityClearance : auto-expires.\nUpdatable by Admin/Backoffice (sec. 3.1.1)
+  class SkillsAssessment <<value object>> {
+    assessmentDate
+  }
+  note right of SkillsAssessment : periodic, every 5 years (sec. 3.1.1)
+  class SystemUser <<entity>> {
+  }
+  note left of SystemUser : EAPLI framework boundary.\nStores: email (unique, sec. 3.1.1), name, phoneNumber (sec. 3.1.1).\nInternal details managed by the framework.
+  Collaborator <|--- ATCCollaborator
+  Collaborator <|--- FlightControlOperator
+  Collaborator <|--- WeatherPerson
+  Collaborator *--- SecurityClearance : hasActive
+  Collaborator *--- SkillsAssessment : assessed
+  Collaborator -> SystemUser : linkedTo
+}
+
+
+Collaborator "*" ----> "0..1" AirTransportCompany: employedBy >
+note on link : Only ATCCollaborator.\nFCO/WeatherPerson: null.
+
+Collaborator "*" ---> "0..1" AirControlArea : worksFor >
+note on link : Only applicable to FCO and WeatherPerson.\nATCCollaborator always null.
+
+
+@enduml

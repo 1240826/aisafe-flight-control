@@ -1,0 +1,169 @@
+@startuml aircraft_Aggregate
+left to right direction
+skinparam packageStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 60
+hide empty members
+
+package "AircraftModel_Aggregate" <<aggregate>> {
+  class AircraftModel <<entity>> <<root>> {
+  }
+  class ModelID <<value object>> {
+    id
+  }
+  note right of ModelID : name + manufacturer\nmust be unique (US055)
+  enum AircraftType {
+    passenger
+    cargo
+    mixed
+  }
+  class AircraftWeights <<value object>> {
+    emptyWeight
+    MTOW
+    MZFW
+    maxFuelCapacity
+  }
+  note right of AircraftWeights : Invariant:\nMTOW > MZFW > emptyWeight\nAll values positive (sec. 3.2)
+  class AircraftPerformance <<value object>> {
+    serviceCeiling
+    cruiseSpeed
+    maximumRange
+  }
+  note right : Each value has its own unit\ndefined at implementation time
+
+  class AerodynamicCoefficients <<value object>> {
+    wingArea
+    dragCoefficient
+    liftCoefficient
+  }
+  note right of AerodynamicCoefficients : Used in lift/drag\nformulas (sec. 3.3)
+  class AircraftVariant <<entity>> {
+  }
+  note right of AircraftVariant : US057: "combination of\nmodel and engine configuration"
+  AircraftModel *--- ModelID : identifiedBy
+  AircraftModel ---> AircraftType : ofType
+  AircraftModel *--- AircraftWeights : weights
+  AircraftModel *--- AircraftPerformance : performs
+  AircraftModel *--- AerodynamicCoefficients : characterisedBy
+  AircraftModel *--- AircraftVariant : comprises
+}
+
+package "AirTransportCompany_Aggregate" <<aggregate>> {
+  class AirTransportCompany <<entity>> <<root>> {
+  }
+  class CompanyName <<value object>> {
+    name
+  }
+  note right of CompanyName : unique (US060)
+  class IATACode_ATC <<value object>> {
+    code
+  }
+  class ICAOCode_ATC <<value object>> {
+    code
+  }
+  note right of IATACode_ATC : IATACode (same class as in Airport)
+  note right of ICAOCode_ATC : ICAOCode (same class as in Airport)
+  AirTransportCompany *-- CompanyName : namedAs
+  AirTransportCompany *-- IATACode_ATC : identifiedBy
+  AirTransportCompany *-- ICAOCode_ATC : identifiedBy
+}
+
+
+package "Aircraft_Aggregate" <<aggregate>> {
+  class Aircraft <<entity>> <<root>> {
+    numberOfFlightCrewMembers
+  }
+  class RegistrationNumber <<value object>> {
+    number
+    registrationCountry
+  }
+  note right of RegistrationNumber : unique worldwide (US070)
+  class CabinConfiguration <<value object>> {
+  }
+  class SeatClass <<value object>> {
+    className
+    numberOfSeats
+  }
+  CabinConfiguration *-- "1..*" SeatClass : contains
+  note right of CabinConfiguration : total seats cannot exceed\nmodel capacity (US070)
+  enum OperationalStatus {
+    active
+    decommissioned
+  }
+  Aircraft *-- RegistrationNumber : identifiedBy
+  Aircraft *-- CabinConfiguration : configuredWith
+  Aircraft --> OperationalStatus : hasStatus
+}
+
+
+package "Flight_Aggregate" <<aggregate>> {
+
+  class Flight <<entity>> <<root>> {
+    scheduledArrivalTime
+  }
+
+  class FlightDesignator <<value object>> {
+    airlineDesignator
+    flightNumber
+    operationalSuffix
+  }
+  note left of FlightDesignator : Format: xxn(n)(n)(n)(a)\nunique (sec. 3.2)
+
+  enum FlightType {
+    regular
+    charter
+  }
+  note right of FlightType : Invariant: if regular then\nDepartureSchedule must be\nRegularSchedule, and vice versa.
+
+  abstract class DepartureSchedule <<value object>> {
+  }
+
+  class RegularSchedule <<value object>> {
+  }
+  note right of RegularSchedule : Used when FlightType = regular
+
+  class ScheduleEntry <<value object>> {
+    dayOfWeek
+    departureTime
+  }
+  note right of ScheduleEntry : Client: "Monday 12:00;\nTuesday 12:30; Thursday 11:30"
+
+  class CharterSchedule <<value object>> {
+    departureDate
+    departureTime
+  }
+  note right of CharterSchedule : Used when FlightType = charter.\nClient: "single instance."
+
+  class FlightPlan <<entity>> {
+  }
+  note right of FlightPlan : Lifecycle: draft -> validated\nUS080 creates, US082 adds\nweather, US085 validates.
+
+  enum FlightPlanStatus {
+    draft
+    validated
+  }
+
+  class FuelQuantity <<value object>> {
+    value
+    unit
+  }
+  note right of FuelQuantity : must be positive (US080)
+
+  Flight *-- FlightDesignator : identifiedBy
+  Flight ---> FlightType : ofType
+  Flight *--- DepartureSchedule : scheduledAt
+  DepartureSchedule <|-- RegularSchedule
+  DepartureSchedule <|-- CharterSchedule
+  RegularSchedule *- "1..*" ScheduleEntry : composedOf
+  Flight *--- "1..*" FlightPlan : hasPlan
+  FlightPlan --> FlightPlanStatus : hasStatus
+  FlightPlan *-- FuelQuantity : carries
+
+}
+
+Flight "*" ---> "1" Aircraft : uses >
+
+Aircraft "*" ---> "1" AircraftModel : ofModel >
+Aircraft "*" ---> "1" AirTransportCompany : ownedBy >
+
+@enduml

@@ -1,0 +1,74 @@
+@startuml airport_aggregate
+left to right direction
+skinparam packageStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 60
+hide empty members
+
+package "AirControlArea_Aggregate" <<aggregate>> {
+  class AirControlArea <<entity>> <<root>> {
+  }
+  class AreaCode <<value object>> {
+    code
+  }
+  note right of AreaCode : unique in system (US050)
+  class Coordinates_ACA <<value object>> {
+    minLatitude
+    maxLatitude
+    minLongitude
+    maxLongitude
+  }
+  note right of Coordinates_ACA : Rectangle boundary.\nClient: "for sake of simplicity,\na rectangle"
+
+  AirControlArea *---- AreaCode : identifiedBy
+  AirControlArea *---- Coordinates_ACA : boundedBy
+}
+
+package "Airport_Aggregate" <<aggregate>> {
+  class Airport <<entity>> <<root>> {
+    name
+    town
+    country
+  }
+  class IATACode <<value object>> {
+    code
+  }
+  class ICAOCode <<value object>> {
+    code
+  }
+  class Coordinates_Apt <<value object>> {
+    latitude
+    longitude
+  }
+  note right of Coordinates_Apt : Coordinates\n(same class as in Simulation)
+  class Elevation <<value object>> {
+    value
+    unit
+  }
+  note right of Elevation : metres above sea level (US052)
+  Airport *-- IATACode : identifiedBy
+  Airport *-- ICAOCode : identifiedBy
+  Airport *-- Coordinates_Apt : locatedAt
+  Airport *-- Elevation : situatedAt
+}
+
+
+package "FlightRoute_Aggregate" <<aggregate>> {
+  class FlightRoute <<entity>> <<root>> {
+    deactivationDate
+  }
+  class RouteName <<value object>> {
+    name
+  }
+  note right of RouteName : 2 letters + up to 4 digits\n(e.g. TP123). unique (US073)
+  FlightRoute *--- RouteName : identifiedBy
+}
+
+
+Airport "*" --> "1" AirControlArea : locatedIn >
+
+FlightRoute "*" ---> "1" Airport : hasOrigin >
+FlightRoute "*" ----> "1" Airport : hasDestination >
+
+
+@enduml
