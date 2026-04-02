@@ -117,10 +117,13 @@ package "AirControlArea_Aggregate" <<aggregate>> {
   }
   note right of AreaCode : unique in system (US050)
   class Coordinates_ACA <<value object>> {
-    latitude
-    longitude
+    minLatitude
+    maxLatitude
+    minLongitude
+    maxLongitude
   }
-  note right of Coordinates_ACA : Coordinates\n(same class as in Airport)
+  note right of Coordinates_ACA : Rectangle boundary.\nClient: "for sake of simplicity,\na rectangle"
+
   AirControlArea *--- AreaCode : identifiedBy
   AirControlArea *--- Coordinates_ACA : boundedBy
 }
@@ -141,7 +144,7 @@ package "Airport_Aggregate" <<aggregate>> {
     latitude
     longitude
   }
-  note right of Coordinates_Apt : Coordinates\n(same class as in AirControlArea)
+  note right of Coordinates_Apt : Coordinates\n(same class as in Simulation)
   class Elevation <<value object>> {
     value
     unit
@@ -206,11 +209,11 @@ package "Collaborator_Aggregate" <<aggregate>> {
   note right of SystemUser : EAPLI framework boundary.\nStores: email (unique, sec. 3.1.1), name, phoneNumber (sec. 3.1.1).\nInternal details managed by the framework.
   Collaborator <|-- ATCCollaborator
   Collaborator <|-- Pilot
-  Collaborator <|--- FlightControlOperator
-  Collaborator <|--- WeatherPerson
-  Collaborator *-- CollaboratorName : namedAs
-  Collaborator *-- Position : occupies
-  Collaborator *-- SecurityClearance : hasActive
+  Collaborator <|-- FlightControlOperator
+  Collaborator <|-- WeatherPerson
+  Collaborator *--- CollaboratorName : namedAs
+  Collaborator *--- Position : occupies
+  Collaborator *--- SecurityClearance : hasActive
   Collaborator *-- SkillsAssessment : assessed
   Collaborator -> SystemUser : linkedTo
 }
@@ -231,19 +234,26 @@ package "Flight_Aggregate" <<aggregate>> {
     scheduledArrivalTime
   }
   abstract class DepartureSchedule <<value object>> {
-    departureTime
-  }
-
-  class RegularSchedule <<value object>> {
-    daysOfWeek
   }
 
   class CharterSchedule <<value object>> {
     departureDate
+    departureTime
+  }
+  note right of CharterSchedule : Single instance.\nClient: "Charter flights\nwill have only a\nsingle instance."
+
+  class RegularSchedule <<value object>> {
   }
 
-  DepartureSchedule <|-- RegularSchedule
+  class ScheduleEntry <<value object>> {
+    dayOfWeek
+    departureTime
+  }
+  note right of ScheduleEntry : One entry per flight instance.\nClient: "Monday 12:00;\nTuesday 12:30; Thursday 11:30"
+
   DepartureSchedule <|-- CharterSchedule
+  DepartureSchedule <|-- RegularSchedule
+  RegularSchedule *- "1..*" ScheduleEntry : composedOf
 
   class FlightDesignator <<value object>> {
     airlineDesignator
@@ -257,7 +267,7 @@ package "Flight_Aggregate" <<aggregate>> {
   }
   Flight *-- FlightDesignator : identifiedBy
   Flight --> FlightType : ofType
-  Flight *-- DepartureSchedule : scheduledAt
+  Flight *- DepartureSchedule : scheduledAt
 }
 
 package "FlightPlan_Aggregate" <<aggregate>> {
@@ -294,7 +304,7 @@ package "WeatherData_Aggregate" <<aggregate>> {
     latitude
     longitude
   }
-  note right of Coordinates_WD : Coordinates (same class as\nin Airport, AirControlArea).\nCarries location: "weather\nnot same everywhere in area"
+  note right of Coordinates_WD : Coordinates (same class as\nin Airport and Simulation).\nCarries location: "weather\nnot same everywhere in area"
   WeatherData *-- WindCondition : records
   WindCondition *-- Coordinates_WD : locatedAt
 }
@@ -334,7 +344,7 @@ package "Simulation_Aggregate" <<aggregate>> {
     latitude
     longitude
   }
-  note right of Coordinates_Sim : Coordinates (same class as\nin Airport, AirControlArea)
+  note right of Coordinates_Sim : Coordinates (same class as\nin Airport)
   Simulation *-- SimulationTimeRange : scheduledFor
   Simulation *-- SafetyThreshold : boundedBy
   Simulation *-- SimulationReport : produces
