@@ -55,5 +55,5 @@ There was no need for LLM assistance so no prompts were created.
 ## 5. Observations
 
 This US is transversal to all others and must be continuously validated throughout the project.
-For more information view the [Non-Functional Requirements](docs/NonFunctionalRequirements.md) document.
+For more information view the [Non-Functional Requirements](../../NonFunctionalRequirements.md) document.
 ---
