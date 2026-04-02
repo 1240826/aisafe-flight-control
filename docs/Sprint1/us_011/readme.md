@@ -83,7 +83,7 @@ For each aggregate, verify that attempting to violate the invariant results in a
 
 This user story produces design artefacts only.
 
-Major commits: #20
+Major commits: #20 
 
 ---
 
