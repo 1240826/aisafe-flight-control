@@ -1,0 +1,40 @@
+@startuml sd_collaborator
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Register Collaborator\nInvariant: SecurityClearance must have a valid (future) expiry date (sec. 3.1.1)
+
+participant ":RegisterCollaboratorController" as CTRL
+participant "collaboratorRepository\n:CollaboratorRepository" as REPO
+participant "airTransportCompanyRepository\n:AirTransportCompanyRepository" as CREPO
+participant "systemUserRepository\n:SystemUserRepository" as UREPO
+participant "collaborator\n:Collaborator" as COL
+
+-> CTRL : registerCollaborator(name, position, clearanceExpiryDate, assessmentDate, companyID, systemUserID)
+activate CTRL
+
+CTRL -> CREPO : findByID(companyID)
+activate CREPO
+CREPO --> CTRL : company
+deactivate CREPO
+
+CTRL -> UREPO : findByID(systemUserID)
+activate UREPO
+UREPO --> CTRL : systemUser
+deactivate UREPO
+
+CTRL -> COL ** : create(name, position, clearanceExpiryDate, assessmentDate, company, systemUser)
+activate COL
+COL -> COL : ensureNameNotEmpty()
+COL -> COL : ensureClearanceExpiryDateValid()
+COL -> COL : ensureAssessmentDateRecorded()
+COL --> CTRL :
+deactivate COL
+
+CTRL -> REPO : save(collaborator)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

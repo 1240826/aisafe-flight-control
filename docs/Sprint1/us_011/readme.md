@@ -57,19 +57,19 @@ Sequence diagrams illustrating the invariant enforcement for each aggregate:
 
 | Aggregate | Sequence Diagram | Invariant Demonstrated |
 |---|---|---|
-| Manufacturer | docs/Sprint1/us_011/sd_manufacturer.puml | Name must not be empty |
-| EngineModel | docs/Sprint1/us_011/sd_enginemodel.puml | Name + manufacturer unique (US056) |
-| AircraftModel | docs/Sprint1/us_011/sd_aircraftmodel.puml | Same engine cannot be added twice (US057) |
-| Aircraft | docs/Sprint1/us_011/sd_aircraft.puml | Registration number unique worldwide (US070) |
-| AirControlArea | docs/Sprint1/us_011/sd_aircontrolarea.puml | AreaCode unique in system (US050) |
-| Airport | docs/Sprint1/us_011/sd_airport.puml | IATA code unique worldwide (US052) |
-| AirTransportCompany | docs/Sprint1/us_011/sd_airtransportcompany.puml | Company name unique (US060) |
-| Collaborator | docs/Sprint1/us_011/sd_collaborator.puml | SecurityClearance must be active |
-| Pilot | docs/Sprint1/us_011/sd_pilot.puml | Cannot deactivate with assigned flights (US077) |
-| FlightRoute | docs/Sprint1/us_011/sd_flightroute.puml | RouteName unique with format (US073) |
-| Flight | docs/Sprint1/us_011/sd_flight.puml | FlightDesignator unique; schedule matches FlightType |
-| WeatherData | docs/Sprint1/us_011/sd_weatherdata.puml | recordedDateTime valid |
-| Simulation | docs/Sprint1/us_011/sd_simulation.puml | SimulationTimeRange start < end (US100) |
+| Manufacturer | [sd_manufacturer.puml](SD/puml/sd_manufacturer.puml) | Name must not be empty |
+| EngineModel | [sd_enginemodel.puml](SD/puml/sd_enginemodel.puml) | Name + manufacturer unique (US056) |
+| AircraftModel | [sd_aircraftmodel.puml](SD/puml/sd_aircraftmodel.puml) | Same engine cannot be added twice (US057) |
+| Aircraft | [sd_aircraft.puml](SD/puml/sd_aircraft.puml) | Registration number unique worldwide (US070) |
+| AirControlArea | [sd_aircontrolarea.puml](SD/puml/sd_aircontrolarea.puml) | AreaCode unique in system (US050) |
+| Airport | [sd_airport.puml](SD/puml/sd_airport.puml) | IATA code unique worldwide (US052) |
+| AirTransportCompany | [sd_airtransportcompany.puml](SD/puml/sd_airtransportcompany.puml) | Company name unique (US060) |
+| Collaborator | [sd_collaborator.puml](SD/puml/sd_collaborator.puml) | SecurityClearance must be active |
+| Pilot | [sd_pilot.puml](SD/puml/sd_pilot.puml) | Cannot deactivate with assigned flights (US077) |
+| FlightRoute | [sd_flightroute.puml](SD/puml/sd_flightroute.puml) | RouteName unique with format (US073) |
+| Flight | [sd_flight.puml](SD/puml/sd_flight.puml) | FlightDesignator unique; schedule matches FlightType |
+| WeatherData | [sd_weatherdata.puml](SD/puml/sd_weatherdata.puml) | recordedDateTime valid |
+| Simulation | [sd_simulation.puml](SD/puml/sd_simulation.puml) | SimulationTimeRange start < end (US100) |
 
 ### 4.2. Acceptance Tests
 

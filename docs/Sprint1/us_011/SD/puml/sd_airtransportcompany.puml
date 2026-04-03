@@ -1,0 +1,43 @@
+@startuml sd_airtransportcompany
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Register Air Transport Company\nInvariant: company name, IATA code and ICAO code must each be unique (US060)
+
+participant ":RegisterAirTransportCompanyController" as CTRL
+participant "companyRepository\n:AirTransportCompanyRepository" as REPO
+participant "company\n:AirTransportCompany" as CO
+
+-> CTRL : registerCompany(name, iataCode, icaoCode)
+activate CTRL
+
+CTRL -> REPO : isCompanyNameUnique(name)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> REPO : isIATACodeUnique(iataCode)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> REPO : isICAOCodeUnique(icaoCode)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> CO ** : create(name, iataCode, icaoCode)
+activate CO
+CO -> CO : ensureNameNotEmpty()
+CO -> CO : ensureIATAFormatValid()
+CO -> CO : ensureICAOFormatValid()
+CO --> CTRL :
+deactivate CO
+
+CTRL -> REPO : save(company)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

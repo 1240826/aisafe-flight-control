@@ -1,0 +1,38 @@
+@startuml sd_pilot
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Deactivate Pilot\nInvariant: a pilot with assigned flight plans cannot be deactivated (US077)
+
+participant ":DeactivatePilotController" as CTRL
+participant "pilotRepository\n:PilotRepository" as REPO
+participant "flightRepository\n:FlightRepository" as FREPO
+participant "pilot\n:Pilot" as PIL
+
+-> CTRL : deactivatePilot(pilotID)
+activate CTRL
+
+CTRL -> REPO : findByID(pilotID)
+activate REPO
+REPO --> CTRL : pilot
+deactivate REPO
+
+CTRL -> FREPO : hasAssignedFlights(pilotID)
+activate FREPO
+FREPO --> CTRL : hasFlights
+deactivate FREPO
+
+CTRL -> PIL : deactivate(hasFlights)
+activate PIL
+PIL -> PIL : ensureCanDeactivate(hasFlights)
+note right : throws if hasFlights == true.\nCross-aggregate invariant enforced\nby receiving the result as parameter.
+PIL --> CTRL :
+deactivate PIL
+
+CTRL -> REPO : save(pilot)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml
