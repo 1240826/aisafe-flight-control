@@ -1,0 +1,65 @@
+@startuml sd_airport
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Create Airport\nInvariant: IATA and ICAO codes must be unique worldwide (US052)
+
+participant ":CreateAirportController" as CTRL
+participant "airportRepository\n:AirportRepository" as REPO
+participant "airport\n:Airport" as AP
+participant "iataCode\n:IATACode" as IATA
+participant "icaoCode\n:ICAOCode" as ICAO
+participant "coordinates\n:Coordinates_Apt" as CAPT
+participant "elevation\n:Elevation" as EL
+
+-> CTRL : createAirport(name, town, country, iataCode, icaoCode, lat, lon, elevation, unit, areaID)
+activate CTRL
+
+CTRL -> REPO : isIATACodeUnique(iataCode)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> REPO : isICAOCodeUnique(icaoCode)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> AP ** : create(name, town, country, iataCode, icaoCode, lat, lon, elevation, unit, areaID)
+activate AP
+
+AP -> IATA ** : new IATACode(iataCode)
+activate IATA
+IATA -> IATA : ensureFormatValid()
+IATA --> AP :
+deactivate IATA
+
+AP -> ICAO ** : new ICAOCode(icaoCode)
+activate ICAO
+ICAO -> ICAO : ensureFormatValid()
+ICAO --> AP :
+deactivate ICAO
+
+AP -> CAPT ** : new Coordinates_Apt(lat, lon)
+activate CAPT
+CAPT -> CAPT : ensureLatitudeValid()
+CAPT -> CAPT : ensureLongitudeValid()
+CAPT --> AP :
+deactivate CAPT
+
+AP -> EL ** : new Elevation(elevation, unit)
+activate EL
+EL -> EL : ensureNonNegative()
+EL --> AP :
+deactivate EL
+
+AP --> CTRL :
+deactivate AP
+
+CTRL -> REPO : save(airport)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

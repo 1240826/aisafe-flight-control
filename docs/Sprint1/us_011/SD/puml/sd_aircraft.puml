@@ -1,0 +1,55 @@
+@startuml sd_aircraft
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Add Aircraft to Fleet\nInvariant: registration number must be unique worldwide (US070)
+
+participant ":AddAircraftToFleetController" as CTRL
+participant "aircraftRepository\n:AircraftRepository" as REPO
+participant "aircraft\n:Aircraft" as AC
+participant "regNumber\n:RegistrationNumber" as RN
+participant "cabinConfig\n:CabinConfiguration" as CC
+participant "seatClass\n:SeatClass" as SC
+
+-> CTRL : addAircraft(number, country, aircraftModelID, companyID, seatClasses, crewCount)
+activate CTRL
+
+CTRL -> REPO : isRegistrationNumberUnique(number)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> AC ** : create(number, country, aircraftModelID, companyID, seatClasses, crewCount)
+activate AC
+
+AC -> RN ** : new RegistrationNumber(number, country)
+activate RN
+RN -> RN : ensureNumberNotEmpty()
+RN --> AC :
+deactivate RN
+
+AC -> CC ** : new CabinConfiguration()
+activate CC
+
+loop for each seatClass
+  CC -> SC ** : new SeatClass(className, numberOfSeats)
+  activate SC
+  SC -> SC : ensureSeatsPositive()
+  SC --> CC :
+  deactivate SC
+end
+
+CC -> CC : ensureTotalSeatsDoNotExceedModelCapacity()
+CC --> AC :
+deactivate CC
+
+AC --> CTRL :
+deactivate AC
+
+CTRL -> REPO : save(aircraft)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

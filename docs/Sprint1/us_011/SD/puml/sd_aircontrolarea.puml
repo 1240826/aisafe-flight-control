@@ -1,0 +1,47 @@
+@startuml sd_aircontrolarea
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Register Air Control Area\nInvariant: area code must be unique in the system (US050)
+
+participant ":RegisterAirControlAreaController" as CTRL
+participant "airControlAreaRepository\n:AirControlAreaRepository" as REPO
+participant "airControlArea\n:AirControlArea" as ACA
+participant "areaCode\n:AreaCode" as AC
+participant "coordinates\n:Coordinates_ACA" as CACA
+
+-> CTRL : registerArea(areaCode, minLat, maxLat, minLon, maxLon)
+activate CTRL
+
+CTRL -> REPO : isAreaCodeUnique(areaCode)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> ACA ** : create(areaCode, minLat, maxLat, minLon, maxLon)
+activate ACA
+
+ACA -> AC ** : new AreaCode(areaCode)
+activate AC
+AC -> AC : ensureNotEmpty()
+AC --> ACA :
+deactivate AC
+
+ACA -> CACA ** : new Coordinates_ACA(minLat, maxLat, minLon, maxLon)
+activate CACA
+CACA -> CACA : ensureLatitudeRangeValid()
+CACA -> CACA : ensureLongitudeRangeValid()
+CACA -> CACA : ensureMinLessThanMax()
+CACA --> ACA :
+deactivate CACA
+
+ACA --> CTRL :
+deactivate ACA
+
+CTRL -> REPO : save(airControlArea)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml
