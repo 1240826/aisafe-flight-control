@@ -1,0 +1,32 @@
+@startuml sd_aircraftmodel
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Add Engine to Aircraft Model\nInvariant: same engine cannot be added twice (US057)
+
+participant ":AddEngineToAircraftModelController" as CTRL
+participant "aircraftModelRepository\n:AircraftModelRepository" as REPO
+participant "aircraftModel\n:AircraftModel" as AM
+
+-> CTRL : addEngine(aircraftModelID, engineModelID)
+activate CTRL
+
+CTRL -> REPO : findByID(aircraftModelID)
+activate REPO
+REPO --> CTRL : aircraftModel
+deactivate REPO
+
+CTRL -> AM : addEngineVariant(engineModelID)
+activate AM
+AM -> AM : ensureEngineNotAlreadyCertified(engineModelID)
+AM -> AM : ensureSameMotorizationType(engineModelID)
+AM --> CTRL :
+deactivate AM
+
+CTRL -> REPO : save(aircraftModel)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

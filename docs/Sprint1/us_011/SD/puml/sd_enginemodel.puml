@@ -1,0 +1,34 @@
+@startuml sd_enginemodel
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Create Engine Model\nInvariant: name + manufacturer must be unique (US056)
+
+participant ":CreateEngineModelController" as CTRL
+participant "engineModelRepository\n:EngineModelRepository" as REPO
+participant "engineModel\n:EngineModel" as EM
+
+-> CTRL : createEngineModel(name, manufacturerID, power, thrust, tsfc, fuelType, motorizationType)
+activate CTRL
+
+CTRL -> REPO : isNameAndManufacturerUnique(name, manufacturerID)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> EM ** : create(name, manufacturerID, power, thrust, tsfc, fuelType, motorizationType)
+activate EM
+EM -> EM : ensureNameNotEmpty()
+EM -> EM : ensurePowerPositive()
+EM -> EM : ensureThrustPositive()
+EM -> EM : ensureTSFCPositive()
+EM --> CTRL :
+deactivate EM
+
+CTRL -> REPO : save(engineModel)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

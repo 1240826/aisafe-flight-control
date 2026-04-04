@@ -1,0 +1,26 @@
+@startuml sd_manufacturer
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Create Manufacturer\nInvariant: name must not be empty (sec. 3.1.2)
+
+participant ":CreateManufacturerController" as CTRL
+participant "manufacturerRepository\n:ManufacturerRepository" as REPO
+participant "manufacturer\n:Manufacturer" as MAN
+
+-> CTRL : createManufacturer(name, country)
+activate CTRL
+
+CTRL -> MAN ** : create(name, country)
+activate MAN
+MAN -> MAN : ensureNameNotEmpty(name)
+MAN --> CTRL :
+deactivate MAN
+
+CTRL -> REPO : save(manufacturer)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml
