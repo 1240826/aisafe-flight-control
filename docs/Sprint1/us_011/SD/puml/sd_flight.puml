@@ -1,0 +1,32 @@
+@startuml sd_flight
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Create Flight\nInvariant: FlightDesignator must be unique; FlightType must match DepartureSchedule (sec. 3.2)
+
+participant ":CreateFlightController" as CTRL
+participant "flightRepository\n:FlightRepository" as REPO
+participant "flight\n:Flight" as FL
+
+-> CTRL : createFlight(designator, flightType, departureSchedule, arrivalTime, routeID, aircraftID, pilotID)
+activate CTRL
+
+CTRL -> REPO : isFlightDesignatorUnique(designator)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> FL ** : create(designator, flightType, departureSchedule, arrivalTime, routeID, aircraftID, pilotID)
+activate FL
+FL -> FL : ensureDesignatorFormat()
+FL -> FL : ensureScheduleMatchesFlightType()
+FL --> CTRL :
+deactivate FL
+
+CTRL -> REPO : save(flight)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

@@ -1,0 +1,32 @@
+@startuml sd_flightroute
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Create Flight Route\nInvariant: route name must be unique and follow format 2 letters + up to 4 digits (US073)
+
+participant ":CreateFlightRouteController" as CTRL
+participant "flightRouteRepository\n:FlightRouteRepository" as REPO
+participant "flightRoute\n:FlightRoute" as FR
+
+-> CTRL : createRoute(routeName, originAirportID, destinationAirportID, companyID)
+activate CTRL
+
+CTRL -> REPO : isRouteNameUnique(routeName)
+activate REPO
+REPO --> CTRL : true
+deactivate REPO
+
+CTRL -> FR ** : create(routeName, originAirportID, destinationAirportID, companyID)
+activate FR
+FR -> FR : ensureRouteNameFormat()
+FR -> FR : ensureOriginDiffersFromDestination()
+FR --> CTRL :
+deactivate FR
+
+CTRL -> REPO : save(flightRoute)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml
