@@ -2,11 +2,14 @@
 skinparam monochrome true
 skinparam packageStyle rectangle
 skinparam shadowing false
-title Register Air Transport Company\nInvariant: company name, IATA code and ICAO code must each be unique (US060)
+title Register Air Transport Company\nInvariant: company name must be unique (US060)
 
 participant ":RegisterAirTransportCompanyController" as CTRL
 participant "companyRepository\n:AirTransportCompanyRepository" as REPO
 participant "company\n:AirTransportCompany" as CO
+participant "companyName\n:CompanyName" as CN
+participant "iataCode\n:IATACode_ATC" as IATA
+participant "icaoCode\n:ICAOCode_ATC" as ICAO
 
 -> CTRL : registerCompany(name, iataCode, icaoCode)
 activate CTRL
@@ -21,16 +24,27 @@ activate REPO
 REPO --> CTRL : true
 deactivate REPO
 
-CTRL -> REPO : isICAOCodeUnique(icaoCode)
-activate REPO
-REPO --> CTRL : true
-deactivate REPO
-
 CTRL -> CO ** : create(name, iataCode, icaoCode)
 activate CO
-CO -> CO : ensureNameNotEmpty()
-CO -> CO : ensureIATAFormatValid()
-CO -> CO : ensureICAOFormatValid()
+
+CO -> CN ** : new CompanyName(name)
+activate CN
+CN -> CN : ensureNameNotEmpty()
+CN --> CO :
+deactivate CN
+
+CO -> IATA ** : new IATACode_ATC(iataCode)
+activate IATA
+IATA -> IATA : ensureTwoLetterFormat()
+IATA --> CO :
+deactivate IATA
+
+CO -> ICAO ** : new ICAOCode_ATC(icaoCode)
+activate ICAO
+ICAO -> ICAO : ensureTwoToThreeLetterFormat()
+ICAO --> CO :
+deactivate ICAO
+
 CO --> CTRL :
 deactivate CO
 

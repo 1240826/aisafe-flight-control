@@ -2,11 +2,12 @@
 skinparam monochrome true
 skinparam packageStyle rectangle
 skinparam shadowing false
-title Add Engine to Aircraft Model\nInvariant: same engine cannot be added twice (US057)
+title Add Engine to Aircraft Model\nInvariant: same engine cannot be added twice;\nall engines must be same motorization type (US057)
 
 participant ":AddEngineToAircraftModelController" as CTRL
 participant "aircraftModelRepository\n:AircraftModelRepository" as REPO
 participant "aircraftModel\n:AircraftModel" as AM
+participant "variant\n:AircraftVariant" as AV
 
 -> CTRL : addEngine(aircraftModelID, engineModelID)
 activate CTRL
@@ -18,8 +19,15 @@ deactivate REPO
 
 CTRL -> AM : addEngineVariant(engineModelID)
 activate AM
+
 AM -> AM : ensureEngineNotAlreadyCertified(engineModelID)
 AM -> AM : ensureSameMotorizationType(engineModelID)
+
+AM -> AV ** : new AircraftVariant(engineModelID)
+activate AV
+AV --> AM :
+deactivate AV
+
 AM --> CTRL :
 deactivate AM
 

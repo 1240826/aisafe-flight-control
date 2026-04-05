@@ -7,8 +7,12 @@ title Create Engine Model\nInvariant: name + manufacturer must be unique (US056)
 participant ":CreateEngineModelController" as CTRL
 participant "engineModelRepository\n:EngineModelRepository" as REPO
 participant "engineModel\n:EngineModel" as EM
+participant "engineName\n:EngineName" as EN
+participant "power\n:Power" as PW
+participant "thrust\n:Thrust" as TH
+participant "tsfc\n:TSFC" as TS
 
--> CTRL : createEngineModel(name, manufacturerID, power, thrust, tsfc, fuelType, motorizationType)
+-> CTRL : createEngineModel(name, manufacturerID, power, unit, thrust, speedRef, tsfc, fuelType, motorizationType)
 activate CTRL
 
 CTRL -> REPO : isNameAndManufacturerUnique(name, manufacturerID)
@@ -16,12 +20,33 @@ activate REPO
 REPO --> CTRL : true
 deactivate REPO
 
-CTRL -> EM ** : create(name, manufacturerID, power, thrust, tsfc, fuelType, motorizationType)
+CTRL -> EM ** : create(name, manufacturerID, power, unit, thrust, speedRef, tsfc, fuelType, motorizationType)
 activate EM
-EM -> EM : ensureNameNotEmpty()
-EM -> EM : ensurePowerPositive()
-EM -> EM : ensureThrustPositive()
-EM -> EM : ensureTSFCPositive()
+
+EM -> EN ** : new EngineName(name)
+activate EN
+EN -> EN : ensureNameNotEmpty()
+EN --> EM :
+deactivate EN
+
+EM -> PW ** : new Power(power, unit)
+activate PW
+PW -> PW : ensureValuePositive()
+PW --> EM :
+deactivate PW
+
+EM -> TH ** : new Thrust(thrust, unit, speedRef)
+activate TH
+TH -> TH : ensureValuePositive()
+TH --> EM :
+deactivate TH
+
+EM -> TS ** : new TSFC(tsfc, unit)
+activate TS
+TS -> TS : ensureValuePositive()
+TS --> EM :
+deactivate TS
+
 EM --> CTRL :
 deactivate EM
 

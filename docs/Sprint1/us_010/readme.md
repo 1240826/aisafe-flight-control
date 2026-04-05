@@ -38,6 +38,51 @@ This task was assigned in Sprint 1 (Sprint A). It is the first time this task is
 
 ## 3. Analysis
 
+## 3.0 LLM Assistance
+
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story. Below are the main prompts used, the suggestions adopted, and the decisions the team made independently or where we deviated from the AI output.
+ 
+---
+
+### Prompt 1 — Initial domain model elaboration
+
+> "We are developing an aircraft flight control management system called AISafe as part of a university integrative project (Sem4PI). We need to elaborate a DDD Domain Model for the EAPLI Java application scope only. The system manages manufacturers, engine models, aircraft models, aircraft, air control areas, airports, air transport companies, collaborators (ATCCollaborator, Pilot, FlightControlOperator, WeatherPerson), flight routes, flights, flight plans, weather data, and simulations. Following the Processo de Engenharia de Aplicações methodology: first identify all business concepts and relationships, then classify each as Entity or Value Object, then identify aggregates bounded by business invariants. The model must be validated against all use cases (US050–US114) and client clarifications received so far."
+
+**LLM suggestions adopted:**
+- Process of three phases: concepts → classification → aggregates, in that order
+- Classification criteria: entity when it has business identity and independent lifecycle; VO when it has a business rule (format, uniqueness, invariant) or a plain type is insufficient
+- Identifying 13 aggregates based on independent lifecycles and invariants
+- Grouping AircraftWeights (4 attributes with joint MTOW > MZFW > emptyWeight invariant) and AerodynamicCoefficients (always used together in lift/drag formulas)
+- DepartureSchedule as abstract VO hierarchy (structurally different data per case)
+- `_Aggregate` suffix in PlantUML package names to force arrows from root class rather than package border
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM initially included FlightLeg, Segment, and Node as entities — the team removed these based on client clarification (*"I sincerely doubt we will need Flight Legs in the DDD Domain Model"*)
+- The LLM initially modelled FlightPlan as a separate aggregate root — the team moved it to an internal entity of Flight after analysing US080/US082/US085 flow (status changes, weather added after creation)
+- The LLM initially placed certifiedFor on Collaborator root — the team separated Pilot into its own aggregate after identifying that Flight needed to reference Pilot directly and that Pilot has its own lifecycle (US075-077) and invariant (US077)
+- The LLM initially modelled SimulationReport as an internal entity — the team reclassified it as a VO because it is an immutable final document received from the C module that does not change after creation
+
+---
+
+### Prompt 2 — Validating entity vs value object decisions
+
+> "For each concept in our AISafe domain model, justify whether it should be a Value Object or Entity. The criterion for VO is: has a business rule (format, uniqueness, invariant) OR a plain string/number is not sufficient. The criterion for plain attribute is: no business rule and a primitive type is sufficient. Apply this to: name and country in Manufacturer, name and position in Collaborator, EngineName, Power, Thrust, TSFC, fuelType in EngineModel, AircraftWeights, AircraftPerformance, AerodynamicCoefficients, RegistrationNumber, CabinConfiguration, SeatClass, AreaCode, Coordinates_ACA, Coordinates_Apt, Coordinates_WD, SimulationTimeRange, SafetyThreshold, SimulationReport, FuelQuantity, RouteName, FlightDesignator, DepartureSchedule hierarchy."
+
+**LLM suggestions adopted:**
+- Promoting CabinConfiguration to contain 1..* SeatClass VOs (client: "number of seats in each class" — multiple classes)
+- Coordinates_ACA as rectangle (4 values) vs Coordinates_Apt/WD as single point — after client clarification
+- SimulationTimeRange as VO justified by the start < end two-attribute invariant
+- AircraftPerformance without shared unit attribute (each of 3 values has a different unit — ambiguous if shared)
+- fuelType as plain attribute (no format or uniqueness rule in requirements)
+- name and position in Collaborator as plain attributes (no business rule)
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM initially suggested CollaboratorName and Position as VOs — the team kept them as plain attributes after reviewing that the requirements mention no validation rule for either
+- The LLM initially included clearanceLevel in SecurityClearance — the team removed it as it is not mentioned in the requirements
+- The LLM initially included result in SkillsAssessment — the team removed it for the same reason
+
+---
+
 ### 3.1 Methodology
 
 The domain model was elaborated following the process described in the *Processo de Engenharia de Aplicações* document (Paulo Gandra de Sousa, ISEP):
@@ -52,20 +97,18 @@ The model reflects the **EAPLI Java application scope only**. The following are 
 
 #### 3.2.1 Entity vs Value Object
 
-An **Entity** is a domain concept with its own business identity and an independent lifecycle. It is tracked by its identity, not its attributes — two entities with the same attributes are still distinct objects.
+An **Entity** is a domain concept with its own business identity and an independent lifecycle. 
 
-A **Value Object** is a domain concept that characterises or describes another concept. It has no identity of its own — two VOs with the same attributes are considered equal. VOs are immutable and follow the **Information Expert** principle: they encapsulate and validate their own data. A concept should be a VO (not a plain attribute) when it has a business rule (format, uniqueness, validation, invariant) or when a plain string/number is not sufficient to represent it.
+A **Value Object** is a domain concept that characterises or describes another concept. VOs are immutable and follow the **Information Expert** principle: they encapsulate and validate their own data. A concept should be a VO (not a plain attribute) when it has a business rule (format, uniqueness, validation, invariant) or when a plain string/number is not sufficient to represent it.
 
-A Value Object can have multiple attributes when they form a cohesive concept. A Value Object can also be an enumeration when it represents a fixed set of domain values.
+A Value Object can have multiple attributes when they form a cohesive concept.
 
-In practical terms in Java: Entity → class with identity and a Repository; Value Object → immutable class with no ID; Value Object enum → Java `enum`.
 
 #### 3.2.2 Aggregate
 
 An aggregate is a cluster of entities and value objects that must be manipulated together to enforce business invariants, with a single root entity that controls all access. The rules applied:
 
 - Nothing outside the aggregate boundary can hold a reference to anything inside — only roots are referenced externally, by ID.
-- Only aggregate roots can be obtained directly with database queries (via Repositories as interfaces).
 - A delete operation removes everything within the aggregate boundary at once.
 - When any change within the aggregate is committed, all invariants of the whole aggregate must be satisfied.
 - One use case should only update one aggregate — ACID within the aggregate, BASE between aggregates.
@@ -74,11 +117,7 @@ An aggregate is a cluster of entities and value objects that must be manipulated
 
 - **Composition (`*--`)**: the part cannot exist without the whole. Used for all constitutive VOs and internal entities.
 - **Association (`-->`)**: used for enumerations (referenced values, not owned) and for SystemUser (lifecycle managed by the EAPLI framework).
-- All associations are unidirectional — no bidirectional associations.
 
-#### 3.2.4 Enum vs Hierarchy of Value Objects
-
-When a concept has multiple cases with **different data structures**, a hierarchy of VOs is used. When cases are simply **state values with no distinct structure**, an enum is used.
 
 ### 3.3 Entity vs Value Object Classification
 
@@ -97,7 +136,7 @@ MotorizationType, AircraftType, OperationalStatus, FlightType, FlightPlanStatus,
 ### 3.4 Key Design Decisions
 
 **Decision 1 — Enumerations use association (-->) not composition (\*--)**
-Enumerations are referenced values, not parts owned by an entity. Applied to: MotorizationType, AircraftType, OperationalStatus, FlightType, FlightPlanStatus, ValidationResult. In PlantUML the `enum` keyword is used without `<<value object>>` stereotype — the keyword already expresses this.
+Enumerations are referenced values, not parts owned by an entity. Applied to: MotorizationType, AircraftType, OperationalStatus, FlightType, FlightPlanStatus, ValidationResult. 
 
 **Decision 2 — DepartureSchedule as a VO hierarchy**
 Section 3.2: *"Departure day (or days of the week for regular flights and actual date for a charter) and time."* Client: *"Charter flights will have only a single instance. Regular flights: the day of the week and the time for each flight instance. For example: Monday 12:00; Tuesday 12:30; Thursday 11:30."* The two cases have structurally different data — a VO hierarchy is used: `CharterSchedule` (one date + one time) and `RegularSchedule` (1..* `ScheduleEntry` instances, each with a day and a time). The abstract `DepartureSchedule` base has no attributes — it exists solely to allow `Flight` to have one polymorphic composition.
@@ -133,7 +172,7 @@ Client: *"I sincerely doubt we will need Flight Legs in the DDD Domain Model."* 
 Section 3.2 lists departure day/time as an attribute of Flight. A flight may have multiple FlightPlans — if the departure schedule were in FlightPlan, different plans for the same flight could have different schedules, which makes no sense.
 
 **Decision 13 — FlightPlan as internal entity of Flight**
-Angelo initially suggested FlightPlan could be a VO: *"It's final. So, likely it is a value object."* However the full US flow contradicts immutability: US080 creates the FlightPlan in `draft`; US082 adds weather data to the existing FlightPlan; US085 validates it — status changes. A VO is immutable by definition and cannot change state or receive data after creation. Therefore FlightPlan is an internal entity of Flight, following the formal US behaviour.
+Client initially suggested FlightPlan could be a VO: *"It's final. So, likely it is a value object."* However the full US flow contradicts immutability: US080 creates the FlightPlan in `draft`; US082 adds weather data to the existing FlightPlan; US085 validates it — status changes. A VO is immutable by definition and cannot change state or receive data after creation. Therefore FlightPlan is an internal entity of Flight, following the formal US behaviour.
 
 **Decision 14 — Flight cross-aggregate references rise to root**
 FlightPlan is an internal entity and cannot hold cross-aggregate references. The references to Aircraft (US080: "I must add the aircraft") and Pilot (US080: "I must add... pilot") rise to the Flight root. The reference to WeatherData (US082: weather added to flight plan) also rises to the Flight root with 0..1 multiplicity — optional because it is added after the flight plan is created in draft.
@@ -190,7 +229,7 @@ The domain model diagram was produced using PlantUML. Two representations are pr
     - `docs/Sprint1/us_010/domain_model_full/images/png/domain_model_full.png`
     - `docs/Sprint1/us_010/domain_model_full/images/svg/domain_model_full.svg`
 
-- **Per-aggregate diagrams** — one diagram per aggregate showing internal entities and VOs (professor recommendation):
+- **Per-aggregate diagrams** — one diagram per aggregate showing internal entities and VOs (EAPLI professor recommendation):
     - `docs/Sprint1/us_010/puml_aggregates/<name>_aggregate.puml`
     - `docs/Sprint1/us_010/images_aggregates/png/<name>_aggregate.png`
     - `docs/Sprint1/us_010/images_aggregates/svg/<name>_aggregate.svg`
@@ -198,6 +237,9 @@ The domain model diagram was produced using PlantUML. Two representations are pr
 Generate all diagrams:
 ```sh
 sh generate-plantuml-diagrams.sh
+```
+```sh
+sh generate-plantuml-diagrams_png.sh
 ```
 
 **Notation conventions:**
@@ -278,6 +320,7 @@ This user story produces design artefacts only. Deliverables:
 - `docs/Sprint1/us_010/puml_aggregates/` — Per-aggregate PlantUML sources
 - `docs/Sprint1/us_010/images_aggregates/` — Per-aggregate PNG and SVG
 - `docs/Sprint1/us_010/glossary.md` — Glossary of all domain concepts
+-  `docs/Sprint1/us_010/domain_model_justifications.md` - Justification of domain model
 - `docs/Sprint1/us_010/readme.md` — This file
 
 Generate diagrams:
@@ -289,6 +332,7 @@ Major commits:
 - 8fda0356f42c54443813577c61b99c1d1c4ba86a
 - c94d92a0e8b75a9da5ce8fec9a100667bf059306
 - 82a6e21bcd11f3ec7433f999619b0713d2dcebb3
+- e025ef949c6acd77489bca7fc2c0f45ce302b5e3
 
 ---
 

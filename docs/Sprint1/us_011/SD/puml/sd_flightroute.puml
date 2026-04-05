@@ -2,11 +2,12 @@
 skinparam monochrome true
 skinparam packageStyle rectangle
 skinparam shadowing false
-title Create Flight Route\nInvariant: route name must be unique and follow format 2 letters + up to 4 digits (US073)
+title Create Flight Route\nInvariant: route name unique and format 2 letters + up to 4 digits (US073)
 
 participant ":CreateFlightRouteController" as CTRL
 participant "flightRouteRepository\n:FlightRouteRepository" as REPO
 participant "flightRoute\n:FlightRoute" as FR
+participant "routeName\n:RouteName" as RN
 
 -> CTRL : createRoute(routeName, originAirportID, destinationAirportID, companyID)
 activate CTRL
@@ -18,7 +19,14 @@ deactivate REPO
 
 CTRL -> FR ** : create(routeName, originAirportID, destinationAirportID, companyID)
 activate FR
-FR -> FR : ensureRouteNameFormat()
+
+FR -> RN ** : new RouteName(routeName)
+activate RN
+RN -> RN : ensureFormatValid()
+RN -> RN : ensurePrefixMatchesCompany()
+RN --> FR :
+deactivate RN
+
 FR -> FR : ensureOriginDiffersFromDestination()
 FR --> CTRL :
 deactivate FR

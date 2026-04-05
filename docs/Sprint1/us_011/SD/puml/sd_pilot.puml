@@ -2,7 +2,7 @@
 skinparam monochrome true
 skinparam packageStyle rectangle
 skinparam shadowing false
-title Deactivate Pilot\nInvariant: a pilot with assigned flight plans cannot be deactivated (US077)
+title Deactivate Pilot\nInvariant: cannot deactivate pilot with assigned flights (US077)
 
 participant ":DeactivatePilotController" as CTRL
 participant "pilotRepository\n:PilotRepository" as REPO
@@ -12,20 +12,19 @@ participant "pilot\n:Pilot" as PIL
 -> CTRL : deactivatePilot(pilotID)
 activate CTRL
 
+CTRL -> FREPO : hasAssignedFlights(pilotID)
+activate FREPO
+FREPO --> CTRL : false
+deactivate FREPO
+
 CTRL -> REPO : findByID(pilotID)
 activate REPO
 REPO --> CTRL : pilot
 deactivate REPO
 
-CTRL -> FREPO : hasAssignedFlights(pilotID)
-activate FREPO
-FREPO --> CTRL : hasFlights
-deactivate FREPO
-
-CTRL -> PIL : deactivate(hasFlights)
+CTRL -> PIL : deactivate()
 activate PIL
-PIL -> PIL : ensureCanDeactivate(hasFlights)
-note right : throws if hasFlights == true.\nCross-aggregate invariant enforced\nby receiving the result as parameter.
+PIL -> PIL : ensureNoAssignedFlights()
 PIL --> CTRL :
 deactivate PIL
 

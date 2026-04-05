@@ -2,32 +2,34 @@
 skinparam monochrome true
 skinparam packageStyle rectangle
 skinparam shadowing false
-title Register Collaborator\nInvariant: SecurityClearance must have a valid (future) expiry date (sec. 3.1.1)
+title Register Collaborator\nInvariant: SecurityClearance must have a valid expiry date (sec. 3.1.1)
 
 participant ":RegisterCollaboratorController" as CTRL
 participant "collaboratorRepository\n:CollaboratorRepository" as REPO
-participant "airTransportCompanyRepository\n:AirTransportCompanyRepository" as CREPO
-participant "systemUserRepository\n:SystemUserRepository" as UREPO
 participant "collaborator\n:Collaborator" as COL
+participant "clearance\n:SecurityClearance" as SC
+participant "assessment\n:SkillsAssessment" as SA
 
 -> CTRL : registerCollaborator(name, position, clearanceExpiryDate, assessmentDate, companyID, systemUserID)
 activate CTRL
 
-CTRL -> CREPO : findByID(companyID)
-activate CREPO
-CREPO --> CTRL : company
-deactivate CREPO
-
-CTRL -> UREPO : findByID(systemUserID)
-activate UREPO
-UREPO --> CTRL : systemUser
-deactivate UREPO
-
-CTRL -> COL ** : create(name, position, clearanceExpiryDate, assessmentDate, company, systemUser)
+CTRL -> COL ** : create(name, position, clearanceExpiryDate, assessmentDate, companyID, systemUserID)
 activate COL
+
 COL -> COL : ensureNameNotEmpty()
-COL -> COL : ensureClearanceExpiryDateValid()
-COL -> COL : ensureAssessmentDateRecorded()
+
+COL -> SC ** : new SecurityClearance(clearanceExpiryDate)
+activate SC
+SC -> SC : ensureExpiryDateValid()
+SC --> COL :
+deactivate SC
+
+COL -> SA ** : new SkillsAssessment(assessmentDate)
+activate SA
+SA -> SA : ensureDateRecorded()
+SA --> COL :
+deactivate SA
+
 COL --> CTRL :
 deactivate COL
 

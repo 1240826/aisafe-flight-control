@@ -2,11 +2,13 @@
 skinparam monochrome true
 skinparam packageStyle rectangle
 skinparam shadowing false
-title Create Flight\nInvariant: FlightDesignator must be unique; FlightType must match DepartureSchedule (sec. 3.2)
+title Create Flight\nInvariant: FlightDesignator unique; FlightType must match DepartureSchedule (sec. 3.2)
 
 participant ":CreateFlightController" as CTRL
 participant "flightRepository\n:FlightRepository" as REPO
 participant "flight\n:Flight" as FL
+participant "designator\n:FlightDesignator" as FD
+participant "schedule\n:DepartureSchedule" as DS
 
 -> CTRL : createFlight(designator, flightType, departureSchedule, arrivalTime, routeID, aircraftID, pilotID)
 activate CTRL
@@ -18,8 +20,19 @@ deactivate REPO
 
 CTRL -> FL ** : create(designator, flightType, departureSchedule, arrivalTime, routeID, aircraftID, pilotID)
 activate FL
-FL -> FL : ensureDesignatorFormat()
-FL -> FL : ensureScheduleMatchesFlightType()
+
+FL -> FD ** : new FlightDesignator(designator)
+activate FD
+FD -> FD : ensureFormatValid()
+FD --> FL :
+deactivate FD
+
+FL -> DS ** : create(flightType, departureSchedule)
+activate DS
+DS -> DS : ensureScheduleMatchesFlightType()
+DS --> FL :
+deactivate DS
+
 FL --> CTRL :
 deactivate FL
 

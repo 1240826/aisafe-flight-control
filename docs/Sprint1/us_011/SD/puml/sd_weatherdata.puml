@@ -1,0 +1,50 @@
+@startuml sd_weatherdata
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Register Weather Data\nInvariant: each WindCondition must have valid coordinates (US041)
+
+participant ":RegisterWeatherDataController" as CTRL
+participant "weatherDataRepository\n:WeatherDataRepository" as REPO
+participant "weatherData\n:WeatherData" as WD
+participant "windCondition\n:WindCondition" as WC
+participant "coordinates\n:Coordinates_WD" as CWD
+
+-> CTRL : registerWeatherData(recordedDateTime, sourceProvider, areaID, windReadings)
+activate CTRL
+
+CTRL -> WD ** : create(recordedDateTime, sourceProvider, areaID)
+activate WD
+WD -> WD : ensureDateTimeValid()
+WD --> CTRL :
+deactivate WD
+
+loop for each windReading
+  CTRL -> WC ** : new WindCondition(directionAngle, speed)
+  activate WC
+
+  WC -> CWD ** : new Coordinates_WD(latitude, longitude)
+  activate CWD
+  CWD -> CWD : ensureLatitudeValid()
+  CWD -> CWD : ensureLongitudeValid()
+  CWD --> WC :
+  deactivate CWD
+
+  WC -> WC : ensureDirectionAngleValid()
+  WC -> WC : ensureSpeedPositive()
+  WC --> CTRL :
+  deactivate WC
+
+  CTRL -> WD : addWindCondition(windCondition)
+  activate WD
+  WD --> CTRL :
+  deactivate WD
+end
+
+CTRL -> REPO : save(weatherData)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

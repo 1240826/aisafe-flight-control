@@ -1,0 +1,42 @@
+@startuml sd_simulation
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+title Create Simulation\nInvariant: SimulationTimeRange start < end; at least one flight required (US100)
+
+participant ":CreateSimulationController" as CTRL
+participant "simulationRepository\n:SimulationRepository" as REPO
+participant "simulation\n:Simulation" as SIM
+participant "timeRange\n:SimulationTimeRange" as STR
+participant "threshold\n:SafetyThreshold" as ST
+
+-> CTRL : createSimulation(startDateTime, endDateTime, safetyThreshold, unit, areaID, flightIDs, weatherDataIDs)
+activate CTRL
+
+CTRL -> SIM ** : create(startDateTime, endDateTime, safetyThreshold, unit, areaID, flightIDs, weatherDataIDs)
+activate SIM
+
+SIM -> STR ** : new SimulationTimeRange(startDateTime, endDateTime)
+activate STR
+STR -> STR : ensureStartBeforeEnd()
+STR --> SIM :
+deactivate STR
+
+SIM -> ST ** : new SafetyThreshold(safetyThreshold, unit)
+activate ST
+ST -> ST : ensurePositive()
+ST --> SIM :
+deactivate ST
+
+SIM -> SIM : ensureAtLeastOneFlight(flightIDs)
+
+SIM --> CTRL :
+deactivate SIM
+
+CTRL -> REPO : save(simulation)
+activate REPO
+REPO --> CTRL :
+deactivate REPO
+
+deactivate CTRL
+@enduml

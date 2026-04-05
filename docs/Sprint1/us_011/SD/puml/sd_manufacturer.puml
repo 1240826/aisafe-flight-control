@@ -13,7 +13,8 @@ activate CTRL
 
 CTRL -> MAN ** : create(name, country)
 activate MAN
-MAN -> MAN : ensureNameNotEmpty(name)
+MAN -> MAN : ensureNameNotEmpty()
+MAN -> MAN : ensureCountryNotEmpty()
 MAN --> CTRL :
 deactivate MAN
 
