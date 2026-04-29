@@ -1,0 +1,37 @@
+// INVALID flight plan — intentional errors to test error reporting
+// Expected errors:
+//   [LEXER]  line 17:16 - token recognition error at: '@'
+//   [PARSER] line 13:8  - missing ';' at '}'
+
+flight TP9999 : regular {
+
+    route {
+        origin      : LIS;
+        destination : LHR;
+    }
+
+    leg L1 {
+
+        departure {
+            airport : LIS;
+            date    : 2026-05-10;
+            time    : 08:30       // ERROR: missing semicolon
+        }
+
+        arrival {
+            airport : @LHR;       // ERROR: '@' is not a valid token
+            time    : 10:45;
+        }
+
+        fuel {
+            quantity : 15000 kg;
+        }
+
+        segment SEG1 {
+            from      : (38.7813, -9.1359);
+            to        : (51.4775, -0.4614);
+            altitudes : [10000 m];
+            wind      : (270, 15 m/s);
+        }
+    }
+}

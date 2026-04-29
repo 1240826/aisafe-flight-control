@@ -1,0 +1,59 @@
+// Valid multi-leg charter flight: Porto -> Frankfurt -> Warsaw
+
+flight TP5678 : charter {
+
+    route {
+        origin      : OPO;
+        destination : WAW;
+    }
+
+    leg L1 {
+
+        departure {
+            airport : OPO;
+            date    : 2026-06-15;
+            time    : 06:00;
+        }
+
+        arrival {
+            airport : EDDF;
+            time    : 09:30;
+        }
+
+        fuel {
+            quantity : 18500 kg;
+        }
+
+        segment SEG1 {
+            from      : (41.2481, -8.6814);
+            to        : (50.0333, 8.5706);
+            altitudes : [11000 m WIDTH 80 m];
+            wind      : (90, 20 m/s);
+        }
+    }
+
+    leg L2 {
+
+        departure {
+            airport : EDDF;
+            date    : 2026-06-15;
+            time    : 11:00;
+        }
+
+        arrival {
+            airport : WAW;
+            time    : 13:15;
+        }
+
+        fuel {
+            quantity : 12000 kg;
+        }
+
+        segment SEG2 {
+            from      : (50.0333, 8.5706);
+            to        : (52.1657, 20.9671);
+            altitudes : [10000 m WIDTH 60 m];
+            wind      : (45, 10 m/s);
+        }
+    }
+}
