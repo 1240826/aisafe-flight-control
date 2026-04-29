@@ -18,23 +18,37 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- Se o parent POM não definir aisafe.version, define aqui -->
+        <antlr4.version>4.13.1</antlr4.version>
     </properties>
 
     <dependencies>
+        <!-- ANTLR4 runtime (necessário para executar o parser gerado) -->
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
             <version>${antlr4.version}</version>
         </dependency>
+
+        <!-- Core do projeto EAPLI (mantém a dependência que já existia) -->
         <dependency>
             <groupId>eapli</groupId>
             <artifactId>exemplo.core</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
+
+        <!-- JUnit 5 para os testes -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Plugin ANTLR4: lê src/main/aisafe/*.g4 e gera o código Java em target/ -->
             <plugin>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-maven-plugin</artifactId>
@@ -52,6 +66,13 @@
                     <visitor>true</visitor>
                     <listener>true</listener>
                 </configuration>
+            </plugin>
+
+            <!-- Surefire para JUnit 5 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
             </plugin>
         </plugins>
     </build>

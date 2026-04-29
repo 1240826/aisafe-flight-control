@@ -101,7 +101,7 @@ The decision to create a dedicated `aisafe.dsl` module for ANTLR, rather than ad
 - **Testability** — DSL parsing logic can be tested in isolation without loading the full domain.
 - **Future extensibility** — if the DSL grammar evolves or is replaced, only this module needs to change.
 
-The ANTLR4 Maven plugin is configured to automatically generate Java Lexer and Parser classes from `.g4` grammar files located in `src/main/antlr4/` during the build. Both visitor and listener patterns are enabled, as required by US083. At this stage, the `src/main/antlr4/` folder exists but is empty — grammar files will be added when US083 is developed in a future sprint.
+The ANTLR4 Maven plugin is configured to automatically generate Java Lexer and Parser classes from `.g4` grammar files located in `src/main/aisafe/` during the build. Both visitor and listener patterns are enabled, as required by US083. At this stage, the `src/main/aisafe/` folder exists but is empty — grammar files will be added when US083 is developed in a future sprint.
 
 ### 3.4 SCOMP and RCOMP Folders
 
@@ -128,7 +128,7 @@ The `aisafe.dsl` module will follow this internal package structure when impleme
 
 ```
 aisafe.dsl/src/main/
-├── antlr4/                        ← .g4 grammar files
+├── aisafe/                        ← .g4 grammar files
 └── java/
     └── eapli/aisafe/dsl/
         ├── grammar/               ← generated ANTLR classes (do not edit)
@@ -163,7 +163,7 @@ The following was set up:
 
 - `aisafe.base/` — multi-module Maven project copied and adapted from the `eapli.base` template
 - Root `pom.xml` updated with:
-  - `<antlr4.version>4.13.1</antlr4.version>` property
+  - `<aisafe.version>4.13.1</aisafe.version>` property
   - `<module>aisafe.dsl</module>` entry
 - `aisafe.dsl/pom.xml` created with ANTLR4 runtime dependency, ANTLR4 Maven plugin with visitor and listener generation enabled, and dependency on `exemplo.core`
 - `scomp/` folder created at repository root with `README.md` and `Makefile`
