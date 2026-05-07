@@ -1,0 +1,46 @@
+@startuml sd_us033_list_users
+title US033 — List Users
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":ListUsersUI" as ui <<presentation>>
+participant ":ListUsersController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":UserManagementService" as userSvc <<framework>>
+participant ":SystemUserPrinter" as printer <<presentation>>
+
+actor -> ui : selects "List Users"
+activate ui
+
+ui -> ctrl : allUsers()
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(ADMIN)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> userSvc : allUsers()
+activate userSvc
+userSvc --> ctrl : users
+deactivate userSvc
+ctrl --> ui : users
+deactivate ctrl
+
+ui --> actor : prints listHeader()
+
+loop for each SystemUser
+  ui -> printer : visit(user)
+  activate printer
+  printer --> ui : formatted row
+  deactivate printer
+end
+
+ui --> actor : displays user table
+deactivate ui
+
+@enduml

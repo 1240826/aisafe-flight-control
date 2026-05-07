@@ -1,0 +1,54 @@
+@startuml sd_us041_register_weather_data
+title US041 — Register Weather Data
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "WeatherPerson" as actor
+participant ":RegisterWeatherDataUI" as ui <<presentation>>
+participant ":RegisterWeatherDataController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":WeatherDataRepository" as repo <<repository>>
+participant "wd:WeatherData" as wd <<domain>>
+participant "sub:WeatherSubArea" as sub <<domain>>
+participant "wind:WindCondition" as wind <<domain>>
+
+actor -> ui : register weather data
+activate ui
+
+ui -> ctrl : registerWeatherData(\n  areaCode, minLat, maxLat, minLon, maxLon,\n  minAlt, maxAlt, windSpeedKnots,\n  windDirectionDeg, temperatureCelsius,\n  validFrom, validTo)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  WEATHER_PERSON, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+create sub
+ctrl -> sub ** : new WeatherSubArea(\n  minLat, maxLat, minLon, maxLon,\n  (int)minAlt, (int)maxAlt)
+note right : validates minLat<maxLat,\nminLon<maxLon, minAlt>=0,\nminAlt<maxAlt
+
+create wind
+ctrl -> wind ** : new WindCondition(\n  windSpeedKnots,\n  (int)windDirectionDeg)
+note right : validates speed>0,\ndirection in [0,360)
+
+create wd
+ctrl -> wd ** : new WeatherData(\n  AreaCode.valueOf(areaCode),\n  sub, wind, temperatureCelsius,\n  validFrom, validTo)
+note right : validates validTo > validFrom
+
+ctrl -> repo : save(wd)
+activate repo
+repo --> ctrl : savedWeatherData
+deactivate repo
+
+ctrl --> ui : savedWeatherData
+deactivate ctrl
+
+ui --> actor : "Weather data registered successfully"
+deactivate ui
+
+@enduml
