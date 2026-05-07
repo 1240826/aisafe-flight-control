@@ -1,0 +1,57 @@
+@startuml sd_us032_enable_user
+title US032 — Enable User
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":DeactivateUserUI" as ui <<presentation>>
+participant ":DeactivateUserController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":UserManagementService" as userSvc <<framework>>
+
+actor -> ui : selects "Enable User"
+activate ui
+
+ui -> ctrl : disabledUsers()
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(ADMIN)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> userSvc : deactivatedUsers()
+activate userSvc
+userSvc --> ctrl : disabledUsers
+deactivate userSvc
+ctrl --> ui : disabledUsers
+deactivate ctrl
+
+ui --> actor : displays disabled users for selection
+
+actor -> ui : selects user to enable
+activate ui
+
+ui -> ctrl : activateUser(user)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(ADMIN)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> userSvc : activateUser(user)
+activate userSvc
+userSvc --> ctrl : activatedUser
+deactivate userSvc
+
+ctrl --> ui : activatedUser
+deactivate ctrl
+
+ui --> actor : "User enabled"
+deactivate ui
+
+@enduml

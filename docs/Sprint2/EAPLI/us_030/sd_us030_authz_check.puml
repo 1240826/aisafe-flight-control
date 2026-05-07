@@ -1,0 +1,25 @@
+@startuml sd_us030_authz_check
+title US030 — Controller Authorization Check (template for all USs)
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+participant ":SomeController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  REQUIRED_ROLE)
+activate authz
+
+alt user has role
+  authz --> ctrl : (returns normally)
+else user lacks role
+  authz -> authz : throw IllegalStateException
+end
+
+deactivate authz
+
+@enduml

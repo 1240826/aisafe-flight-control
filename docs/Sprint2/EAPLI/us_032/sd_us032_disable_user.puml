@@ -1,0 +1,57 @@
+@startuml sd_us032_disable_user
+title US032 — Disable User
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":DeactivateUserUI" as ui <<presentation>>
+participant ":DeactivateUserController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":UserManagementService" as userSvc <<framework>>
+
+actor -> ui : selects "Disable User"
+activate ui
+
+ui -> ctrl : activeUsers()
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(ADMIN)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> userSvc : activeUsers()
+activate userSvc
+userSvc --> ctrl : activeUsers
+deactivate userSvc
+ctrl --> ui : activeUsers
+deactivate ctrl
+
+ui --> actor : displays active users for selection
+
+actor -> ui : selects user to disable
+activate ui
+
+ui -> ctrl : deactivateUser(user)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(ADMIN)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> userSvc : deactivateUser(user)
+activate userSvc
+userSvc --> ctrl : deactivatedUser
+deactivate userSvc
+
+ctrl --> ui : deactivatedUser
+deactivate ctrl
+
+ui --> actor : "User disabled"
+deactivate ui
+
+@enduml

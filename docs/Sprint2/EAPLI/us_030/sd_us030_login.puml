@@ -1,0 +1,43 @@
+@startuml sd_us030_login
+title US030 — Login with Security Clearance Check
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "User" as actor
+participant ":AISafeLoginUI" as ui <<presentation>>
+participant ":AuthzRegistry" as authz <<framework>>
+participant ":UserSecurityProfileRepository" as profileRepo <<repository>>
+
+actor -> ui : enters username + password
+activate ui
+
+ui -> authz : authenticateUser(username, password)
+activate authz
+authz --> ui : success / fail
+deactivate authz
+
+alt authentication successful
+  ui -> profileRepo : findByUsername(username)
+  activate profileRepo
+  profileRepo --> ui : UserSecurityProfile
+  deactivate profileRepo
+
+  ui -> ui : check securityClearanceExpiryDate >= today
+
+  alt clearance valid
+    ui --> actor : login granted — show main menu
+  else clearance expired
+    ui --> actor : "Security clearance expired. Login denied."
+  end
+else authentication failed
+  ui --> actor : "Invalid credentials"
+end
+
+deactivate ui
+
+@enduml

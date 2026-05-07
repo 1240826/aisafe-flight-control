@@ -1,59 +1,109 @@
-# US001 – Technical Constraints
-
-As Project Manager, I want the team to follow the technical constraints and concerns of the project.
-These constraints and concerns are described in section 5.
+﻿# US063 — Edit Customer's Collaborator (Extra)
 
 ## 1. Context
 
-This is an initial organizational user story. Its purpose is to ensure that the team follows all technical constraints and concerns defined in *Section 5 (Non-Functional Requirements)* of the project statement.
+This task was assigned in Sprint 2 as an extra user story. The objective is to allow an Admin to edit a collaborator's mutable attributes: name, position, security clearance, and skills assessment.
 
-This US does not involve feature development but establishes mandatory rules that guide all future work.
+**Assigned to:** Fábio Costa (extra)
 
 ### 1.1 List of Issues
 
-- Analysis: #13
-- Design: #13
-- Implement: #13
-- Test: N/A
+- Analysis: #(to be assigned)
+- Design: #(to be assigned)
+- Implement: #(to be assigned)
+- Test: #(to be assigned)
 
 ---
 
 ## 2. Requirements
 
-*US001* As Project Manager, I want the team to follow the technical constraints and concerns of the project.
+**US063** As Admin, I want to edit a collaborator's details so that their information remains accurate.
 
-### Acceptance Criteria:
+### Acceptance Criteria
 
-- *US001.1* The team must follow Scrum methodology (NFR01).
-- *US001.2* All documentation must be maintained in the repository under /docs in Markdown format (NFR02).
-- *US001.3* The project must use GitHub for version control (NFR04).
-- *US001.4* The main programming language must be Java (NFR10).
-- *US001.5* The system must support authentication and authorization (NFR09).
-- *US001.6* The system must support configurable persistence (in-memory and RDBMS) (NFR08).
+- **US063.1** The system must require the `ADMIN` role.
+- **US063.2** The Admin must select a collaborator to edit.
+- **US063.3** The following may be updated: name, position (role), security clearance expiry date, skills assessment date.
+- **US063.4** VOs are immutable — updating means creating new VO instances.
+- **US063.5** All invariants of the affected VOs must still hold after editing.
+
+### Dependencies/References
+
+- US030 — auth infrastructure.
+- US061 — collaborator must exist.
 
 ---
+
 ## 3. Analysis
 
 ### 3.0 LLM Assistance
 
-There was no need for LLM assistance so no prompts were created.
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-## 4. Implementation
+**LLM suggestions adopted:**
+- `Collaborator.updateName(newName)` / `updatePosition(newPosition)` as plain setters
+- `Collaborator.renewSecurityClearance(newExpiryDate)` creates a NEW `SecurityClearance` VO and replaces the reference
+- `Collaborator.updateSkillsAssessment(newDate)` creates a NEW `SkillsAssessment` VO and replaces the reference
 
-- Constraints were extracted from Section 5 and documented.
-- These rules are enforced through:
-    - code reviews
-    - repository structure
-    - development workflow
+**Decisions made by the team:**
+- The collaborator type (ATCCollaborator / FCO / WeatherPerson) cannot be changed
+- The linked `SystemUser` cannot be changed via this use case
+- `position` = professional role string (client clarification confirmed)
 
-*Major commits:*
+### 3.1 Domain Model Context
 
-- 6accec0ce1a8e32bb028cf983800b69af10ac2f6
+VOs are immutable. To update a VO attribute on `Collaborator`:
+1. Create a new VO instance with the new data (constructor validates invariants)
+2. Call a method on the `Collaborator` root to replace the old VO reference
 
 ---
 
-## 5. Observations
+## 4. Design
 
-This US is transversal to all others and must be continuously validated throughout the project.
-For more information view the [Non-Functional Requirements](../../NonFunctionalRequirements.md) document.
+### 4.1 Realization
+
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `EditCollaboratorUI` | `aisafe.app.backoffice.console` | Selects collaborator; collects new values; calls controller |
+| `EditCollaboratorController` | `aisafe.core` | Auth; finds collaborator; calls update methods; saves |
+| `Collaborator` (modified) | `aisafe.core` | Adds `updateName()`, `updatePosition()`, `renewSecurityClearance()`, `updateSkillsAssessment()` |
+
+**Sequence Diagram:**
+
+![Sequence Diagram](sd_us063_edit_collaborator.svg)
+
+### 4.2 Acceptance Tests
+
+**Test 1:** Renewing with a past date is rejected.
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureRenewingWithPastDateIsRejected() {
+    new SecurityClearance(LocalDate.now().minusDays(1));
+}
+```
+
+**Test 2:** Name is updated correctly.
+
+```java
+@Test
+public void ensureNameIsUpdated() {
+    Collaborator collab = createTestCollaborator();
+    collab.updateName("New Name");
+    assertEquals("New Name", collab.name());
+}
+```
+
 ---
+
+## 5. Implementation
+
+- `eapli.aisafe.collaborator.domain.Collaborator` — add update methods
+- `eapli.aisafe.collaborator.application.EditCollaboratorController`
+- `eapli.aisafe.app.backoffice.console.presentation.collaborator.EditCollaboratorUI`
+
+---
+
+## 7. Observations
+
+`renewSecurityClearance()` does not mutate the existing `SecurityClearance` VO — it replaces the reference with a newly created instance. This follows EAPLI's VO immutability principle.

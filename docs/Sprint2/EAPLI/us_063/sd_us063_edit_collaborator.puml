@@ -1,0 +1,83 @@
+@startuml sd_us063_edit_collaborator
+title US063 — Edit Collaborator
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":EditCollaboratorUI" as ui <<presentation>>
+participant ":EditCollaboratorController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":CollaboratorRepository" as repo <<repository>>
+participant "c:Collaborator" as collab <<domain>>
+
+actor -> ui : edit collaborator
+activate ui
+
+ui -> ctrl : activeCollaborators()
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> repo : findAllActive()
+activate repo
+repo --> ctrl : activeCollaborators
+deactivate repo
+ctrl --> ui : activeCollaborators
+deactivate ctrl
+
+ui --> actor : displays active collaborators for selection
+
+actor -> ui : selects collaborator + enters new values
+activate ui
+
+ui -> ctrl : editCollaborator(\n  collaboratorId,\n  newName, newPosition,\n  newClearanceExpiry,\n  newAssessmentDate)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> repo : ofIdentity(collaboratorId)
+activate repo
+repo --> ctrl : collab
+deactivate repo
+
+ctrl -> collab : updateName(newName)
+activate collab
+collab --> ctrl
+deactivate collab
+
+ctrl -> collab : updatePosition(newPosition)
+activate collab
+collab --> ctrl
+deactivate collab
+
+ctrl -> collab : renewSecurityClearance(\n  new SecurityClearance(newClearanceExpiry))
+activate collab
+collab --> ctrl
+deactivate collab
+
+ctrl -> collab : updateSkillsAssessment(\n  new SkillsAssessment(newAssessmentDate))
+activate collab
+collab --> ctrl
+deactivate collab
+
+ctrl -> repo : save(collab)
+activate repo
+repo --> ctrl : savedCollab
+deactivate repo
+
+ctrl --> ui : savedCollab
+deactivate ctrl
+
+ui --> actor : "Collaborator updated"
+deactivate ui
+
+@enduml

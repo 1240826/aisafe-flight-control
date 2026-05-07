@@ -1,0 +1,55 @@
+@startuml sd_us062_list_collaborators
+title US062 — List Collaborators
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":ListCollaboratorsUI" as ui <<presentation>>
+participant ":ListCollaboratorsController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":CollaboratorRepository" as collabRepo <<repository>>
+participant ":AirTransportCompanyRepository" as companyRepo <<repository>>
+
+actor -> ui : list collaborators
+activate ui
+
+ui -> ctrl : allCompanies()
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR,\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> companyRepo : findAll()
+activate companyRepo
+companyRepo --> ctrl : companies
+deactivate companyRepo
+ctrl --> ui : companies
+deactivate ctrl
+
+ui --> actor : displays company list for selection
+
+actor -> ui : selects company
+activate ui
+
+ui -> ctrl : collaboratorsOfCompany(companyIata)
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR,\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> collabRepo : findByCompanyId(\n  CompanyIATA.valueOf(companyIata))
+activate collabRepo
+collabRepo --> ctrl : collaborators
+deactivate collabRepo
+ctrl --> ui : collaborators
+deactivate ctrl
+
+ui --> actor : displays collaborator list
+deactivate ui
+
+@enduml

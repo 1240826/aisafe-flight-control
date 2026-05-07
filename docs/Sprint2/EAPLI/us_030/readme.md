@@ -1,59 +1,154 @@
-# US001 – Technical Constraints
-
-As Project Manager, I want the team to follow the technical constraints and concerns of the project.
-These constraints and concerns are described in section 5.
+﻿# US030 — Authentication and Authorization Infrastructure
 
 ## 1. Context
 
-This is an initial organizational user story. Its purpose is to ensure that the team follows all technical constraints and concerns defined in *Section 5 (Non-Functional Requirements)* of the project statement.
+This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
 
-This US does not involve feature development but establishes mandatory rules that guide all future work.
+**Assigned to:** Shared (all team members)
 
 ### 1.1 List of Issues
 
-- Analysis: #13
-- Design: #13
-- Implement: #13
-- Test: N/A
+- Analysis: #(to be assigned)
+- Design: #(to be assigned)
+- Implement: #(to be assigned)
+- Test: #(to be assigned)
 
 ---
 
 ## 2. Requirements
 
-*US001* As Project Manager, I want the team to follow the technical constraints and concerns of the project.
+**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
 
-### Acceptance Criteria:
+### Acceptance Criteria
 
-- *US001.1* The team must follow Scrum methodology (NFR01).
-- *US001.2* All documentation must be maintained in the repository under /docs in Markdown format (NFR02).
-- *US001.3* The project must use GitHub for version control (NFR04).
-- *US001.4* The main programming language must be Java (NFR10).
-- *US001.5* The system must support authentication and authorization (NFR09).
-- *US001.6* The system must support configurable persistence (in-memory and RDBMS) (NFR08).
+- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
+- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
+- **US030.3** An unauthenticated access attempt must be rejected.
+- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
+- **US030.5** Skills assessment expiry does **not** block login.
+
+### Dependencies/References
+
+- NFR09 — authentication and authorization.
+- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
 
 ---
+
 ## 3. Analysis
 
 ### 3.0 LLM Assistance
 
-There was no need for LLM assistance so no prompts were created.
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-## 4. Implementation
+**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
 
-- Constraints were extracted from Section 5 and documented.
-- These rules are enforced through:
-    - code reviews
-    - repository structure
-    - development workflow
+**LLM suggestions adopted:**
+- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
+- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
+- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
 
-*Major commits:*
+**Decisions made by the team:**
+- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
+- Skills assessment has no login effect (confirmed by client)
 
-- 6accec0ce1a8e32bb028cf983800b69af10ac2f6
+### 3.1 Framework Roles
+
+```java
+public class AISafeRoles {
+    public static final Role ADMIN = Role.valueOf("ADMIN");
+    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
+    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
+    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
+    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+
+    public static Role[] nonUserValues() {
+        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
+                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
+    }
+}
+```
 
 ---
 
-## 5. Observations
+## 4. Design
 
-This US is transversal to all others and must be continuously validated throughout the project.
-For more information view the [Non-Functional Requirements](../../NonFunctionalRequirements.md) document.
+### 4.1 Realization
+
+**Classes to create:**
+
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `AISafeRoles` | `aisafe.core` | Defines all role constants |
+| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
+| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
+| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
+| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
+| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
+| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+
+**Sequence Diagram — Login with Security Clearance Check:**
+
+![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
+
+**Sequence Diagram — Controller Authorization Check (template for all USs):**
+
+![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+
+### 4.2 Acceptance Tests
+
+**Test 1:** Expired security clearance blocks login.
+
+**Refers to:** US030.4
+
+```java
+@Test
+public void ensureExpiredClearanceBlocksLogin() {
+    UserSecurityProfile profile = new UserSecurityProfile("user1",
+        LocalDate.now().minusDays(1)); // expired yesterday
+    assertFalse(profile.isClearanceValid());
+}
+```
+
+**Test 2:** Valid security clearance allows login.
+
+**Refers to:** US030.4
+
+```java
+@Test
+public void ensureValidClearanceAllowsLogin() {
+    UserSecurityProfile profile = new UserSecurityProfile("user1",
+        LocalDate.now().plusDays(30));
+    assertTrue(profile.isClearanceValid());
+}
+```
+
 ---
+
+## 5. Implementation
+
+**Key new files:**
+
+- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
+- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
+- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
+- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
+- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+
+*Major commits: (to be filled after implementation)*
+
+---
+
+## 6. Integration/Demonstration
+
+1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
+2. Log in with valid credentials and valid clearance → access granted
+3. Log in with expired clearance → denied with message
+4. Access any feature without login → rejected
+
+---
+
+## 7. Observations
+
+`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
+
+The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.

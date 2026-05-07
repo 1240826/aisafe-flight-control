@@ -1,0 +1,69 @@
+@startuml sd_us071_decommission_aircraft
+title US071 — Decommission Aircraft
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":DecommissionAircraftUI" as ui <<presentation>>
+participant ":DecommissionAircraftController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AircraftRepository" as repo <<repository>>
+participant "a:Aircraft" as aircraft <<domain>>
+
+actor -> ui : decommission aircraft
+activate ui
+
+ui -> ctrl : activeAircraft()
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> repo : findAllActive()
+activate repo
+repo --> ctrl : activeAircraft
+deactivate repo
+ctrl --> ui : activeAircraft
+deactivate ctrl
+
+ui --> actor : displays active aircraft for selection
+
+actor -> ui : selects aircraft to decommission
+activate ui
+
+ui -> ctrl : decommissionAircraft(\n  regNumber, regCountry)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> repo : ofIdentity(\n  RegistrationNumber.valueOf(\n    regNumber, regCountry))
+activate repo
+repo --> ctrl : aircraft
+deactivate repo
+
+ctrl -> aircraft : decommission()
+activate aircraft
+note right : transitions ACTIVE → DECOMMISSIONED\nirreversible — throws IllegalStateException\nif already DECOMMISSIONED
+aircraft --> ctrl
+deactivate aircraft
+
+ctrl -> repo : save(aircraft)
+activate repo
+repo --> ctrl : savedAircraft
+deactivate repo
+
+ctrl --> ui : savedAircraft
+deactivate ctrl
+
+ui --> actor : "Aircraft decommissioned"
+deactivate ui
+
+@enduml
