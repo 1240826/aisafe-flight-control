@@ -1,0 +1,52 @@
+@startuml sd_us058_remove_engine_variant
+title US058 — Remove Engine Variant from Aircraft Model
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":RemoveEngineVariantUI" as ui <<presentation>>
+participant ":RemoveEngineVariantController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AircraftModelRepository" as repo <<repository>>
+participant "m:AircraftModel" as model <<domain>>
+
+actor -> ui : remove engine variant
+activate ui
+note right of ui : aircraftModel selected from list\n(allAircraftModels())\nengine variant selected from model's variants
+
+ui -> ctrl : removeVariant(\n  aircraftModelCode,\n  engineModelCode)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> repo : ofIdentity(\n  AircraftModelCode.valueOf(\n    aircraftModelCode))
+activate repo
+repo --> ctrl : model
+deactivate repo
+
+ctrl -> model : removeVariant(\n  EngineModelCode.valueOf(engineModelCode))
+activate model
+note right : removes AircraftVariant\nmatching given EngineModelCode\nfrom model's variants collection
+model --> ctrl
+deactivate model
+
+ctrl -> repo : save(model)
+activate repo
+repo --> ctrl : savedModel
+deactivate repo
+
+ctrl --> ui : savedModel
+deactivate ctrl
+
+ui --> actor : "Engine variant removed"
+deactivate ui
+
+@enduml

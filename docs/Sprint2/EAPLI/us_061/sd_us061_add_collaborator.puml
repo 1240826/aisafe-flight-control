@@ -1,0 +1,52 @@
+@startuml sd_us061_add_collaborator
+title US061 — Add Collaborator
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":AddCollaboratorUI" as ui <<presentation>>
+participant ":AddCollaboratorController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":UserManagementService" as userSvc <<framework>>
+participant ":CollaboratorRepository" as repo <<repository>>
+participant "su:SystemUser" as su <<framework>>
+participant "c:Collaborator" as collab <<domain>>
+
+actor -> ui : add collaborator
+activate ui
+note right of ui : user selects type:\nATCCollaborator, FlightControlOperator\nor WeatherPerson\ncompany/area selected from list
+
+ui -> ctrl : addATCCollaborator(\n  username, password,\n  firstName, lastName, email,\n  name, position,\n  clearanceExpiry, assessmentDate,\n  companyIata)\nor addFlightControlOperator(\n  ..., areaCode)\nor addWeatherPerson(\n  ..., areaCode)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> userSvc : registerNewUser(\n  username, password,\n  firstName, lastName,\n  email, roles)
+activate userSvc
+userSvc --> ctrl : su
+deactivate userSvc
+
+create collab
+ctrl -> collab ** : new ATCCollaborator(su, name, position,\n  new SecurityClearance(clearanceExpiry),\n  new SkillsAssessment(assessmentDate),\n  CompanyIATA.valueOf(companyIata))\n— or FlightControlOperator / WeatherPerson\n  with AreaCode.valueOf(areaCode)
+note right : SecurityClearance: validates expiry not null\nSkillsAssessment: validates date not null\ninitialStatus = ACTIVE
+
+ctrl -> repo : save(collab)
+activate repo
+repo --> ctrl : savedCollab
+deactivate repo
+
+ctrl --> ui : savedCollab
+deactivate ctrl
+
+ui --> actor : "Collaborator added"
+deactivate ui
+
+@enduml

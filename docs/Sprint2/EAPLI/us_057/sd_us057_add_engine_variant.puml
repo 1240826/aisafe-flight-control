@@ -1,0 +1,52 @@
+@startuml sd_us057_add_engine_variant
+title US057 — Add Engine Variant to Aircraft Model
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":AddEngineVariantUI" as ui <<presentation>>
+participant ":AddEngineVariantController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AircraftModelRepository" as repo <<repository>>
+participant "m:AircraftModel" as model <<domain>>
+
+actor -> ui : add engine variant
+activate ui
+note right of ui : aircraftModel selected from list\n(allAircraftModels())\nmotorizationType selected from enum
+
+ui -> ctrl : addVariant(\n  aircraftModelCode,\n  engineModelCode,\n  motorizationType)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> repo : ofIdentity(\n  AircraftModelCode.valueOf(\n    aircraftModelCode))
+activate repo
+repo --> ctrl : model
+deactivate repo
+
+ctrl -> model : addVariant(\n  EngineModelCode.valueOf(engineModelCode),\n  motorizationType)
+activate model
+note right : adds AircraftVariant(engineCode, motorizationType)\nto the model's variants collection
+model --> ctrl
+deactivate model
+
+ctrl -> repo : save(model)
+activate repo
+repo --> ctrl : savedModel
+deactivate repo
+
+ctrl --> ui : savedModel
+deactivate ctrl
+
+ui --> actor : "Engine variant added"
+deactivate ui
+
+@enduml

@@ -1,0 +1,50 @@
+@startuml sd_us070_add_aircraft
+title US070 — Add Aircraft to Air Transport Company
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":AddAircraftUI" as ui <<presentation>>
+participant ":AddAircraftController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AircraftRepository" as repo <<repository>>
+participant "cabin:CabinConfiguration" as cabin <<domain>>
+participant "a:Aircraft" as aircraft <<domain>>
+
+actor -> ui : add aircraft
+activate ui
+note right of ui : aircraft model selected from list\n(allAircraftModels())\ncompany selected from list\n(allCompanies())\nseat classes entered by user
+
+ui -> ctrl : addAircraft(\n  regNumber, regCountry,\n  aircraftModelCode,\n  companyIata,\n  crewMembers,\n  seatClasses)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+create cabin
+ctrl -> cabin ** : new CabinConfiguration(seatClasses)
+note right : seatClasses: List<SeatClass>\neach SeatClass(className, numberOfSeats)\nvalidates: list not empty,\neach numberOfSeats > 0
+
+create aircraft
+ctrl -> aircraft ** : new Aircraft(\n  RegistrationNumber.valueOf(\n    regNumber, regCountry),\n  AircraftModelCode.valueOf(\n    aircraftModelCode),\n  CompanyIATA.valueOf(companyIata),\n  crewMembers,\n  cabin)
+note right : RegistrationNumber: composite key\n  (regNumber + regCountry)\nvalidates: crewMembers > 0\ninitialStatus = ACTIVE
+
+ctrl -> repo : save(aircraft)
+activate repo
+repo --> ctrl : savedAircraft
+deactivate repo
+
+ctrl --> ui : savedAircraft
+deactivate ctrl
+
+ui --> actor : "Aircraft added to fleet"
+deactivate ui
+
+@enduml

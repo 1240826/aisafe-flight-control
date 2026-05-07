@@ -1,59 +1,145 @@
-# US001 – Technical Constraints
-
-As Project Manager, I want the team to follow the technical constraints and concerns of the project.
-These constraints and concerns are described in section 5.
+# US070 — Add Aircraft to Air Transport Company
 
 ## 1. Context
 
-This is an initial organizational user story. Its purpose is to ensure that the team follows all technical constraints and concerns defined in *Section 5 (Non-Functional Requirements)* of the project statement.
+This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow an Admin to add an aircraft to an air transport company's fleet. Aircraft is a new aggregate root with a unique registration number.
 
-This US does not involve feature development but establishes mandatory rules that guide all future work.
+**Assigned to:** Dinis Silva
 
 ### 1.1 List of Issues
 
-- Analysis: #13
-- Design: #13
-- Implement: #13
-- Test: N/A
+- Analysis: #(to be assigned)
+- Design: #(to be assigned)
+- Implement: #(to be assigned)
+- Test: #(to be assigned)
 
 ---
 
 ## 2. Requirements
 
-*US001* As Project Manager, I want the team to follow the technical constraints and concerns of the project.
+**US070** As Admin, I want to add an aircraft to an air transport company so that the company can operate it.
 
-### Acceptance Criteria:
+### Acceptance Criteria
 
-- *US001.1* The team must follow Scrum methodology (NFR01).
-- *US001.2* All documentation must be maintained in the repository under /docs in Markdown format (NFR02).
-- *US001.3* The project must use GitHub for version control (NFR04).
-- *US001.4* The main programming language must be Java (NFR10).
-- *US001.5* The system must support authentication and authorization (NFR09).
-- *US001.6* The system must support configurable persistence (in-memory and RDBMS) (NFR08).
+- **US070.1** The system must require the `ADMIN` role.
+- **US070.2** The registration number must be unique worldwide.
+- **US070.3** The aircraft must be associated with an existing aircraft model.
+- **US070.4** The aircraft must be associated with an existing air transport company.
+- **US070.5** The cabin configuration must specify at least one seat class with a positive number of seats.
+- **US070.6** The total number of seats cannot exceed the aircraft model's capacity (if defined).
+- **US070.7** The aircraft is initially in `ACTIVE` operational status.
+- **US070.8** The number of flight crew members must be positive.
+
+### Dependencies/References
+
+- US030 — auth infrastructure.
+- US055 — aircraft model must exist.
+- US060 — air transport company must exist.
 
 ---
+
 ## 3. Analysis
 
 ### 3.0 LLM Assistance
 
-There was no need for LLM assistance so no prompts were created.
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-## 4. Implementation
+**Prompt 1:** "Design AddAircraft for EAPLI. Domain: Aircraft (root), RegistrationNumber (VO, unique worldwide), CabinConfiguration (VO containing 1..* SeatClass VOs), OperationalStatus (enum, ACTIVE/DECOMMISSIONED)."
 
-- Constraints were extracted from Section 5 and documented.
-- These rules are enforced through:
-    - code reviews
-    - repository structure
-    - development workflow
+**LLM suggestions adopted:**
+- `RegistrationNumber` VO validates non-empty
+- `CabinConfiguration` VO contains 1..* `SeatClass` VOs; validates non-empty collection
+- `SeatClass` VO validates `numberOfSeats > 0`
+- Controller checks uniqueness before creation; initial status is always `ACTIVE`
 
-*Major commits:*
+**Decisions made by the team:**
+- `numberOfFlightCrewMembers` is a plain `int` (no VO needed)
+- `CabinConfiguration` and `SeatClass` are VOs — replaced entirely on change
 
-- 6accec0ce1a8e32bb028cf983800b69af10ac2f6
+### 3.1 Domain Model Navigation
+
+**Aggregate: Aircraft**
+- Root: `Aircraft` — `numberOfFlightCrewMembers`; `OperationalStatus` starts `ACTIVE`
+- VO: `RegistrationNumber` — unique worldwide
+- VO: `CabinConfiguration` — contains 1..* `SeatClass`
+- VO: `SeatClass` — `className` + `numberOfSeats`
+- Enum: `OperationalStatus` — ACTIVE / DECOMMISSIONED
+
+Cross-aggregate refs: `AircraftModelId`, `AirTransportCompanyId`
+
+### 3.2 Invariants
+
+| VO / Entity | Invariant |
+|-------------|-----------|
+| `RegistrationNumber` | not null, not empty; unique (controller) |
+| `SeatClass` | `numberOfSeats > 0`; `className` not empty |
+| `CabinConfiguration` | at least one `SeatClass` |
+| `Aircraft` | `numberOfFlightCrewMembers > 0` |
 
 ---
 
-## 5. Observations
+## 4. Design
 
-This US is transversal to all others and must be continuously validated throughout the project.
-For more information view the [Non-Functional Requirements](../../NonFunctionalRequirements.md) document.
+### 4.1 Realization
+
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `AddAircraftUI` | `aisafe.app.backoffice.console` | Collects input; calls controller |
+| `AddAircraftController` | `aisafe.core` | Auth; refs check; uniqueness; creates Aircraft; saves |
+| `Aircraft` | `aisafe.core` | Aggregate root |
+| `RegistrationNumber` | `aisafe.core` | VO — unique worldwide |
+| `CabinConfiguration` | `aisafe.core` | VO — contains SeatClass VOs |
+| `SeatClass` | `aisafe.core` | VO — className + numberOfSeats |
+| `OperationalStatus` | `aisafe.core` | Enum |
+| `AircraftRepository` | `aisafe.core` | Repository interface |
+| `JpaAircraftRepository` | `aisafe.persistence.impl` | JPA implementation |
+| `InMemoryAircraftRepository` | `aisafe.persistence.impl` | In-memory implementation |
+
+**Sequence Diagram:**
+
+![Sequence Diagram](sd_us070_add_aircraft.svg)
+
+### 4.2 Acceptance Tests
+
+**Test 1:** `SeatClass` rejects non-positive seats.
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureSeatClassRejectsNonPositiveSeats() {
+    new SeatClass("Business", 0);
+}
+```
+
+**Test 2:** `CabinConfiguration` rejects empty list.
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureCabinConfigurationRejectsEmptyList() {
+    new CabinConfiguration(Collections.emptyList());
+}
+```
+
+**Test 3:** `RegistrationNumber` rejects null.
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureRegistrationNumberRejectsNull() {
+    new RegistrationNumber(null);
+}
+```
+
 ---
+
+## 5. Implementation
+
+- `eapli.aisafe.aircraft.domain.Aircraft`, `RegistrationNumber`, `CabinConfiguration`, `SeatClass`, `OperationalStatus`
+- `eapli.aisafe.aircraft.repositories.AircraftRepository`
+- `eapli.aisafe.aircraft.application.AddAircraftController`
+- `eapli.aisafe.app.backoffice.console.presentation.aircraft.AddAircraftUI`
+- JPA + InMemory implementations
+
+---
+
+## 7. Observations
+
+`CabinConfiguration` is a VO containing a list of `SeatClass` VOs. In JPA this requires `@ElementCollection` with `@Embeddable SeatClass`. Cross-aggregate references `aircraftModelId` and `companyId` are stored as plain IDs (not `@ManyToOne`).

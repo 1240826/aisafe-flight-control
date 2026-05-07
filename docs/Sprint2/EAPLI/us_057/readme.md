@@ -1,59 +1,142 @@
-# US001 – Technical Constraints
-
-As Project Manager, I want the team to follow the technical constraints and concerns of the project.
-These constraints and concerns are described in section 5.
+# US057 — Add Engine Model to Aircraft Model
 
 ## 1. Context
 
-This is an initial organizational user story. Its purpose is to ensure that the team follows all technical constraints and concerns defined in *Section 5 (Non-Functional Requirements)* of the project statement.
+This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow an Admin to associate an engine model with an aircraft model, creating an `AircraftVariant`. Each variant represents a specific engine configuration for that model.
 
-This US does not involve feature development but establishes mandatory rules that guide all future work.
+**Assigned to:** Dinis Silva
 
 ### 1.1 List of Issues
 
-- Analysis: #13
-- Design: #13
-- Implement: #13
-- Test: N/A
+- Analysis: #(to be assigned)
+- Design: #(to be assigned)
+- Implement: #(to be assigned)
+- Test: #(to be assigned)
 
 ---
 
 ## 2. Requirements
 
-*US001* As Project Manager, I want the team to follow the technical constraints and concerns of the project.
+**US057** As Admin, I want to add an engine model to an aircraft model so that the aircraft model has a valid variant for simulation.
 
-### Acceptance Criteria:
+### Acceptance Criteria
 
-- *US001.1* The team must follow Scrum methodology (NFR01).
-- *US001.2* All documentation must be maintained in the repository under /docs in Markdown format (NFR02).
-- *US001.3* The project must use GitHub for version control (NFR04).
-- *US001.4* The main programming language must be Java (NFR10).
-- *US001.5* The system must support authentication and authorization (NFR09).
-- *US001.6* The system must support configurable persistence (in-memory and RDBMS) (NFR08).
+- **US057.1** The system must require the `ADMIN` role.
+- **US057.2** Both the aircraft model and the engine model must exist.
+- **US057.3** The same engine model cannot be added twice to the same aircraft model.
+- **US057.4** All variants of an aircraft model must use the same motorization type.
+
+### Dependencies/References
+
+- US030 — auth infrastructure.
+- US055 — aircraft model must exist.
+- US056 — engine model must exist.
 
 ---
+
 ## 3. Analysis
 
 ### 3.0 LLM Assistance
 
-There was no need for LLM assistance so no prompts were created.
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-## 4. Implementation
+**Prompt 1:** "Design AddEngineToAircraftModel for EAPLI. The AircraftModel aggregate has internal AircraftVariant entities. Invariants: no duplicate engine; all variants same motorization type."
 
-- Constraints were extracted from Section 5 and documented.
-- These rules are enforced through:
-    - code reviews
-    - repository structure
-    - development workflow
+**LLM suggestions adopted:**
+- `AircraftModel.addVariant(engineModelId, motorizationType)` enforces both invariants internally
+- `AircraftVariant` is an internal entity (not an aggregate root) — it holds the `engineModelId` reference and the `motorizationType`
 
-*Major commits:*
+**Decisions made by the team:**
+- `AircraftVariant` stores only the `engineModelId` (cross-aggregate reference by ID, not a `@ManyToOne`)
+- Both invariant checks happen inside `AircraftModel.addVariant()` before appending to the variant list
 
-- 6accec0ce1a8e32bb028cf983800b69af10ac2f6
+### 3.1 Domain Model Navigation
+
+**Aggregate: AircraftModel (modified)**
+- Entity: `AircraftVariant` — internal entity; `engineModelId`, `motorizationType`
+- Invariants enforced by `AircraftModel.addVariant(engineModelId, motorizationType)`:
+  1. No duplicate `engineModelId` in existing variants
+  2. All variants have the same `motorizationType`
+
+### 3.2 Invariants
+
+| Entity | Invariant |
+|--------|-----------|
+| `AircraftModel` | No two variants with the same `engineModelId` |
+| `AircraftModel` | All `AircraftVariant` entries share the same `motorizationType` |
 
 ---
 
-## 5. Observations
+## 4. Design
 
-This US is transversal to all others and must be continuously validated throughout the project.
-For more information view the [Non-Functional Requirements](../../NonFunctionalRequirements.md) document.
+### 4.1 Realization
+
+**Classes to create/modify:**
+
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `AddEngineToAircraftModelUI` | `aisafe.app.backoffice.console` | Selects aircraft model + engine model; calls controller |
+| `AddEngineToAircraftModelController` | `aisafe.core` | Auth; lookups; calls `addVariant()`; saves |
+| `AircraftModel` (modified) | `aisafe.core` | Adds `addVariant(engineModelId, motorizationType)` |
+| `AircraftVariant` | `aisafe.core` | Internal entity — engineModelId + motorizationType |
+
+**Sequence Diagram:**
+
+![Sequence Diagram](sd_us057_add_engine_variant.svg)
+
+### 4.2 Acceptance Tests
+
+**Test 1:** Adding the same engine twice is rejected.
+
+**Refers to:** US057.3 / invariant
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureDuplicateEngineIsRejected() {
+    AircraftModel model = createTestAircraftModel();
+    model.addVariant(engineId, MotorizationType.TURBOFAN);
+    model.addVariant(engineId, MotorizationType.TURBOFAN); // duplicate
+}
+```
+
+**Test 2:** Adding an engine with a different motorization type is rejected.
+
+**Refers to:** US057.4 / invariant
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureMixedMotorizationTypesAreRejected() {
+    AircraftModel model = createTestAircraftModel();
+    model.addVariant(engine1Id, MotorizationType.TURBOFAN);
+    model.addVariant(engine2Id, MotorizationType.TURBOPROP); // different type
+}
+```
+
 ---
+
+## 5. Implementation
+
+**Key modified files:**
+
+- `eapli.aisafe.aircraftmodel.domain.AircraftModel` — add `addVariant()` method
+- `eapli.aisafe.aircraftmodel.domain.AircraftVariant` — new internal entity
+- `eapli.aisafe.aircraftmodel.application.AddEngineToAircraftModelController` — new controller
+- `eapli.aisafe.app.backoffice.console.presentation.aircraftmodel.AddEngineToAircraftModelUI` — new UI
+
+*Major commits: (to be filled after implementation)*
+
+---
+
+## 6. Integration/Demonstration
+
+1. Log in as admin
+2. Select "Add Engine to Aircraft Model"
+3. Select aircraft model; select engine model
+4. System validates invariants and confirms
+5. Aircraft model now has a valid variant for use in US070
+
+---
+
+## 7. Observations
+
+`AircraftVariant` stores only the `engineModelId` (cross-aggregate reference by ID, not a JPA `@ManyToOne`). The `motorizationType` is stored redundantly on `AircraftVariant` to allow invariant validation without loading the full `EngineModel`.
