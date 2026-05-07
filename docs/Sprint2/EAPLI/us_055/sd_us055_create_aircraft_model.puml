@@ -1,0 +1,59 @@
+@startuml sd_us055_create_aircraft_model
+title US055 — Create Aircraft Model
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":CreateAircraftModelUI" as ui <<presentation>>
+participant ":CreateAircraftModelController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AircraftModelRepository" as repo <<repository>>
+participant "m:AircraftModel" as model <<domain>>
+participant "w:AircraftWeights" as weights <<domain>>
+participant "p:AircraftPerformance" as perf <<domain>>
+participant "a:AerodynamicCoefficients" as aero <<domain>>
+
+actor -> ui : create aircraft model
+activate ui
+note right of ui : aircraftType selected\nfrom AircraftType enum values\nmanufacturer entered as name string
+
+ui -> ctrl : createAircraftModel(\n  code, name, manufacturerName,\n  aircraftType, maxPassengers,\n  emptyWeight, mtow, mzfw, maxFuel,\n  serviceCeiling, cruiseSpeed, maxRange,\n  wingArea, drag, lift)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+create weights
+ctrl -> weights ** : new AircraftWeights(\n  emptyWeight, mtow,\n  mzfw, maxFuel)
+note right : validates MTOW > MZFW > emptyWeight;\nall values > 0
+
+create perf
+ctrl -> perf ** : new AircraftPerformance(\n  serviceCeiling,\n  cruiseSpeed, maxRange)
+note right : validates all values > 0
+
+create aero
+ctrl -> aero ** : new AerodynamicCoefficients(\n  wingArea, drag, lift)
+note right : validates all values > 0
+
+create model
+ctrl -> model ** : new AircraftModel(\n  AircraftModelCode.valueOf(code),\n  name,\n  ManufacturerName.valueOf(manufacturerName),\n  aircraftType, maxPassengers,\n  weights, perf, aero)
+
+ctrl -> repo : save(model)
+activate repo
+repo --> ctrl : savedModel
+deactivate repo
+
+ctrl --> ui : savedModel
+deactivate ctrl
+
+ui --> actor : "Aircraft model created"
+deactivate ui
+
+@enduml

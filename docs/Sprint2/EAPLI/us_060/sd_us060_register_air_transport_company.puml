@@ -1,0 +1,44 @@
+@startuml sd_us060_register_air_transport_company
+title US060 — Register Air Transport Company
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":RegisterAirTransportCompanyUI" as ui <<presentation>>
+participant ":RegisterAirTransportCompanyController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AirTransportCompanyRepository" as repo <<repository>>
+participant "c:AirTransportCompany" as company <<domain>>
+
+actor -> ui : register company
+activate ui
+
+ui -> ctrl : registerCompany(\n  iata, icao, name)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+create company
+ctrl -> company ** : new AirTransportCompany(\n  CompanyIATA.valueOf(iata),\n  CompanyICAO.valueOf(icao),\n  name)
+note right : CompanyIATA: 2 uppercase letters\nCompanyICAO: 2-3 uppercase letters\nname: non-empty String\nuniqueness enforced by DB constraints
+
+ctrl -> repo : save(company)
+activate repo
+repo --> ctrl : savedCompany
+deactivate repo
+
+ctrl --> ui : savedCompany
+deactivate ctrl
+
+ui --> actor : "Air transport company registered"
+deactivate ui
+
+@enduml
