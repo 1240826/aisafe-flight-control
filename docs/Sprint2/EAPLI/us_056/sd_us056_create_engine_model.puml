@@ -1,0 +1,60 @@
+@startuml sd_us056_create_engine_model
+title US056 — Create Engine Model
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":CreateEngineModelUI" as ui <<presentation>>
+participant ":CreateEngineModelController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":EngineModelRepository" as repo <<repository>>
+participant "e:EngineModel" as engine <<domain>>
+participant "p:Power" as power <<domain>>
+participant "ts:Thrust (static)" as thrStatic <<domain>>
+participant "tc:Thrust (cruise)" as thrCruise <<domain>>
+participant "t:TSFC" as tsfc <<domain>>
+
+actor -> ui : create engine model
+activate ui
+note right of ui : motorizationType selected\nfrom MotorizationType enum values
+
+ui -> ctrl : createEngineModel(\n  code, engineName, fuelType,\n  motorizationType,\n  powerValue, powerUnit,\n  staticThrustValue, thrustUnit,\n  cruiseThrustValue,\n  tsfcValue, tsfcUnit)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+create power
+ctrl -> power ** : new Power(powerValue, powerUnit)
+
+create thrStatic
+ctrl -> thrStatic ** : new Thrust(staticThrustValue, thrustUnit, "static")
+
+create thrCruise
+ctrl -> thrCruise ** : new Thrust(cruiseThrustValue, thrustUnit, "cruise")
+
+create tsfc
+ctrl -> tsfc ** : new TSFC(tsfcValue, tsfcUnit)
+
+create engine
+ctrl -> engine ** : new EngineModel(\n  EngineModelCode.valueOf(code),\n  EngineName.valueOf(engineName),\n  fuelType, motorizationType,\n  power, thrStatic, thrCruise, tsfc)
+
+ctrl -> repo : save(engine)
+activate repo
+repo --> ctrl : savedEngine
+deactivate repo
+
+ctrl --> ui : savedEngine
+deactivate ctrl
+
+ui --> actor : "Engine model created"
+deactivate ui
+
+@enduml
