@@ -1,0 +1,49 @@
+@startuml sd_us031_register_user
+title US031 — Register User
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":AddUserUI" as ui <<presentation>>
+participant ":AddUserController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":UserManagementService" as userSvc <<framework>>
+participant ":UserSecurityProfileRepository" as profileRepo <<repository>>
+
+actor -> ui : selects "Add User"
+activate ui
+
+ui --> actor : prompts username, password,\nfirstName, lastName, email,\nroles, securityClearanceExpiryDate
+
+actor -> ui : enters user details
+
+ui -> ctrl : addUser(username, password,\n  firstName, lastName, email,\n  roles, securityClearanceExpiryDate)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(ADMIN)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> userSvc : registerNewUser(\n  username, password,\n  firstName, lastName,\n  email, roles)
+activate userSvc
+userSvc --> ctrl : SystemUser
+deactivate userSvc
+
+ctrl -> profileRepo : save(new UserSecurityProfile(\n  username, securityClearanceExpiryDate))
+activate profileRepo
+profileRepo --> ctrl : savedProfile
+deactivate profileRepo
+
+ctrl --> ui : SystemUser
+deactivate ctrl
+
+ui --> actor : "User registered successfully"
+deactivate ui
+
+@enduml

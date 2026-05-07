@@ -1,59 +1,115 @@
-# US001 – Technical Constraints
-
-As Project Manager, I want the team to follow the technical constraints and concerns of the project.
-These constraints and concerns are described in section 5.
+﻿# US072 — List Company Fleet
 
 ## 1. Context
 
-This is an initial organizational user story. Its purpose is to ensure that the team follows all technical constraints and concerns defined in *Section 5 (Non-Functional Requirements)* of the project statement.
+This task was assigned in Sprint 2. The objective is to allow an Admin to list all aircraft belonging to an air transport company's fleet. Pure query use case using `AbstractListUI`.
 
-This US does not involve feature development but establishes mandatory rules that guide all future work.
+**Assigned to:** André Barcelos
 
 ### 1.1 List of Issues
 
-- Analysis: #13
-- Design: #13
-- Implement: #13
-- Test: N/A
+- Analysis: #(to be assigned)
+- Design: #(to be assigned)
+- Implement: #(to be assigned)
+- Test: #(to be assigned)
 
 ---
 
 ## 2. Requirements
 
-*US001* As Project Manager, I want the team to follow the technical constraints and concerns of the project.
+**US072** As Admin, I want to list the fleet of an air transport company so that I can see which aircraft the company operates.
 
-### Acceptance Criteria:
+### Acceptance Criteria
 
-- *US001.1* The team must follow Scrum methodology (NFR01).
-- *US001.2* All documentation must be maintained in the repository under /docs in Markdown format (NFR02).
-- *US001.3* The project must use GitHub for version control (NFR04).
-- *US001.4* The main programming language must be Java (NFR10).
-- *US001.5* The system must support authentication and authorization (NFR09).
-- *US001.6* The system must support configurable persistence (in-memory and RDBMS) (NFR08).
+- **US072.1** The system must require the `ADMIN` role.
+- **US072.2** The Admin must be able to filter aircraft by company.
+- **US072.3** The list must show at minimum: registration number, aircraft model, operational status, number of flight crew members, cabin configuration summary. Capacity = total seats across all `SeatClass` VOs. *(Client clarification: capacity = number of passengers.)*
+- **US072.4** If the company has no aircraft, an appropriate message must be shown.
+- **US072.5** Both `ACTIVE` and `DECOMMISSIONED` aircraft must be shown (full fleet history).
+
+### Dependencies/References
+
+- US030 — auth infrastructure.
+- US060 — company must exist.
+- US070 — aircraft must have been added.
 
 ---
+
 ## 3. Analysis
 
 ### 3.0 LLM Assistance
 
-There was no need for LLM assistance so no prompts were created.
+**LLM suggestions adopted:**
+- `AbstractListUI<Aircraft>` — company selection first, then `findByCompanyId()`
+- `AircraftPrinter` as `Visitor<Aircraft>` formats each row
 
-## 4. Implementation
-
-- Constraints were extracted from Section 5 and documented.
-- These rules are enforced through:
-    - code reviews
-    - repository structure
-    - development workflow
-
-*Major commits:*
-
-- 6accec0ce1a8e32bb028cf983800b69af10ac2f6
+**Decisions:**
+- Both ACTIVE and DECOMMISSIONED aircraft shown (full fleet history, US072.5)
+- Cabin summary shows total seats per class
 
 ---
 
-## 5. Observations
+## 4. Design
 
-This US is transversal to all others and must be continuously validated throughout the project.
-For more information view the [Non-Functional Requirements](../../NonFunctionalRequirements.md) document.
+### 4.1 Realization
+
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `ListFleetUI` | `aisafe.app.backoffice.console` | Selects company; extends `AbstractListUI<Aircraft>` |
+| `ListFleetController` | `aisafe.core` | Auth; lists companies; queries fleet by company |
+| `AircraftPrinter` | `aisafe.app.backoffice.console` | `Visitor<Aircraft>` — formats each row |
+
+**Sequence Diagram:**
+
+![Sequence Diagram](sd_us072_list_company_fleet.svg)
+
+### 4.2 Acceptance Tests
+
+**Test 1:** Only aircraft of the specified company are returned.
+
+```java
+@Test
+public void ensureOnlyAircraftOfCompanyAreReturned() {
+    Iterable<Aircraft> result = controller.fleetOfCompany(companyId);
+    for (Aircraft a : result) {
+        assertEquals(companyId, a.companyId());
+    }
+}
+```
+
+**Test 2:** Empty list when company has no aircraft.
+
+```java
+@Test
+public void ensureEmptyListForCompanyWithNoAircraft() {
+    Iterable<Aircraft> result = controller.fleetOfCompany(newCompanyId);
+    assertFalse(result.iterator().hasNext());
+}
+```
+
+**Test 3:** Both ACTIVE and DECOMMISSIONED aircraft are included.
+
+```java
+@Test
+public void ensureFleetIncludesDecommissionedAircraft() {
+    // given: one active, one decommissioned aircraft for companyId
+    Iterable<Aircraft> result = controller.fleetOfCompany(companyId);
+    long count = StreamSupport.stream(result.spliterator(), false).count();
+    assertEquals(2, count);
+}
+```
+
 ---
+
+## 5. Implementation
+
+- `eapli.aisafe.aircraft.application.ListFleetController`
+- `eapli.aisafe.app.backoffice.console.presentation.aircraft.ListFleetUI`
+- `eapli.aisafe.app.backoffice.console.presentation.aircraft.AircraftPrinter`
+- `eapli.aisafe.aircraft.repositories.AircraftRepository` — add `findByCompanyId(companyId)`
+
+---
+
+## 7. Observations
+
+Pure query — no aggregate modified. `AircraftPrinter` computes capacity as the sum of `numberOfSeats` across all `SeatClass` VOs in `CabinConfiguration` (client: "capacity = number of passengers"). `AircraftRepository.findByCompanyId()` requires a custom JPQL query.

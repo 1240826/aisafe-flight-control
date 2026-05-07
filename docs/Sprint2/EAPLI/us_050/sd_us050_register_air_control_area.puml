@@ -1,0 +1,44 @@
+@startuml sd_us050_register_air_control_area
+title US050 — Register Air Control Area
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":RegisterAirControlAreaUI" as ui <<presentation>>
+participant ":RegisterAirControlAreaController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AirControlAreaRepository" as repo <<repository>>
+participant "aca:AirControlArea" as aca <<domain>>
+
+actor -> ui : register air control area
+activate ui
+
+ui -> ctrl : registerAirControlArea(\n  code, name,\n  minLat, maxLat,\n  minLon, maxLon)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+create aca
+ctrl -> aca ** : new AirControlArea(\n  AreaCode.valueOf(code),\n  new AreaName(name),\n  minLat, maxLat, minLon, maxLon,\n  DEFAULT_MAX_ALTITUDE_METRES)
+note right : DEFAULT_MAX_ALTITUDE_METRES = 14000\n(constant, configurable via overloaded method)\nvalidates: minLat<maxLat, minLon<maxLon,\ncode/name not blank, maxAlt>0
+
+ctrl -> repo : save(aca)
+activate repo
+repo --> ctrl : savedArea
+deactivate repo
+
+ctrl --> ui : savedArea
+deactivate ctrl
+
+ui --> actor : "Air control area registered"
+deactivate ui
+
+@enduml

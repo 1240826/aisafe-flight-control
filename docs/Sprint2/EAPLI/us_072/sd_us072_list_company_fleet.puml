@@ -1,0 +1,58 @@
+@startuml sd_us072_list_company_fleet
+title US072 — List Company Fleet
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":ListCompanyFleetUI" as ui <<presentation>>
+participant ":ListCompanyFleetController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AirTransportCompanyRepository" as companyRepo <<repository>>
+participant ":AircraftRepository" as aircraftRepo <<repository>>
+
+actor -> ui : list company fleet
+activate ui
+
+ui -> ctrl : allCompanies()
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR,\n  FLIGHT_CONTROL_OPERATOR,\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> companyRepo : findAll()
+activate companyRepo
+companyRepo --> ctrl : companies
+deactivate companyRepo
+ctrl --> ui : companies
+deactivate ctrl
+
+ui --> actor : displays company list for selection
+
+actor -> ui : selects company
+activate ui
+
+ui -> ctrl : fleetOfCompany(companyIata)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR,\n  FLIGHT_CONTROL_OPERATOR,\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> aircraftRepo : findByCompanyId(\n  CompanyIATA.valueOf(companyIata))
+activate aircraftRepo
+aircraftRepo --> ctrl : fleet
+deactivate aircraftRepo
+
+ctrl --> ui : fleet
+deactivate ctrl
+
+ui --> actor : displays aircraft list\n(regNumber, model, status, capacity, crew)
+deactivate ui
+
+@enduml
