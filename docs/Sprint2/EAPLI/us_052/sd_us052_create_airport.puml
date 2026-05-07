@@ -1,0 +1,45 @@
+@startuml sd_us052_create_airport
+title US052 — Create Airport
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Admin" as actor
+participant ":CreateAirportUI" as ui <<presentation>>
+participant ":CreateAirportController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":AirportRepository" as repo <<repository>>
+participant "apt:Airport" as apt <<domain>>
+
+actor -> ui : create airport
+activate ui
+note right of ui : ACA selected from list\n(allAirControlAreas())\ncountry selected from bootstrapped list\ncity entered as free text
+
+ui -> ctrl : createAirport(\n  iata, icao,\n  name, city, country,\n  latitude, longitude,\n  areaCode)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+create apt
+ctrl -> apt ** : new Airport(\n  AirportIATA.valueOf(iata),\n  AirportICAO.valueOf(icao),\n  name, city, country,\n  latitude, longitude,\n  AreaCode.valueOf(areaCode))
+note right : IATA: 3 uppercase letters\nICAO: 4 uppercase alphanumeric\ncoords stored as primitives\nareaCode: cross-aggregate ref
+
+ctrl -> repo : save(apt)
+activate repo
+repo --> ctrl : savedAirport
+deactivate repo
+
+ctrl --> ui : savedAirport
+deactivate ctrl
+
+ui --> actor : "Airport created"
+deactivate ui
+
+@enduml
