@@ -13,6 +13,22 @@
     <class>eapli.exemplo.utentemanagement.domain.Utente</class>
     <class>eapli.exemplo.utentemanagement.domain.SignupRequest</class>
 
+    <!-- AISafe entities -->
+    <class>eapli.aisafe.usermanagement.domain.UserSecurityProfile</class>
+    <class>eapli.aisafe.manufacturer.domain.Manufacturer</class>
+    <class>eapli.aisafe.enginemodel.domain.EngineModel</class>
+    <class>eapli.aisafe.aircraftmodel.domain.AircraftModel</class>
+    <class>eapli.aisafe.aircraftmodel.domain.AircraftVariant</class>
+    <class>eapli.aisafe.aircraft.domain.Aircraft</class>
+    <class>eapli.aisafe.aircontrolarea.domain.AirControlArea</class>
+    <class>eapli.aisafe.airport.domain.Airport</class>
+    <class>eapli.aisafe.company.domain.AirTransportCompany</class>
+    <class>eapli.aisafe.collaborator.domain.Collaborator</class>
+    <class>eapli.aisafe.collaborator.domain.ATCCollaborator</class>
+    <class>eapli.aisafe.collaborator.domain.FlightControlOperator</class>
+    <class>eapli.aisafe.collaborator.domain.WeatherPerson</class>
+    <class>eapli.aisafe.weatherdata.domain.WeatherData</class>
+
     <properties>
       <!--<property name="jakarta.persistence.jdbc.url" value="jdbc:h2:tcp://localhost/~/eapliexemplo"/>-->
       <property name="jakarta.persistence.jdbc.url" value="jdbc:h2:~\eapliexemplo"/>

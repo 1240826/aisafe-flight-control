@@ -28,6 +28,7 @@ import eapli.aisafe.usermanagement.domain.AISafeRoles;
 import eapli.aisafe.usermanagement.domain.UserSecurityProfile;
 import eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository;
 import eapli.exemplo.infrastructure.persistence.PersistenceContext;
+import eapli.exemplo.usermanagement.domain.ExemploRoles;
 import eapli.framework.application.UseCaseController;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import eapli.framework.infrastructure.authz.application.AuthzRegistry;
@@ -74,7 +75,8 @@ public class AddUserController {
             final String email, final Set<Role> roles,
             final LocalDate securityClearanceExpiryDate,
             final Calendar createdOn) {
-        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN);
+        // POWER_USER is the internal bootstrap role used by ExemploBootstrapper
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN, ExemploRoles.POWER_USER);
 
         final SystemUser user = userSvc.registerNewUser(
                 username, password, firstName, lastName, email, roles, createdOn);
