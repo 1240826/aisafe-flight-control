@@ -20,6 +20,26 @@
  */
 package eapli.exemplo.persistence.impl.inmemory;
 
+import eapli.aisafe.aircontrolarea.repositories.AirControlAreaRepository;
+import eapli.aisafe.aircraft.repositories.AircraftRepository;
+import eapli.aisafe.aircraftmodel.repositories.AircraftModelRepository;
+import eapli.aisafe.airport.repositories.AirportRepository;
+import eapli.aisafe.collaborator.repositories.CollaboratorRepository;
+import eapli.aisafe.company.repositories.AirTransportCompanyRepository;
+import eapli.aisafe.enginemodel.repositories.EngineModelRepository;
+import eapli.aisafe.manufacturer.repositories.ManufacturerRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryAirControlAreaRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryAirTransportCompanyRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryAircraftModelRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryAircraftRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryAirportRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryCollaboratorRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryEngineModelRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryManufacturerRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryUserSecurityProfileRepository;
+import eapli.aisafe.persistence.impl.inmemory.InMemoryWeatherDataRepository;
+import eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository;
+import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.exemplo.infrastructure.persistence.RepositoryFactory;
 import eapli.exemplo.usermanagement.domain.ExemploRoles;
 import eapli.exemplo.usermanagement.domain.UserBuilderHelper;
@@ -77,6 +97,58 @@ public class InMemoryRepositoryFactory implements RepositoryFactory {
 	public TransactionalContext newTransactionalContext() {
 		// in memory does not support transactions...
 		return null;
+	}
+
+	// ── AISafe repositories ──────────────────────────────────────────────────
+
+	@Override
+	public AirControlAreaRepository airControlAreas() {
+		return new InMemoryAirControlAreaRepository();
+	}
+
+	@Override
+	public AirTransportCompanyRepository airTransportCompanies() {
+		return new InMemoryAirTransportCompanyRepository();
+	}
+
+	@Override
+	public AircraftRepository aircraft() {
+		return new InMemoryAircraftRepository();
+	}
+
+	@Override
+	public AircraftModelRepository aircraftModels() {
+		return new InMemoryAircraftModelRepository();
+	}
+
+	@Override
+	public AirportRepository airports() {
+		return new InMemoryAirportRepository();
+	}
+
+	@Override
+	public CollaboratorRepository collaborators() {
+		return new InMemoryCollaboratorRepository();
+	}
+
+	@Override
+	public EngineModelRepository engineModels() {
+		return new InMemoryEngineModelRepository();
+	}
+
+	@Override
+	public ManufacturerRepository manufacturers() {
+		return new InMemoryManufacturerRepository();
+	}
+
+	@Override
+	public WeatherDataRepository weatherData() {
+		return new InMemoryWeatherDataRepository();
+	}
+
+	@Override
+	public UserSecurityProfileRepository userSecurityProfiles() {
+		return new InMemoryUserSecurityProfileRepository();
 	}
 
 }

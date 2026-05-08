@@ -23,7 +23,7 @@
  */
 package eapli.exemplo.usermanagement.application;
 
-import eapli.exemplo.usermanagement.domain.ExemploRoles;
+import eapli.aisafe.usermanagement.domain.AISafeRoles;
 import eapli.framework.application.UseCaseController;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import eapli.framework.infrastructure.authz.application.AuthzRegistry;
@@ -31,8 +31,10 @@ import eapli.framework.infrastructure.authz.application.UserManagementService;
 import eapli.framework.infrastructure.authz.domain.model.SystemUser;
 
 /**
- *
- * @author Fernando
+ * US032 — Disable/Enable Users.
+ * ADMIN role required (AC 032.1).
+ * Disable prevents login (AC 032.2); Enable restores it (AC 032.3).
+ * Does NOT cascade to Collaborator aggregate (AC 032.4).
  */
 @UseCaseController
 public class DeactivateUserController {
@@ -40,15 +42,37 @@ public class DeactivateUserController {
     private final AuthorizationService authz = AuthzRegistry.authorizationService();
     private final UserManagementService userSvc = AuthzRegistry.userService();
 
+    /** Returns all currently active users for selection (disable flow). */
     public Iterable<SystemUser> activeUsers() {
-        authz.ensureAuthenticatedUserHasAnyOf(ExemploRoles.POWER_USER, ExemploRoles.ADMIN);
-
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN);
         return userSvc.activeUsers();
     }
 
-    public SystemUser deactivateUser(final SystemUser user) {
-        authz.ensureAuthenticatedUserHasAnyOf(ExemploRoles.POWER_USER, ExemploRoles.ADMIN);
+    /** Returns all currently inactive users for selection (enable flow). */
+    public Iterable<SystemUser> deactivatedUsers() {
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN);
+        return userSvc.deactivatedUsers();
+    }
 
+    /**
+     * Disable (deactivate) a user account — AC 032.2.
+     *
+     * @param user the active user to disable
+     * @return the updated SystemUser
+     */
+    public SystemUser deactivateUser(final SystemUser user) {
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN);
         return userSvc.deactivateUser(user);
+    }
+
+    /**
+     * Enable (reactivate) a previously disabled user account — AC 032.3.
+     *
+     * @param user the inactive user to re-enable
+     * @return the updated SystemUser
+     */
+    public SystemUser activateUser(final SystemUser user) {
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN);
+        return userSvc.activateUser(user);
     }
 }

@@ -20,6 +20,7 @@
  */
 package eapli.exemplo.infrastructure.bootstrapers;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -36,6 +37,9 @@ import eapli.framework.infrastructure.authz.domain.model.Username;
 public class AbstractUserBootstrapper {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractUserBootstrapper.class);
 
+    /** Bootstrap users get a clearance valid for 10 years. */
+    private static final LocalDate BOOTSTRAP_CLEARANCE_EXPIRY = LocalDate.now().plusYears(10);
+
     final AddUserController userController = new AddUserController();
     final ListUsersController listUserController = new ListUsersController();
 
@@ -44,18 +48,16 @@ public class AbstractUserBootstrapper {
     }
 
     /**
-     * @param username
-     * @param password
-     * @param firstName
-     * @param lastName
-     * @param email
-     * @param roles
+     * Register a bootstrap user with a default 10-year security clearance expiry.
+     * Used only during application startup to seed master/demo users.
      */
-    protected SystemUser registerUser(final String username, final String password, final String firstName,
-            final String lastName, final String email, final Set<Role> roles) {
+    protected SystemUser registerUser(final String username, final String password,
+            final String firstName, final String lastName,
+            final String email, final Set<Role> roles) {
         SystemUser u = null;
         try {
-            u = userController.addUser(username, password, firstName, lastName, email, roles);
+            u = userController.addUser(username, password, firstName, lastName, email, roles,
+                    BOOTSTRAP_CLEARANCE_EXPIRY);
             LOGGER.debug("»»» %s", username);
         } catch (final IntegrityViolationException | ConcurrencyException e) {
             // assuming it is just a primary key violation due to the tentative

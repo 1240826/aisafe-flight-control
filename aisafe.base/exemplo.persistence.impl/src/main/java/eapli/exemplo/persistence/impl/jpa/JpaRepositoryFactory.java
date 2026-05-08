@@ -20,6 +20,26 @@
  */
 package eapli.exemplo.persistence.impl.jpa;
 
+import eapli.aisafe.aircontrolarea.repositories.AirControlAreaRepository;
+import eapli.aisafe.aircraft.repositories.AircraftRepository;
+import eapli.aisafe.aircraftmodel.repositories.AircraftModelRepository;
+import eapli.aisafe.airport.repositories.AirportRepository;
+import eapli.aisafe.collaborator.repositories.CollaboratorRepository;
+import eapli.aisafe.company.repositories.AirTransportCompanyRepository;
+import eapli.aisafe.enginemodel.repositories.EngineModelRepository;
+import eapli.aisafe.manufacturer.repositories.ManufacturerRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaAirControlAreaRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaAirTransportCompanyRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaAircraftModelRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaAircraftRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaAirportRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaCollaboratorRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaEngineModelRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaManufacturerRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaUserSecurityProfileRepository;
+import eapli.aisafe.persistence.impl.jpa.JpaWeatherDataRepository;
+import eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository;
+import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.exemplo.Application;
 import eapli.exemplo.infrastructure.persistence.RepositoryFactory;
 import eapli.exemplo.utentemanagement.repositories.SignupRequestRepository;
@@ -69,6 +89,58 @@ public class JpaRepositoryFactory implements RepositoryFactory {
     public TransactionalContext newTransactionalContext() {
         return JpaAutoTxRepository.buildTransactionalContext(Application.settings().getPersistenceUnitName(),
                 Application.settings().getExtendedPersistenceProperties());
+    }
+
+    // ── AISafe repositories ──────────────────────────────────────────────────
+
+    @Override
+    public AirControlAreaRepository airControlAreas() {
+        return new JpaAirControlAreaRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public AirTransportCompanyRepository airTransportCompanies() {
+        return new JpaAirTransportCompanyRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public AircraftRepository aircraft() {
+        return new JpaAircraftRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public AircraftModelRepository aircraftModels() {
+        return new JpaAircraftModelRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public AirportRepository airports() {
+        return new JpaAirportRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public CollaboratorRepository collaborators() {
+        return new JpaCollaboratorRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public EngineModelRepository engineModels() {
+        return new JpaEngineModelRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public ManufacturerRepository manufacturers() {
+        return new JpaManufacturerRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public WeatherDataRepository weatherData() {
+        return new JpaWeatherDataRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public UserSecurityProfileRepository userSecurityProfiles() {
+        return new JpaUserSecurityProfileRepository(Application.settings().getPersistenceUnitName());
     }
 
 }

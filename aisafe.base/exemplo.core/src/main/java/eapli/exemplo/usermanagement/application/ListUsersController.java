@@ -25,7 +25,7 @@ package eapli.exemplo.usermanagement.application;
 
 import java.util.Optional;
 
-import eapli.exemplo.usermanagement.domain.ExemploRoles;
+import eapli.aisafe.usermanagement.domain.AISafeRoles;
 import eapli.framework.application.UseCaseController;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import eapli.framework.infrastructure.authz.application.AuthzRegistry;
@@ -34,18 +34,17 @@ import eapli.framework.infrastructure.authz.domain.model.SystemUser;
 import eapli.framework.infrastructure.authz.domain.model.Username;
 
 /**
- *
- * @author losa
+ * US033 — List Users.
+ * Only ADMIN role is permitted (AC 033.1).
  */
 @UseCaseController
-public class ListUsersController{
+public class ListUsersController {
 
     private final AuthorizationService authz = AuthzRegistry.authorizationService();
     private final UserManagementService userSvc = AuthzRegistry.userService();
 
     public Iterable<SystemUser> allUsers() {
-        authz.ensureAuthenticatedUserHasAnyOf(ExemploRoles.POWER_USER, ExemploRoles.ADMIN);
-
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN);
         return userSvc.allUsers();
     }
 

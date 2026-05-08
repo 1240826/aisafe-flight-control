@@ -20,6 +20,16 @@
  */
 package eapli.exemplo.infrastructure.persistence;
 
+import eapli.aisafe.aircontrolarea.repositories.AirControlAreaRepository;
+import eapli.aisafe.aircraft.repositories.AircraftRepository;
+import eapli.aisafe.aircraftmodel.repositories.AircraftModelRepository;
+import eapli.aisafe.airport.repositories.AirportRepository;
+import eapli.aisafe.collaborator.repositories.CollaboratorRepository;
+import eapli.aisafe.company.repositories.AirTransportCompanyRepository;
+import eapli.aisafe.enginemodel.repositories.EngineModelRepository;
+import eapli.aisafe.manufacturer.repositories.ManufacturerRepository;
+import eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository;
+import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.exemplo.utentemanagement.repositories.UtenteRepository;
 import eapli.exemplo.utentemanagement.repositories.SignupRequestRepository;
 import eapli.framework.domain.repositories.TransactionalContext;
@@ -82,5 +92,27 @@ public interface RepositoryFactory {
      * @return
      */
     SignupRequestRepository signupRequests();
+
+    // ── AISafe repositories ───────────────────────────────────────────────────
+
+    AirControlAreaRepository airControlAreas();
+
+    AirTransportCompanyRepository airTransportCompanies();
+
+    AircraftRepository aircraft();
+
+    AircraftModelRepository aircraftModels();
+
+    AirportRepository airports();
+
+    CollaboratorRepository collaborators();
+
+    EngineModelRepository engineModels();
+
+    ManufacturerRepository manufacturers();
+
+    WeatherDataRepository weatherData();
+
+    UserSecurityProfileRepository userSecurityProfiles();
 
 }

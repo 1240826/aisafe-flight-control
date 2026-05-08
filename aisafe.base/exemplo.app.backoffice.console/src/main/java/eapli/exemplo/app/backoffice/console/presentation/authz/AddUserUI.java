@@ -23,6 +23,8 @@
  */
 package eapli.exemplo.app.backoffice.console.presentation.authz;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -40,23 +42,36 @@ import eapli.framework.presentation.console.menu.MenuRenderer;
 import eapli.framework.presentation.console.menu.VerticalMenuRenderer;
 
 /**
- * UI for adding a user to the application.
- *
- * Created by nuno on 22/03/16.
+ * US031 — Add User UI.
+ * Collects user data including security clearance expiry date (AC 031.7).
  */
+@SuppressWarnings("squid:S106")
 public class AddUserUI extends AbstractUI {
 
     private final AddUserController theController = new AddUserController();
 
     @Override
     protected boolean doShow() {
-        // FIXME avoid duplication with SignUpUI. reuse UserDataWidget from
-        // UtenteApp
         final String username = Console.readLine("Username");
         final String password = Console.readLine("Password");
         final String firstName = Console.readLine("First Name");
         final String lastName = Console.readLine("Last Name");
         final String email = Console.readLine("E-Mail");
+
+        // AC 031.7 — collect security clearance expiry date
+        LocalDate clearanceExpiryDate = null;
+        while (clearanceExpiryDate == null) {
+            final String dateStr = Console.readLine("Security Clearance Expiry Date (YYYY-MM-DD)");
+            try {
+                clearanceExpiryDate = LocalDate.parse(dateStr.trim());
+                if (clearanceExpiryDate.isBefore(LocalDate.now())) {
+                    System.out.println("Expiry date must be today or in the future. Please try again.");
+                    clearanceExpiryDate = null;
+                }
+            } catch (final DateTimeParseException e) {
+                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
+            }
+        }
 
         final Set<Role> roleTypes = new HashSet<>();
         boolean show;
@@ -65,7 +80,9 @@ public class AddUserUI extends AbstractUI {
         } while (!show);
 
         try {
-            this.theController.addUser(username, password, firstName, lastName, email, roleTypes);
+            this.theController.addUser(username, password, firstName, lastName, email,
+                    roleTypes, clearanceExpiryDate);
+            System.out.println("User registered successfully.");
         } catch (final IntegrityViolationException | ConcurrencyException e) {
             System.out.println("That username is already in use.");
         }
@@ -74,7 +91,6 @@ public class AddUserUI extends AbstractUI {
     }
 
     private boolean showRoles(final Set<Role> roleTypes) {
-        // TODO we could also use the "widget" classes from the framework...
         final Menu rolesMenu = buildRolesMenu(roleTypes);
         final MenuRenderer renderer = new VerticalMenuRenderer(rolesMenu, MenuItemRenderer.DEFAULT);
         return renderer.render();

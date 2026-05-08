@@ -23,13 +23,14 @@
  */
 package eapli.exemplo.app.backoffice.console.presentation;
 
+import eapli.aisafe.usermanagement.domain.AISafeRoles;
 import eapli.exemplo.Application;
+import eapli.exemplo.app.backoffice.console.presentation.authz.ActivateUserUI;
 import eapli.exemplo.app.backoffice.console.presentation.authz.AddUserUI;
 import eapli.exemplo.app.backoffice.console.presentation.authz.DeactivateUserAction;
 import eapli.exemplo.app.backoffice.console.presentation.authz.ListUsersAction;
 import eapli.exemplo.app.backoffice.console.presentation.utente.AcceptRefuseSignupRequestAction;
 import eapli.exemplo.app.common.console.presentation.authz.MyUserMenu;
-import eapli.exemplo.usermanagement.domain.ExemploRoles;
 import eapli.framework.actions.Actions;
 import eapli.framework.actions.menu.Menu;
 import eapli.framework.actions.menu.MenuItem;
@@ -44,21 +45,20 @@ import eapli.framework.presentation.console.menu.MenuRenderer;
 import eapli.framework.presentation.console.menu.VerticalMenuRenderer;
 
 /**
- * TODO split this class in more specialized classes for each menu
- *
- * @author Paulo Gandra Sousa
+ * Main backoffice menu.
+ * US031 — Add User, US032 — Disable/Enable User, US033 — List Users.
  */
 public class MainMenu extends AbstractUI {
 
 	private static final String RETURN_LABEL = "Return ";
-
 	private static final int EXIT_OPTION = 0;
 
-	// USERS
+	// USERS submenu items
 	private static final int ADD_USER_OPTION = 1;
 	private static final int LIST_USERS_OPTION = 2;
 	private static final int DEACTIVATE_USER_OPTION = 3;
-	private static final int ACCEPT_REFUSE_SIGNUP_REQUEST_OPTION = 4;
+	private static final int ACTIVATE_USER_OPTION = 4;
+	private static final int ACCEPT_REFUSE_SIGNUP_REQUEST_OPTION = 5;
 
 	// SETTINGS
 	private static final int SET_KITCHEN_ALERT_LIMIT_OPTION = 1;
@@ -78,9 +78,6 @@ public class MainMenu extends AbstractUI {
 		return doShow();
 	}
 
-	/**
-	 * @return true if the user selected the exit option
-	 */
 	@Override
 	public boolean doShow() {
 		final var menu = buildMainMenu();
@@ -95,14 +92,12 @@ public class MainMenu extends AbstractUI {
 
 	@Override
 	public String headline() {
-
 		return authz.session().map(s -> "Backoffice [ @" + s.authenticatedUser().identity() + " ]")
 				.orElse("Backoffice [ ==Anonymous== ]");
 	}
 
 	private Menu buildMainMenu() {
 		final var mainMenu = new Menu();
-
 		final Menu myUserMenu = new MyUserMenu();
 		mainMenu.addSubMenu(MY_USER_OPTION, myUserMenu);
 
@@ -110,7 +105,8 @@ public class MainMenu extends AbstractUI {
 			mainMenu.addItem(MenuItem.separator(SEPARATOR_LABEL));
 		}
 
-		if (authz.isAuthenticatedUserAuthorizedTo(ExemploRoles.POWER_USER, ExemploRoles.ADMIN)) {
+		// US031/032/033 — ADMIN only (AC 031.1, 032.1, 033.1)
+		if (authz.isAuthenticatedUserAuthorizedTo(AISafeRoles.ADMIN)) {
 			final var usersMenu = buildUsersMenu();
 			mainMenu.addSubMenu(USERS_OPTION, usersMenu);
 			final var settingsMenu = buildAdminSettingsMenu();
@@ -122,31 +118,26 @@ public class MainMenu extends AbstractUI {
 		}
 
 		mainMenu.addItem(EXIT_OPTION, "Exit", new ExitWithMessageAction("Bye, Bye"));
-
 		return mainMenu;
 	}
 
 	private Menu buildAdminSettingsMenu() {
 		final var menu = new Menu("Settings >");
-
 		menu.addItem(SET_KITCHEN_ALERT_LIMIT_OPTION, "Set kitchen alert limit",
 				new ShowMessageAction("Not implemented yet"));
 		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
-
 		return menu;
 	}
 
 	private Menu buildUsersMenu() {
 		final var menu = new Menu("Users >");
-
 		menu.addItem(ADD_USER_OPTION, "Add User", new AddUserUI()::show);
 		menu.addItem(LIST_USERS_OPTION, "List all Users", new ListUsersAction());
-		menu.addItem(DEACTIVATE_USER_OPTION, "Deactivate User", new DeactivateUserAction());
+		menu.addItem(DEACTIVATE_USER_OPTION, "Disable User", new DeactivateUserAction());
+		menu.addItem(ACTIVATE_USER_OPTION, "Enable User", new ActivateUserUI()::show);
 		menu.addItem(ACCEPT_REFUSE_SIGNUP_REQUEST_OPTION, "Accept/Refuse Signup Request",
 				new AcceptRefuseSignupRequestAction());
 		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
-
 		return menu;
 	}
-
 }
