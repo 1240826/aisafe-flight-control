@@ -1,59 +1,124 @@
-# US001 – Technical Constraints
-
-As Project Manager, I want the team to follow the technical constraints and concerns of the project.
-These constraints and concerns are described in section 5.
+# US033 — List Users
 
 ## 1. Context
 
-This is an initial organizational user story. Its purpose is to ensure that the team follows all technical constraints and concerns defined in *Section 5 (Non-Functional Requirements)* of the project statement.
+This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow an Admin to list all registered system users. This is a read-only query use case that relies entirely on the EAPLI framework's `UserManagementService`.
 
-This US does not involve feature development but establishes mandatory rules that guide all future work.
+**Assigned to:** Fábio Costa
 
 ### 1.1 List of Issues
 
-- Analysis: #13
-- Design: #13
-- Implement: #13
-- Test: N/A
+- Analysis: #(to be assigned)
+- Design: #(to be assigned)
+- Implement: #(to be assigned)
+- Test: #(to be assigned)
 
 ---
 
 ## 2. Requirements
 
-*US001* As Project Manager, I want the team to follow the technical constraints and concerns of the project.
+**US033** As Admin, I want to list all registered system users so that I can manage and monitor access to the system.
 
-### Acceptance Criteria:
+### Acceptance Criteria
 
-- *US001.1* The team must follow Scrum methodology (NFR01).
-- *US001.2* All documentation must be maintained in the repository under /docs in Markdown format (NFR02).
-- *US001.3* The project must use GitHub for version control (NFR04).
-- *US001.4* The main programming language must be Java (NFR10).
-- *US001.5* The system must support authentication and authorization (NFR09).
-- *US001.6* The system must support configurable persistence (in-memory and RDBMS) (NFR08).
+- **US033.1** The system must require the `ADMIN` role to access this feature.
+- **US033.2** The list must display all registered users regardless of their status (active or inactive).
+- **US033.3** Each row must show at minimum: username, full name, email, assigned roles, and account status.
+- **US033.4** If there are no registered users, an appropriate message must be shown.
+
+### Dependencies/References
+
+- US030 — auth infrastructure (role definitions).
+- US031 — users must have been registered.
 
 ---
+
 ## 3. Analysis
 
 ### 3.0 LLM Assistance
 
-There was no need for LLM assistance so no prompts were created.
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-## 4. Implementation
+**Prompt 1:** "How do I implement List Users in the EAPLI framework? What service method returns all users?"
 
-- Constraints were extracted from Section 5 and documented.
-- These rules are enforced through:
-    - code reviews
-    - repository structure
-    - development workflow
+**LLM suggestions adopted:**
+- `UserManagementService.allUsers()` (via `AuthzRegistry.userService()`) returns `Iterable<SystemUser>`
+- `AbstractListUI<SystemUser>` pattern: `elements()` delegates to the controller
+- `SystemUserPrinter` as `Visitor<SystemUser>` formats each row
 
-*Major commits:*
+**Decisions made by the team:**
+- List shows all users (active and inactive) — Admin needs full visibility
+- `SystemUserPrinter` formats each user as a single line row
 
-- 6accec0ce1a8e32bb028cf983800b69af10ac2f6
+### 3.1 Framework Pattern
+
+`ListUsersUI` uses the framework pattern `AbstractListUI<SystemUser>`. The `elements()` method calls `ListUsersController.allUsers()`. `SystemUserPrinter` implements `Visitor<SystemUser>` to format each row.
 
 ---
 
-## 5. Observations
+## 4. Design
 
-This US is transversal to all others and must be continuously validated throughout the project.
-For more information view the [Non-Functional Requirements](../../NonFunctionalRequirements.md) document.
+### 4.1 Realization
+
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `ListUsersUI` | `aisafe.app.backoffice.console` | Extends `AbstractListUI<SystemUser>`; displays user table |
+| `ListUsersController` | `aisafe.core` | Auth check; delegates to `UserManagementService.allUsers()` |
+| `UserManagementService` | EAPLI framework | Returns all `SystemUser` instances from the repository |
+| `SystemUserPrinter` | `aisafe.app.backoffice.console` | `Visitor<SystemUser>` — formats each row |
+
+**Sequence Diagram:**
+
+![Sequence Diagram](sd_us033_list_users.svg)
+
+### 4.2 Acceptance Tests
+
+**Test 1:** Only ADMIN can list users.
+
+**Refers to:** US033.1
+
+```java
+@Test(expected = IllegalStateException.class)
+public void ensureOnlyAdminCanListUsers() {
+    // authenticated as WEATHER_PERSON
+    controller.allUsers();
+}
+```
+
+**Test 2:** List contains previously registered users.
+
+**Refers to:** US033.2
+
+```java
+@Test
+public void ensureRegisteredUsersAppearInList() {
+    Iterable<SystemUser> users = controller.allUsers();
+    assertTrue(users.iterator().hasNext());
+}
+```
+
 ---
+
+## 5. Implementation
+
+**Key files:**
+
+- `eapli.exemplo.usermanagement.application.ListUsersController` — controller (framework pattern)
+- `eapli.exemplo.app.backoffice.console.presentation.authz.ListUsersUI` — UI
+- `eapli.exemplo.app.backoffice.console.presentation.authz.ListUsersAction` — menu action
+
+*Major commits: (to be filled after implementation)*
+
+---
+
+## 6. Integration/Demonstration
+
+1. Log in as admin
+2. Select "List Users" from backoffice menu
+3. System displays header then one row per registered user
+
+---
+
+## 7. Observations
+
+This use case operates entirely within the EAPLI framework. No AISafe domain classes are needed — `UserManagementService` provides all required functionality. The `SystemUserPrinter` visitor is the only presentation-layer class beyond the UI.

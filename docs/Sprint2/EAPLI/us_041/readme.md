@@ -1,59 +1,157 @@
-# US001 – Technical Constraints
-
-As Project Manager, I want the team to follow the technical constraints and concerns of the project.
-These constraints and concerns are described in section 5.
+# US041 — Register Weather Data
 
 ## 1. Context
 
-This is an initial organizational user story. Its purpose is to ensure that the team follows all technical constraints and concerns defined in *Section 5 (Non-Functional Requirements)* of the project statement.
+This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow a Weather Person to register meteorological data (wind, temperature, validity period) for a sub-area within an Air Control Area (ACA). Weather data is consumed by Flight Control Operators when assessing flight safety.
 
-This US does not involve feature development but establishes mandatory rules that guide all future work.
+**Assigned to:** Fábio Costa
 
 ### 1.1 List of Issues
 
-- Analysis: #13
-- Design: #13
-- Implement: #13
-- Test: N/A
+- Analysis: #(to be assigned)
+- Design: #(to be assigned)
+- Implement: #(to be assigned)
+- Test: #(to be assigned)
 
 ---
 
 ## 2. Requirements
 
-*US001* As Project Manager, I want the team to follow the technical constraints and concerns of the project.
+**US041** As Weather Person (or Backoffice Operator), I want to register weather data for an air control area so that flight control operators can assess meteorological conditions.
 
-### Acceptance Criteria:
+### Acceptance Criteria
 
-- *US001.1* The team must follow Scrum methodology (NFR01).
-- *US001.2* All documentation must be maintained in the repository under /docs in Markdown format (NFR02).
-- *US001.3* The project must use GitHub for version control (NFR04).
-- *US001.4* The main programming language must be Java (NFR10).
-- *US001.5* The system must support authentication and authorization (NFR09).
-- *US001.6* The system must support configurable persistence (in-memory and RDBMS) (NFR08).
+- **AC 041.1** The system must require the `WEATHER_PERSON` or `BACKOFFICE_OPERATOR` role.
+- **AC 041.2** Weather data must be linked to an existing ACA by its `AreaCode`.
+- **AC 041.3** A `WeatherSubArea` must be defined by `minLat`, `maxLat`, `minLon`, `maxLon`, `minAlt`, `maxAlt`; where `minLat < maxLat`, `minLon < maxLon`, `minAlt ≥ 0`, `minAlt < maxAlt`.
+- **AC 041.4** Wind data must include `windSpeedKnots > 0` and `windDirectionDeg ∈ [0, 360)`.
+- **AC 041.5** `temperatureCelsius` must be provided (no range restriction).
+- **AC 041.6** `validFrom` and `validTo` must be provided; `validTo > validFrom`.
+- **AC 041.7** Registered data must be persisted and retrievable by `AreaCode`.
+
+### Dependencies/References
+
+- US030 — auth infrastructure.
+- US050 — Air Control Area must exist before weather data can be registered.
 
 ---
+
 ## 3. Analysis
 
 ### 3.0 LLM Assistance
 
-There was no need for LLM assistance so no prompts were created.
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-## 4. Implementation
+**Prompt 1:** "How do I model weather data as a DDD aggregate in the EAPLI framework? What value objects are needed?"
 
-- Constraints were extracted from Section 5 and documented.
-- These rules are enforced through:
-    - code reviews
-    - repository structure
-    - development workflow
+**LLM suggestions adopted:**
+- `WeatherData` as the aggregate root — linked to an `AreaCode`
+- `WeatherSubArea` as a value object — encapsulates the geographic bounding box and altitude range
+- `WindCondition` as a value object — encapsulates speed and direction
+- All invariants enforced in constructors
 
-*Major commits:*
+**Decisions made by the team:**
+- `WeatherSubArea` holds coordinates as `double` and altitudes as `int` (metres)
+- `WindCondition` direction is `int` degrees; speed is `double` knots
+- `validFrom`/`validTo` are `LocalDateTime`
 
-- 6accec0ce1a8e32bb028cf983800b69af10ac2f6
+### 3.1 Domain Model
+
+| Concept | Type | Description |
+|---------|------|-------------|
+| `WeatherData` | Aggregate Root | Links ACA code, sub-area, wind, temperature, validity |
+| `WeatherSubArea` | Value Object | Geographic bounding box + altitude range |
+| `WindCondition` | Value Object | Speed (knots) + direction (degrees) |
+| `AreaCode` | Value Object | Identifies the Air Control Area |
+
+### 3.2 Invariants
+
+- `WeatherSubArea`: `minLat < maxLat`, `minLon < maxLon`, `minAlt >= 0`, `minAlt < maxAlt`
+- `WindCondition`: `speed > 0`, `direction ∈ [0, 360)`
+- `WeatherData`: `validTo > validFrom`
 
 ---
 
-## 5. Observations
+## 4. Design
 
-This US is transversal to all others and must be continuously validated throughout the project.
-For more information view the [Non-Functional Requirements](../../NonFunctionalRequirements.md) document.
+### 4.1 Realization
+
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `RegisterWeatherDataUI` | `aisafe.app.backoffice.console` | Collects all inputs; calls controller |
+| `RegisterWeatherDataController` | `aisafe.core` | Auth; creates VOs; delegates to repository |
+| `WeatherData` | `aisafe.core` | Aggregate root holding all weather info |
+| `WeatherSubArea` | `aisafe.core` | Value object — bounding box + altitudes |
+| `WindCondition` | `aisafe.core` | Value object — speed + direction |
+| `WeatherDataRepository` | `aisafe.core` | Repository interface |
+
+**Sequence Diagram:**
+
+![Sequence Diagram](sd_us041_register_weather_data.svg)
+
+### 4.2 Acceptance Tests
+
+**Test 1:** WeatherSubArea rejects invalid bounds.
+
+**Refers to:** AC 041.3
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureWeatherSubAreaRejectsInvalidBounds() {
+    new WeatherSubArea(10.0, 5.0, -10.0, -20.0, 0, 1000); // minLat > maxLat
+}
+```
+
+**Test 2:** WindCondition rejects direction out of range.
+
+**Refers to:** AC 041.4
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureWindConditionRejectsDirectionOutOfRange() {
+    new WindCondition(10.0, 360); // 360 is out of [0,360)
+}
+```
+
+**Test 3:** WeatherData rejects validTo before validFrom.
+
+**Refers to:** AC 041.6
+
+```java
+@Test(expected = IllegalArgumentException.class)
+public void ensureWeatherDataRejectsInvalidValidityPeriod() {
+    LocalDateTime now = LocalDateTime.now();
+    new WeatherData(AreaCode.valueOf("LPPT"), sub, wind, 15.0, now, now.minusHours(1));
+}
+```
+
 ---
+
+## 5. Implementation
+
+**Key files:**
+
+- `eapli.aisafe.weatherdata.application.RegisterWeatherDataController`
+- `eapli.aisafe.weatherdata.domain.WeatherData`
+- `eapli.aisafe.weatherdata.domain.WeatherSubArea`
+- `eapli.aisafe.weatherdata.domain.WindCondition`
+- `eapli.aisafe.weatherdata.repositories.WeatherDataRepository`
+- `eapli.aisafe.app.backoffice.console.presentation.weatherdata.RegisterWeatherDataUI`
+
+*Major commits: (to be filled after implementation)*
+
+---
+
+## 6. Integration/Demonstration
+
+1. Log in as Weather Person or Backoffice Operator
+2. Select "Register Weather Data" from menu
+3. Enter ACA code, sub-area bounds, wind data, temperature, validity period
+4. System validates and persists — confirms success
+5. Flight Control Operator can then query weather data for that ACA
+
+---
+
+## 7. Observations
+
+`WeatherSubArea` and `WindCondition` are pure value objects — all their validation logic is in their constructors. `WeatherData` delegates geographic scoping to `WeatherSubArea` and wind data to `WindCondition`, keeping the aggregate root thin. The `AreaCode` links to an ACA but does not reference the full `AirControlArea` aggregate — it holds only the code string, avoiding cross-aggregate references.
