@@ -1,0 +1,1022 @@
+[
+  {
+    "ID": "FA500",
+    "Leg": [
+      {
+        "Departure": "FA500",
+        "Arrival": "FA500d",
+        "Fuel": {
+          "Quantity": 4000,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 210,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 12.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 7.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 140,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -9,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 460,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 43.0,
+              "Longitude": -9.0,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 43.0,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "SL500",
+    "Leg": [
+      {
+        "Departure": "SL500",
+        "Arrival": "SL500d",
+        "Fuel": {
+          "Quantity": 3600,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 180,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 9.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 5.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 130,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -7,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 200,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 43.0,
+              "Longitude": -8.92,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 43.0,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "FA501",
+    "Leg": [
+      {
+        "Departure": "FA501",
+        "Arrival": "FA501d",
+        "Fuel": {
+          "Quantity": 4000,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 210,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 12.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 7.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 140,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -9,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 460,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 41.8,
+              "Longitude": -9.0,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 41.8,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "SL501",
+    "Leg": [
+      {
+        "Departure": "SL501",
+        "Arrival": "SL501d",
+        "Fuel": {
+          "Quantity": 3600,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 180,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 9.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 5.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 130,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -7,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 200,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 41.8,
+              "Longitude": -8.92,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 41.8,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "FA502",
+    "Leg": [
+      {
+        "Departure": "FA502",
+        "Arrival": "FA502d",
+        "Fuel": {
+          "Quantity": 4000,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 210,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 12.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 7.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 140,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -9,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 460,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 40.6,
+              "Longitude": -9.0,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 40.6,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "SL502",
+    "Leg": [
+      {
+        "Departure": "SL502",
+        "Arrival": "SL502d",
+        "Fuel": {
+          "Quantity": 3600,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 180,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 9.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 5.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 130,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -7,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 200,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 40.6,
+              "Longitude": -8.92,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 40.6,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "FA503",
+    "Leg": [
+      {
+        "Departure": "FA503",
+        "Arrival": "FA503d",
+        "Fuel": {
+          "Quantity": 4000,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 210,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 12.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 7.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 140,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -9,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 460,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 39.4,
+              "Longitude": -9.0,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 39.4,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "SL503",
+    "Leg": [
+      {
+        "Departure": "SL503",
+        "Arrival": "SL503d",
+        "Fuel": {
+          "Quantity": 3600,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 180,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 9.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 5.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 130,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -7,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 200,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 39.4,
+              "Longitude": -8.92,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 39.4,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "FA504",
+    "Leg": [
+      {
+        "Departure": "FA504",
+        "Arrival": "FA504d",
+        "Fuel": {
+          "Quantity": 4000,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 210,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 12.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 7.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 140,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 290,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -9,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 460,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 38.2,
+              "Longitude": -9.0,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 38.2,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "ID": "SL504",
+    "Leg": [
+      {
+        "Departure": "SL504",
+        "Arrival": "SL504d",
+        "Fuel": {
+          "Quantity": 3600,
+          "Unit": "kg"
+        },
+        "Flight Profile": {
+          "Climb": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 180,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 9.0,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateClimb": {
+                "Value": 5.0,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Descend": [
+            {
+              "Altitude": {
+                "Value": 0,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 130,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -5,
+                "Unit": "m/s"
+              }
+            },
+            {
+              "Altitude": {
+                "Value": 9200,
+                "Unit": "m"
+              },
+              "Speed": {
+                "Value": 220,
+                "Unit": "Knots"
+              },
+              "RateDescent": {
+                "Value": -7,
+                "Unit": "m/s"
+              }
+            }
+          ],
+          "Cruise": {
+            "Speed": {
+              "Value": 200,
+              "Unit": "Knots"
+            }
+          }
+        },
+        "Segments": [
+          {
+            "Mode": "cruise",
+            "Start": {
+              "Latitude": 38.2,
+              "Longitude": -8.92,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            },
+            "End": {
+              "Latitude": 38.2,
+              "Longitude": -2.5,
+              "Altitude": {
+                "Quantity": 9200,
+                "Unit": "m"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

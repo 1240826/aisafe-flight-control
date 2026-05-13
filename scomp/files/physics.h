@@ -1,16 +1,6 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
-/*
- * AISafe Flight Control Simulation
- * physics.h - physics engine (inline helpers)
- * SCOMP Sprint 2 - 2025/2026
- *
- * Aircraft move in straight lines between segment endpoints.
- * Speed and climb/descent rate are taken from the profile table
- * at the current altitude (linear interpolation).
- * Position integration uses the Equirectangular approximation.
- */
 
 #include "common.h"
 #include <math.h>

@@ -2,10 +2,6 @@
 #define JSON_PARSER_H
 
 /*
- * AISafe Flight Control Simulation
- * json_parser.h - minimal JSON flight plan reader
- * SCOMP Sprint 2 - 2025/2026
- *
  * Reads the JSON format used in the SCOMP input files.
  * Accepts a JSON array [ {...}, {...} ] or a single object { ... }.
  * No external libraries required.
@@ -284,4 +280,4 @@ static int load_plans(const char *path, FlightPlan *plans, int max)
     return n;
 }
 
-#endif /* JSON_PARSER_H */
+#endif
