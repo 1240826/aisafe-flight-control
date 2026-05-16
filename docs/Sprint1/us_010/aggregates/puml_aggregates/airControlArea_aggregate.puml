@@ -8,56 +8,62 @@ hide empty members
 
 package "AirControlArea_Aggregate" <<aggregate>> {
   class AirControlArea <<entity>> <<root>> {
+    maxAltitudeMetres : int
   }
   class AreaCode <<value object>> {
-    code
+    code : String
   }
   note right of AreaCode : unique in system (US050)
-  class Coordinates_ACA <<value object>> {
-    minLatitude
-    maxLatitude
-    minLongitude
-    maxLongitude
+  class AreaName <<value object>> {
+    name : String
   }
-  note right of Coordinates_ACA : Rectangle boundary.\nClient: "for sake of simplicity,\na rectangle"
+  note right of AreaName : unique (client clarification)
+  class BoundingBox <<value object>> {
+    minLat : double
+    maxLat : double
+    minLon : double
+    maxLon : double
+  }
+  note right of BoundingBox : Rectangle boundary.\nClient: "for sake of simplicity,\na rectangle".\nInvariant: minLat < maxLat, minLon < maxLon
 
   AirControlArea *---- AreaCode : identifiedBy
-  AirControlArea *---- Coordinates_ACA : boundedBy
+  AirControlArea *---- AreaName : namedAs
+  AirControlArea *---- BoundingBox : boundedBy
 }
 
 package "Airport_Aggregate" <<aggregate>> {
   class Airport <<entity>> <<root>> {
-    name
-    town
-    country
+    name : String
+    city : String
+    country : String
   }
-  class IATACode <<value object>> {
-    code
+  class AirportIATA <<value object>> {
+    iataCode : String
   }
-  class ICAOCode <<value object>> {
-    code
+  class AirportICAO <<value object>> {
+    icaoCode : String
   }
-  class Coordinates_Apt <<value object>> {
-    latitude
-    longitude
+  class Coordinates <<value object>> {
+    latitude : double
+    longitude : double
   }
-  note right of Coordinates_Apt : Coordinates\n(same class as in Simulation)
+  note right of Coordinates : Shared VO — used by Airport\nand Simulation.\nlat ∈ [-90,90], lon ∈ [-180,180]
   class Elevation <<value object>> {
-    value
-    unit
+    value : double
+    unit : String
   }
-  note right of Elevation : metres above sea level (US052)
-  Airport *-- IATACode : identifiedBy
-  Airport *-- ICAOCode : identifiedBy
-  Airport *-- Coordinates_Apt : locatedAt
+  note right of Elevation : metres above sea level.\nvalue > 0 (US052.6)
+  Airport *-- AirportIATA : identifiedBy
+  Airport *-- AirportICAO : identifiedBy
+  Airport *-- Coordinates : locatedAt
   Airport *-- Elevation : situatedAt
 }
 
 
 package "Collaborator_Aggregate" <<aggregate>> {
   abstract class Collaborator <<entity>> <<root>> {
-    name
-    position
+    name : String
+    position : String
   }
 
   class ATCCollaborator <<entity>> {
@@ -67,16 +73,16 @@ package "Collaborator_Aggregate" <<aggregate>> {
   class WeatherPerson <<entity>> {
   }
   class SecurityClearance <<value object>> {
-    expiryDate
+    expiryDate : LocalDate
   }
   note right of SecurityClearance : auto-expires.\nUpdatable by Admin/Backoffice (sec. 3.1.1)
   class SkillsAssessment <<value object>> {
-    assessmentDate
+    assessmentDate : LocalDate
   }
   note right of SkillsAssessment : periodic, every 5 years (sec. 3.1.1)
   class SystemUser <<entity>> {
   }
-  note left of SystemUser : EAPLI framework boundary.\nStores: email (unique, sec. 3.1.1), name, phoneNumber (sec. 3.1.1).\nInternal details managed by the framework.
+  note left of SystemUser : EAPLI framework boundary.\nStores: email (unique, sec. 3.1.1), name, phoneNumber.\nInternal details managed by the framework.
   Collaborator <|-- ATCCollaborator
   Collaborator <|-- FlightControlOperator
   Collaborator <|-- WeatherPerson
@@ -88,49 +94,56 @@ package "Collaborator_Aggregate" <<aggregate>> {
 
 package "WeatherData_Aggregate" <<aggregate>> {
   class WeatherData <<entity>> <<root>> {
-    recordedDateTime
-    sourceProvider
+    temperatureCelsius : double
+    validFrom : LocalDateTime
+    validTo : LocalDateTime
   }
-  note right of WeatherData : US042: "data might be from\nmultiple external providers"
+  note right of WeatherData : US042: "data might be from\nmultiple external providers".\nClient: uses validFrom/validTo pair.
   class WindCondition <<value object>> {
-    directionAngle
-    speed
+    directionDegrees : int
+    speedKnots : double
   }
-  class Coordinates_WD <<value object>> {
-    latitude
-    longitude
+  class WeatherSubArea <<value object>> {
+    minLat : double
+    maxLat : double
+    minLon : double
+    maxLon : double
   }
-  note right of Coordinates_WD : Coordinates (same class as\nin Airport and Simulation).\nCarries location: "weather\nnot same everywhere in area"
-  WeatherData *-- "1..*" WindCondition : records
-  WindCondition *-- Coordinates_WD : locatedAt
+  note right of WeatherSubArea : Weather sub-rectangle inside the ACA.\n"weather not same everywhere in area"
+  WeatherData *-- WindCondition : records
+  WeatherData *-- WeatherSubArea : coversSubArea
 }
 
 
 package "Simulation_Aggregate" <<aggregate>> {
   class Simulation <<entity>> <<root>> {
+    id : Long
   }
   class SimulationTimeRange <<value object>> {
-    startDateTime
-    endDateTime
+    startDateTime : LocalDateTime
+    endDateTime : LocalDateTime
   }
-  note right of SimulationTimeRange : Invariant: start < end (US100)
+  note right of SimulationTimeRange : Invariant: start < end
   class SafetyThreshold <<value object>> {
-    value
-    unit
+    value : double
+    unit : String
   }
+  note right of SafetyThreshold : value > 0
   class SimulationReport <<value object>> {
-    totalFlights
+    filePath : String
+    content : String
   }
-  note right of SimulationReport : Final document received\nfrom C module. Immutable.\nUS109/US111
+  note right of SimulationReport : Stores the SCOMP output file verbatim.\nfilePath: original file path.\ncontent: full text content (CLOB).\nImmutable.
   enum ValidationResult {
-    passed
-    failed
+    PASSED
+    FAILED
+    PENDING
   }
 
   Simulation *-- SimulationTimeRange : scheduledFor
   Simulation *-- SafetyThreshold : boundedBy
   Simulation *-- SimulationReport : produces
-  SimulationReport --> ValidationResult : concludes
+  Simulation --> ValidationResult : concludes
 }
 
 

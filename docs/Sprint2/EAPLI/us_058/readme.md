@@ -73,31 +73,17 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Removing a non-existent variant is rejected.
+**AT1 — Removing a non-existent variant is rejected (US058.3)**
 
-**Refers to:** US058.3 / invariant
+Given an `AircraftModel` with no engine variants (or without the specified engine),
+When the admin attempts to remove a variant that does not exist in the model,
+Then the system rejects the operation with an error indicating the variant was not found.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureRemovingNonExistentVariantIsRejected() {
-    AircraftModel model = createTestAircraftModel(); // no variants
-    model.removeVariant(nonExistentEngineId);
-}
-```
+**AT2 — Successful variant removal (US058.4)**
 
-**Test 2:** After removal, the variant is no longer present.
-
-**Refers to:** US058.4
-
-```java
-@Test
-public void ensureVariantIsRemovedSuccessfully() {
-    AircraftModel model = createTestAircraftModel();
-    model.addVariant(engineId, MotorizationType.TURBOFAN);
-    model.removeVariant(engineId);
-    assertFalse(model.hasVariant(engineId));
-}
-```
+Given an `AircraftModel` with one engine variant previously added,
+When the admin removes that variant,
+Then the variant is no longer present in the `AircraftModel`'s variant list, and the `EngineModel` aggregate itself remains undeleted and fully operational.
 
 ---
 

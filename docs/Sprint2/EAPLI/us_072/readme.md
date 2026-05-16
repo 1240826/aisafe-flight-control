@@ -65,39 +65,23 @@ This task was assigned in Sprint 2. The objective is to allow an Admin to list a
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Only aircraft of the specified company are returned.
+**AT1 — Only aircraft of the selected company are returned (US072.2)**
 
-```java
-@Test
-public void ensureOnlyAircraftOfCompanyAreReturned() {
-    Iterable<Aircraft> result = controller.fleetOfCompany(companyId);
-    for (Aircraft a : result) {
-        assertEquals(companyId, a.companyId());
-    }
-}
-```
+Given two companies each with at least one aircraft in the system,
+When the admin selects one company and requests the fleet list,
+Then the system returns only aircraft registered to that company — aircraft of the other company do not appear.
 
-**Test 2:** Empty list when company has no aircraft.
+**AT2 — Empty fleet message shown when company has no aircraft (US072.4)**
 
-```java
-@Test
-public void ensureEmptyListForCompanyWithNoAircraft() {
-    Iterable<Aircraft> result = controller.fleetOfCompany(newCompanyId);
-    assertFalse(result.iterator().hasNext());
-}
-```
+Given a company that has been registered but has no aircraft added to its fleet,
+When the admin requests the fleet list for that company,
+Then the system displays an appropriate message indicating no aircraft are found for this company.
 
-**Test 3:** Both ACTIVE and DECOMMISSIONED aircraft are included.
+**AT3 — Both ACTIVE and DECOMMISSIONED aircraft are included in the fleet list (US072.5)**
 
-```java
-@Test
-public void ensureFleetIncludesDecommissionedAircraft() {
-    // given: one active, one decommissioned aircraft for companyId
-    Iterable<Aircraft> result = controller.fleetOfCompany(companyId);
-    long count = StreamSupport.stream(result.spliterator(), false).count();
-    assertEquals(2, count);
-}
-```
+Given a company that has both an active aircraft and a decommissioned aircraft,
+When the admin requests the fleet list for that company,
+Then the system returns both aircraft regardless of their operational status — the full fleet history is shown.
 
 ---
 

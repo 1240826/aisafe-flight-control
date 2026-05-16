@@ -72,39 +72,23 @@ This task was assigned in Sprint 2. The objective is to allow an Admin to decomm
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Double decommission is rejected.
+**AT1 — Double decommission is rejected (US071.4)**
 
-```java
-@Test(expected = IllegalStateException.class)
-public void ensureDoubleDecommissionIsRejected() {
-    Aircraft aircraft = createTestAircraft();
-    aircraft.decommission();
-    aircraft.decommission();
-}
-```
+Given an aircraft that has already been decommissioned,
+When the admin attempts to decommission it a second time,
+Then the system rejects the operation with an error indicating the aircraft is already in DECOMMISSIONED status.
 
-**Test 2:** Status transitions correctly.
+**AT2 — Status transitions correctly from ACTIVE to DECOMMISSIONED (US071.3)**
 
-```java
-@Test
-public void ensureDecommissionedAircraftIsInactive() {
-    Aircraft aircraft = createTestAircraft();
-    assertTrue(aircraft.isActive());
-    aircraft.decommission();
-    assertFalse(aircraft.isActive());
-    assertEquals(OperationalStatus.DECOMMISSIONED, aircraft.operationalStatus());
-}
-```
+Given an active aircraft in the system,
+When the admin selects it and confirms the decommission action,
+Then the aircraft's operational status changes to DECOMMISSIONED and `isActive()` returns false.
 
-**Test 3:** New aircraft starts ACTIVE.
+**AT3 — New aircraft starts in ACTIVE status (US070.7)**
 
-```java
-@Test
-public void ensureNewAircraftIsActive() {
-    Aircraft aircraft = createTestAircraft();
-    assertEquals(OperationalStatus.ACTIVE, aircraft.operationalStatus());
-}
-```
+Given a newly created aircraft added via US070,
+When the system persists it,
+Then the aircraft's initial operational status is ACTIVE and `isActive()` returns true.
 
 ---
 

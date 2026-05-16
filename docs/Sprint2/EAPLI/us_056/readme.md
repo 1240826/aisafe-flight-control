@@ -106,49 +106,29 @@ Cross-aggregate: `EngineModel` → `Manufacturer` (by ID only)
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** `EngineName` rejects null.
+**AT1 — EngineName rejects null (US056.2)**
 
-**Refers to:** US056.2 / invariant
+Given a null value for the engine name,
+When the system attempts to create the `EngineName` value object,
+Then the system rejects the creation with an error indicating the engine name must not be null or empty.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureEngineNameRejectsNull() {
-    new EngineName(null);
-}
-```
+**AT2 — Power rejects non-positive value (US056.4)**
 
-**Test 2:** `Power` rejects non-positive value.
+Given a `Power` value of 0.0 kW,
+When the system attempts to create the `Power` value object,
+Then the system rejects the creation with an error indicating the power value must be positive.
 
-**Refers to:** US056.4 / invariant
+**AT3 — Thrust rejects non-positive value (US056.5)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensurePowerRejectsNonPositiveValue() {
-    new Power(0.0, "kW");
-}
-```
+Given a static `Thrust` value of -100 kN,
+When the system attempts to create the `Thrust` value object,
+Then the system rejects the creation with an error indicating the thrust value must be positive.
 
-**Test 3:** `Thrust` rejects non-positive value.
+**AT4 — TSFC rejects empty unit (US056.6)**
 
-**Refers to:** US056.5 / invariant
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureThrustRejectsNonPositiveValue() {
-    new Thrust(-100.0, "kN", "static");
-}
-```
-
-**Test 4:** `TSFC` rejects empty unit.
-
-**Refers to:** US056.6 / invariant
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureTSFCRejectsEmptyUnit() {
-    new TSFC(0.05, "");
-}
-```
+Given a `TSFC` value object with an empty unit string,
+When the system attempts to create the `TSFC` value object,
+Then the system rejects the creation with an error indicating the unit must not be empty.
 
 ---
 

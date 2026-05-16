@@ -85,32 +85,23 @@ A second persistence call saves `UserSecurityProfile(username, securityClearance
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Duplicate username is rejected.
+**AT1 — Duplicate username is rejected (US031.3)**
 
-**Refers to:** US031.3
+Given a user with username "user1" already registered in the system,
+When the admin attempts to register a second user with the same username "user1",
+Then the system rejects the second registration with an error indicating the username is already taken.
 
-```java
-@Test(expected = IntegrityViolationException.class)
-public void ensureDuplicateUsernameIsRejected() {
-    controller.addUser("user1", "Password1!", "John", "Doe", "j@aisafe.com",
-        Set.of(AISafeRoles.ADMIN), LocalDate.now().plusYears(1));
-    controller.addUser("user1", "Password2!", "Jane", "Doe", "k@aisafe.com",
-        Set.of(AISafeRoles.ADMIN), LocalDate.now().plusYears(1));
-}
-```
+**AT2 — Only ADMIN can register users (US031.1)**
 
-**Test 2:** User without ADMIN role cannot register users.
+Given a user authenticated with the WEATHER_PERSON role,
+When they attempt to register a new system user,
+Then the system rejects the operation with an authorization error indicating the ADMIN role is required.
 
-**Refers to:** US031.1
+**AT3 — Security clearance expiry date is mandatory (US031.7)**
 
-```java
-@Test(expected = IllegalStateException.class)
-public void ensureOnlyAdminCanRegisterUsers() {
-    // authenticated as WEATHER_PERSON
-    controller.addUser("u1", "Pass1!", "A", "B", "a@b.com",
-        Set.of(AISafeRoles.WEATHER_PERSON), LocalDate.now().plusYears(1));
-}
-```
+Given all required user fields are provided,
+When the admin submits the user registration without a `securityClearanceExpiryDate`,
+Then the system rejects the registration with an error indicating the security clearance expiry date is required.
 
 ---
 

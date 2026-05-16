@@ -33,17 +33,9 @@
 		<antlr4.version>4.13.1</antlr4.version>
 	</properties>
 	<modules>
-		<module>exemplo.app.backoffice.console</module>
-		<module>exemplo.app.user.console</module>
-		<module>exemplo.app.other.console</module>
-		<module>exemplo.app.common.console</module>
-		<module>exemplo.app.bootstrap</module>
-		<module>exemplo.bootstrappers</module>
-		<module>exemplo.core</module>
-		<module>exemplo.infrastructure.application</module>
-		<module>exemplo.persistence.impl</module>
-
-		<module>aisafe.dsl</module>
+		<module>core</module>
+		<module>persistence</module>
+		<module>app</module>
 	</modules>
 	<dependencies>
 		<dependency>
@@ -93,6 +85,14 @@
 			<version>5.10.1</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- Mockito for controller unit tests -->
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-junit-jupiter</artifactId>
+			<version>5.7.0</version>
+			<scope>test</scope>
+		</dependency>
+
 		<!-- drivers for H2 -->
 		<dependency>
 			<groupId>com.h2database</groupId>
@@ -121,18 +121,14 @@
 	</repositories>
 	<build>
 		<plugins>
-			<!--
+			<!-- enable Mockito inline mocking on Java 23+ -->
 			<plugin>
-				<groupId>org.pitest</groupId>
-				<artifactId>pitest-maven</artifactId>
-				<version>1.6.7</version>
-			</plugin>
-			-->
-			<!-- dependency version helper -->
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>versions-maven-plugin</artifactId>
-				<version>2.16.2</version>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.2.5</version>
+				<configuration>
+					<argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
+				</configuration>
 			</plugin>
 			<!-- test coverage -->
 			<plugin>
@@ -197,14 +193,6 @@
 				<artifactId>maven-javadoc-plugin</artifactId>
 				<version>3.6.3</version>
 				<configuration>
-					<!-- UML Taglet JDK 8 -->
-					<!-- <source>1.8</source>
-					<javadocVersion>1.8.0</javadocVersion>
-					<taglet>org.jdrupes.taglets.plantUml.Taglet</taglet> 
-						<tagletArtifact> <groupId>org.jdrupes.taglets</groupId>
-					<artifactId>plantuml-taglet</artifactId> 
-						<version>1.0.5</version> </tagletArtifact> -->
-
 					<!-- UML DocLet JDK 9+ -->
 					<doclet>nl.talsmasoftware.umldoclet.UMLDoclet</doclet>
 					<docletArtifact>
@@ -217,10 +205,9 @@
 					<show>private</show>
 					<doclint>none</doclint>
 					<detectOfflineLinks>false</detectOfflineLinks>
+					<failOnError>false</failOnError>
 					<additionalOptions>
 						<additionalOption>-Xdoclint:none</additionalOption>
-						<!-- Specify each diagram option here as an
-						additionOption tag. -->
 					</additionalOptions>
 					<additionalJOption>-Xdoclint:none</additionalJOption>
 				</configuration>

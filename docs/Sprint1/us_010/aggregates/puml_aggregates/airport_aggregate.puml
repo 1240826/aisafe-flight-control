@@ -7,48 +7,56 @@ hide empty members
 
 package "AirControlArea_Aggregate" <<aggregate>> {
   class AirControlArea <<entity>> <<root>> {
+    maxAltitudeMetres : int
   }
   class AreaCode <<value object>> {
-    code
+    code : String
   }
   note right of AreaCode : unique in system (US050)
-  class Coordinates_ACA <<value object>> {
-    minLatitude
-    maxLatitude
-    minLongitude
-    maxLongitude
+  class AreaName <<value object>> {
+    name : String
   }
-  note right of Coordinates_ACA : Rectangle boundary.\nClient: "for sake of simplicity,\na rectangle"
+  note right of AreaName : unique (client clarification)
+  class BoundingBox <<value object>> {
+    minLat : double
+    maxLat : double
+    minLon : double
+    maxLon : double
+  }
+  note right of BoundingBox : Rectangle boundary.\nClient: "for sake of simplicity,\na rectangle".\nInvariant: minLat < maxLat, minLon < maxLon
 
   AirControlArea *---- AreaCode : identifiedBy
-  AirControlArea *---- Coordinates_ACA : boundedBy
+  AirControlArea *---- AreaName : namedAs
+  AirControlArea *---- BoundingBox : boundedBy
 }
 
 package "Airport_Aggregate" <<aggregate>> {
   class Airport <<entity>> <<root>> {
-    name
-    town
-    country
+    name : String
+    city : String
+    country : String
   }
-  class IATACode <<value object>> {
-    code
+  class AirportIATA <<value object>> {
+    iataCode : String
   }
-  class ICAOCode <<value object>> {
-    code
+  note right of AirportIATA : 3 uppercase letters (A-Z)\nnormalises lowercase input
+  class AirportICAO <<value object>> {
+    icaoCode : String
   }
-  class Coordinates_Apt <<value object>> {
-    latitude
-    longitude
+  note right of AirportICAO : 4 uppercase letters
+  class Coordinates <<value object>> {
+    latitude : double
+    longitude : double
   }
-  note right of Coordinates_Apt : Coordinates\n(same class as in Simulation)
+  note right of Coordinates : Shared VO — used by Airport\nand Simulation.\nlat ∈ [-90,90], lon ∈ [-180,180]
   class Elevation <<value object>> {
-    value
-    unit
+    value : double
+    unit : String
   }
-  note right of Elevation : metres above sea level (US052)
-  Airport *-- IATACode : identifiedBy
-  Airport *-- ICAOCode : identifiedBy
-  Airport *-- Coordinates_Apt : locatedAt
+  note right of Elevation : metres above sea level.\nvalue > 0 (US052.6)
+  Airport *-- AirportIATA : identifiedBy
+  Airport *-- AirportICAO : identifiedBy
+  Airport *-- Coordinates : locatedAt
   Airport *-- Elevation : situatedAt
 }
 

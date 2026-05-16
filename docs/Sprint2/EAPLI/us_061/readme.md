@@ -107,27 +107,23 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** `SecurityClearance` rejects expiry date in the past.
+**AT1 — SecurityClearance rejects past expiry date (US061.6)**
 
-**Refers to:** US061.6 / invariant
+Given a `SecurityClearance` with an expiry date set to yesterday (a date in the past),
+When the system attempts to create the `SecurityClearance` value object,
+Then the system rejects the creation with an error indicating the expiry date must be in the future.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureSecurityClearanceRejectsPastExpiryDate() {
-    new SecurityClearance(LocalDate.now().minusDays(1));
-}
-```
+**AT2 — Collaborator requires non-empty name (US061.3)**
 
-**Test 2:** `Collaborator` requires non-empty name.
+Given an attempt to register a collaborator with an empty name,
+When the system attempts to create the `Collaborator`,
+Then the system rejects the creation with an error indicating the collaborator name must not be empty.
 
-**Refers to:** US061.3 / invariant
+**AT3 — ATCCollaborator must be linked to an existing company (US061.4)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureCollaboratorRequiresName() {
-    new ATCCollaborator("", "Senior ATC", systemUser, companyId, validSC, validSA);
-}
-```
+Given an admin attempts to create an `ATCCollaborator` referencing a company IATA code that does not exist in the system,
+When the controller performs the lookup,
+Then the system rejects the creation with an error indicating the specified air transport company does not exist.
 
 ---
 

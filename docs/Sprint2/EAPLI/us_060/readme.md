@@ -41,32 +41,32 @@ This task was assigned in Sprint 2. It is the first time this task is being deve
 
 Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-**Prompt 1:** "Design RegisterAirTransportCompany for EAPLI. Three individually-unique fields: CompanyName (VO), IATACode (VO, 2 letters), ICAOCode (VO, 2-3 letters). Controller checks all three uniqueness constraints."
+**Prompt 1:** "Design RegisterAirTransportCompany for EAPLI. Three individually-unique fields: name (plain String), CompanyIATA (VO, 2 letters), CompanyICAO (VO, 2-3 letters). Controller checks all three uniqueness constraints."
 
 **LLM suggestions adopted:**
 - Three separate repository queries before creation: `findByName`, `findByIata`, `findByIcao`
-- `CompanyName`, `IATACode`, `ICAOCode` as VOs validating format in constructors
+- `CompanyIATA` and `CompanyICAO` as VOs validating format in constructors
 
 **Decisions made by the team:**
 - Three independent uniqueness checks — client confirmed each field must be individually unique
-- `IATACode` for companies is 2 letters (different from airport IATA which is 3)
-- `ICAOCode` for companies is 2–3 letters (different from airport ICAO which is 4)
+- `CompanyIATA` for companies is 2 letters (different from `AirportIATA` which is 3)
+- `CompanyICAO` for companies is 2–3 letters (different from `AirportICAO` which is 4)
+- Company name is a plain String attribute (non-empty, unique — enforced by controller)
 
 ### 3.1 Domain Model Navigation
 
 **Aggregate: AirTransportCompany**
-- Root: `AirTransportCompany`
-- VO: `CompanyName` — validates non-empty; unique
-- VO: `IATACode` — validates 2 uppercase letters; unique
-- VO: `ICAOCode` — validates 2–3 uppercase letters; unique
+- Root: `AirTransportCompany` — `name` (plain String, non-empty, unique)
+- VO: `CompanyIATA` — validates 2 uppercase letters; unique identity
+- VO: `CompanyICAO` — validates 2–3 uppercase letters; unique
 
 ### 3.2 Invariants
 
-| VO | Invariant |
-|----|-----------|
-| `CompanyName` | not null, not empty; unique in system |
-| `IATACode` (company) | exactly 2 uppercase letters; unique |
-| `ICAOCode` (company) | 2–3 uppercase letters; unique |
+| VO / Field | Invariant |
+|------------|-----------|
+| `name` | not null, not empty; unique in system (controller check) |
+| `CompanyIATA` | exactly 2 uppercase letters; unique |
+| `CompanyICAO` | 2–3 uppercase letters; unique |
 
 ---
 
@@ -81,9 +81,8 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 | `RegisterAirTransportCompanyUI` | `aisafe.app.backoffice.console` | Collects input; calls controller |
 | `RegisterAirTransportCompanyController` | `aisafe.core` | Auth; 3 uniqueness checks; creates company; saves |
 | `AirTransportCompany` | `aisafe.core` | Aggregate root |
-| `CompanyName` | `aisafe.core` | VO — validates non-empty |
-| `IATACode` | `aisafe.core` | VO — validates 2 uppercase letters (company version) |
-| `ICAOCode` | `aisafe.core` | VO — validates 2–3 uppercase letters (company version) |
+| `CompanyIATA` | `aisafe.core` | VO — validates 2 uppercase letters (company IATA, distinct from AirportIATA) |
+| `CompanyICAO` | `aisafe.core` | VO — validates 2–3 uppercase letters (company ICAO, distinct from AirportICAO) |
 | `AirTransportCompanyRepository` | `aisafe.core` | Repository interface |
 | `JpaAirTransportCompanyRepository` | `aisafe.persistence.impl` | JPA implementation |
 | `InMemoryAirTransportCompanyRepository` | `aisafe.persistence.impl` | In-memory implementation |
@@ -94,38 +93,23 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** `IATACode` (company) rejects wrong length.
+**AT1 — CompanyIATA rejects wrong length (US060.3)**
 
-**Refers to:** US060.3 / invariant
+Given a company IATA code with 3 characters (e.g., "TAP"),
+When the system attempts to create a `CompanyIATA` value object,
+Then the system rejects the creation with an error indicating company IATA codes must be exactly 2 uppercase letters.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureCompanyIATACodeRejectsWrongLength() {
-    new IATACode("TAP"); // 3 letters — company IATA must be 2
-}
-```
+**AT2 — Company name rejects empty (US060.2)**
 
-**Test 2:** `CompanyName` rejects empty.
+Given an empty string as the company name,
+When the system attempts to register the air transport company,
+Then the system rejects the creation with an error indicating the company name must not be empty.
 
-**Refers to:** US060.2 / invariant
+**AT3 — CompanyICAO rejects code longer than 3 letters (US060.4)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureCompanyNameRejectsEmpty() {
-    new CompanyName("");
-}
-```
-
-**Test 3:** `ICAOCode` (company) rejects code longer than 3 letters.
-
-**Refers to:** US060.4 / invariant
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureCompanyICAOCodeRejectsTooLong() {
-    new ICAOCode("TAPC"); // 4 chars — company ICAO max is 3
-}
-```
+Given a company ICAO code with 4 characters (e.g., "TAPC"),
+When the system attempts to create a `CompanyICAO` value object,
+Then the system rejects the creation with an error indicating company ICAO codes must be 2–3 uppercase letters.
 
 ---
 
@@ -133,10 +117,9 @@ public void ensureCompanyICAOCodeRejectsTooLong() {
 
 **Key new files:**
 
-- `eapli.aisafe.airtransportcompany.domain.AirTransportCompany` — aggregate root
-- `eapli.aisafe.airtransportcompany.domain.CompanyName` — VO
-- `eapli.aisafe.airtransportcompany.domain.IATACode` — VO (2 letters, company version)
-- `eapli.aisafe.airtransportcompany.domain.ICAOCode` — VO (2–3 letters, company version)
+- `eapli.aisafe.company.domain.AirTransportCompany` — aggregate root
+- `eapli.aisafe.company.domain.CompanyIATA` — VO (2 letters, distinct from AirportIATA)
+- `eapli.aisafe.company.domain.CompanyICAO` — VO (2–3 letters, distinct from AirportICAO)
 - `eapli.aisafe.airtransportcompany.repositories.AirTransportCompanyRepository` — interface
 - `eapli.aisafe.airtransportcompany.application.RegisterAirTransportCompanyController` — controller
 - `eapli.aisafe.app.backoffice.console.presentation.airtransportcompany.RegisterAirTransportCompanyUI` — UI
@@ -158,6 +141,6 @@ public void ensureCompanyICAOCodeRejectsTooLong() {
 
 ## 7. Observations
 
-The IATA and ICAO codes for air transport companies have different lengths than airport IATA/ICAO codes (airport: 3 + 4 letters; company: 2 + 2–3 letters). These are different VO classes despite the same concept name.
+The IATA and ICAO codes for air transport companies have different lengths than airport codes (airport: 3 + 4 letters; company: 2 + 2–3 letters). These are implemented as separate VO classes — `CompanyIATA` / `CompanyICAO` in package `eapli.aisafe.company.domain`, distinct from `AirportIATA` / `AirportICAO` in `eapli.aisafe.airport.domain`.
 
 All three fields are individually unique — three separate controller-level checks with three separate repository queries.

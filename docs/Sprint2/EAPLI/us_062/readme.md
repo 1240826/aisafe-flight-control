@@ -72,27 +72,17 @@ UI extends `AbstractListUI<Collaborator>`. The `elements()` method calls the con
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Only collaborators of the specified company are returned.
+**AT1 — Only collaborators of the specified company are returned (US062.2)**
 
-```java
-@Test
-public void ensureOnlyCollaboratorsOfCompanyAreReturned() {
-    Iterable<Collaborator> result = controller.collaboratorsOfCompany(companyId);
-    for (Collaborator c : result) {
-        assertEquals(companyId, ((ATCCollaborator) c).companyId());
-    }
-}
-```
+Given two companies exist in the system, each with at least one collaborator,
+When the admin selects one company and requests the collaborator list,
+Then the system returns only the collaborators associated with the selected company — no collaborators from the other company appear.
 
-**Test 2:** Empty list when company has no collaborators.
+**AT2 — Empty list shown when company has no collaborators (US062.4)**
 
-```java
-@Test
-public void ensureEmptyListForCompanyWithNoCollaborators() {
-    Iterable<Collaborator> result = controller.collaboratorsOfCompany(newCompanyId);
-    assertFalse(result.iterator().hasNext());
-}
-```
+Given a company that has been registered but has no collaborators added yet,
+When the admin selects that company and requests the collaborator list,
+Then the system displays an appropriate message indicating no collaborators are associated with this company.
 
 ---
 

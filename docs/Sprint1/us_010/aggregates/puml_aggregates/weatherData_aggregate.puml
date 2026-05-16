@@ -7,21 +7,22 @@ hide empty members
 
 package "AirControlArea_Aggregate" <<aggregate>> {
   class AirControlArea <<entity>> <<root>> {
+    maxAltitudeMetres : int
   }
   class AreaCode <<value object>> {
-    code
+    code : String
   }
   note right of AreaCode : unique in system (US050)
-  class Coordinates_ACA <<value object>> {
-    minLatitude
-    maxLatitude
-    minLongitude
-    maxLongitude
+  class BoundingBox <<value object>> {
+    minLat : double
+    maxLat : double
+    minLon : double
+    maxLon : double
   }
-  note right of Coordinates_ACA : Rectangle boundary.\nClient: "for sake of simplicity,\na rectangle"
+  note right of BoundingBox : Rectangle boundary.\nInvariant: minLat < maxLat, minLon < maxLon
 
   AirControlArea *---- AreaCode : identifiedBy
-  AirControlArea *---- Coordinates_ACA : boundedBy
+  AirControlArea *---- BoundingBox : boundedBy
 }
 
 
@@ -42,30 +43,24 @@ package "Flight_Aggregate" <<aggregate>> {
     regular
     charter
   }
-  note right of FlightType : Invariant: if regular then\nDepartureSchedule must be\nRegularSchedule, and vice versa.
 
   abstract class DepartureSchedule <<value object>> {
   }
 
   class RegularSchedule <<value object>> {
   }
-  note right of RegularSchedule : Used when FlightType = regular
-
   class ScheduleEntry <<value object>> {
     dayOfWeek
     departureTime
   }
-  note right of ScheduleEntry : Client: "Monday 12:00;\nTuesday 12:30; Thursday 11:30"
 
   class CharterSchedule <<value object>> {
     departureDate
     departureTime
   }
-  note right of CharterSchedule : Used when FlightType = charter.\nClient: "single instance."
 
   class FlightPlan <<entity>> {
   }
-  note right of FlightPlan : Lifecycle: draft -> validated\nUS080 creates, US082 adds\nweather, US085 validates.
 
   enum FlightPlanStatus {
     draft
@@ -92,21 +87,25 @@ package "Flight_Aggregate" <<aggregate>> {
 
 package "WeatherData_Aggregate" <<aggregate>> {
   class WeatherData <<entity>> <<root>> {
-    recordedDateTime
-    sourceProvider
+    temperatureCelsius : double
+    validFrom : LocalDateTime
+    validTo : LocalDateTime
   }
-  note right of WeatherData : US042: "data might be from\nmultiple external providers"
+  note right of WeatherData : US042: "data might be from\nmultiple external providers".\nClient: uses validFrom/validTo pair.\nIdentity: auto-generated Long.
   class WindCondition <<value object>> {
-    directionAngle
-    speed
+    directionDegrees : int
+    speedKnots : double
   }
-  class Coordinates_WD <<value object>> {
-    latitude
-    longitude
+  note right of WindCondition : directionDegrees ∈ [0,360)
+  class WeatherSubArea <<value object>> {
+    minLat : double
+    maxLat : double
+    minLon : double
+    maxLon : double
   }
-  note right of Coordinates_WD : Coordinates (same class as\nin Airport and Simulation).\nCarries location: "weather\nnot same everywhere in area"
-  WeatherData *-- "1..*" WindCondition : records
-  WindCondition *-- Coordinates_WD : locatedAt
+  note right of WeatherSubArea : Sub-rectangle inside the ACA.\n"weather not same everywhere in area"
+  WeatherData *-- WindCondition : records
+  WeatherData *-- WeatherSubArea : coversSubArea
 }
 
 Flight "*" ---> "0..1" WeatherData : usesWeather >
@@ -114,29 +113,32 @@ note on link : US082: weather added\nto flight plan.\nRises to root — FlightPl
 
 package "Simulation_Aggregate" <<aggregate>> {
   class Simulation <<entity>> <<root>> {
+    id : Long
   }
   class SimulationTimeRange <<value object>> {
-    startDateTime
-    endDateTime
+    startDateTime : LocalDateTime
+    endDateTime : LocalDateTime
   }
-  note right of SimulationTimeRange : Invariant: start < end (US100)
+  note right of SimulationTimeRange : Invariant: start < end
   class SafetyThreshold <<value object>> {
-    value
-    unit
+    value : double
+    unit : String
   }
   class SimulationReport <<value object>> {
-    totalFlights
+    filePath : String
+    content : String
   }
-  note right of SimulationReport : Final document received\nfrom C module. Immutable.\nUS109/US111
+  note right of SimulationReport : SCOMP output file stored verbatim.\nImmutable.
   enum ValidationResult {
-    passed
-    failed
+    PASSED
+    FAILED
+    PENDING
   }
 
   Simulation *-- SimulationTimeRange : scheduledFor
   Simulation *-- SafetyThreshold : boundedBy
   Simulation *-- SimulationReport : produces
-  SimulationReport --> ValidationResult : concludes
+  Simulation --> ValidationResult : concludes
 }
 
 WeatherData "*" ---> "1" AirControlArea : registeredFor >

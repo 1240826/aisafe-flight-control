@@ -86,31 +86,17 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Adding the same engine twice is rejected.
+**AT1 — Duplicate engine variant is rejected (US057.3)**
 
-**Refers to:** US057.3 / invariant
+Given an `AircraftModel` that already has a variant for a specific engine model,
+When the admin attempts to add the same engine model again to the same `AircraftModel`,
+Then the system rejects the addition with an error indicating that the engine model is already associated with this aircraft model.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureDuplicateEngineIsRejected() {
-    AircraftModel model = createTestAircraftModel();
-    model.addVariant(engineId, MotorizationType.TURBOFAN);
-    model.addVariant(engineId, MotorizationType.TURBOFAN); // duplicate
-}
-```
+**AT2 — Mixed motorization types are rejected (US057.4)**
 
-**Test 2:** Adding an engine with a different motorization type is rejected.
-
-**Refers to:** US057.4 / invariant
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureMixedMotorizationTypesAreRejected() {
-    AircraftModel model = createTestAircraftModel();
-    model.addVariant(engine1Id, MotorizationType.TURBOFAN);
-    model.addVariant(engine2Id, MotorizationType.TURBOPROP); // different type
-}
-```
+Given an `AircraftModel` that already has a TURBOFAN variant,
+When the admin attempts to add a TURBOPROP engine as a second variant to the same model,
+Then the system rejects the addition with an error indicating that all variants of an aircraft model must share the same motorization type.
 
 ---
 

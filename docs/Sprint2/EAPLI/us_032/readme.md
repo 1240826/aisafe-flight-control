@@ -84,31 +84,23 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Disabling an active user makes them inactive.
+**AT1 — Disabling an active user prevents login (US032.2)**
 
-**Refers to:** US032.2
+Given an active system user with valid credentials,
+When the admin disables that user account,
+Then the user's account status becomes inactive and subsequent login attempts with those credentials are denied.
 
-```java
-@Test
-public void ensureDisabledUserIsInactive() {
-    SystemUser user = createActiveTestUser();
-    controller.disableUser(user);
-    assertFalse(user.isActive());
-}
-```
+**AT2 — Re-enabling a disabled user restores login access (US032.3)**
 
-**Test 2:** Enabling a disabled user makes them active.
+Given a previously disabled system user,
+When the admin enables that user account,
+Then the user's account status becomes active again and the user can log in with their credentials.
 
-**Refers to:** US032.3
+**AT3 — Disabling a user does not affect their linked Collaborator (US032.4)**
 
-```java
-@Test
-public void ensureEnabledUserIsActive() {
-    SystemUser user = createDisabledTestUser();
-    controller.enableUser(user);
-    assertTrue(user.isActive());
-}
-```
+Given a system user that is linked to a Collaborator aggregate,
+When the admin disables the system user account,
+Then the linked Collaborator aggregate remains unchanged — its status and data are not affected.
 
 ---
 

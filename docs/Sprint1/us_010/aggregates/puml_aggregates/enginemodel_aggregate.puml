@@ -7,42 +7,51 @@ hide empty members
 
 package "Manufacturer_Aggregate" <<aggregate>> {
   class Manufacturer <<entity>> <<root>> {
-    name
-    country
+    country : String
   }
+  class ManufacturerName <<value object>> {
+    name : String
+  }
+  note right of ManufacturerName : Identity (primary key). Trimmed, non-blank.
+  Manufacturer *-- ManufacturerName : identifiedBy
 }
 
 package "EngineModel_Aggregate" <<aggregate>> {
   class EngineModel <<entity>> <<root>> {
-  fuelType
+    fuelType : String
   }
+  class EngineModelCode <<value object>> {
+    code : String
+  }
+  note right of EngineModelCode : Identity (@EmbeddedId).\nUnique code for the engine model.
   class EngineName <<value object>> {
-    name
+    name : String
   }
-  note right of EngineName : name + manufacturer\nmust be unique (US056)
+  note right of EngineName : Human-readable name.\nname + manufacturer must be unique (US056).
   class Power <<value object>> {
-    value
-    unit
+    value : double
+    unit : String
   }
   class Thrust <<value object>> {
-    value
-    unit
-    speedReference
+    value : double
+    unit : String
+    speedReference : String
   }
   note right of Thrust : Manufacturer-supplied at\nstatic and cruise speed.\nDecreases with altitude (sec. 3.3)
   class TSFC <<value object>> {
-    value
-    unit
+    value : double
+    unit : String
   }
   enum MotorizationType {
-    turboprop
-    turbofan
-    turbojet
-    ramjet
-    electricPropeller
+    TURBOPROP
+    TURBOFAN
+    TURBOJET
+    RAMJET
+    ELECTRIC_PROPELLER
   }
+  EngineModel *-- EngineModelCode : identifiedBy
+  EngineModel *-- EngineName : namedAs
   EngineModel --> MotorizationType : ofType
-  EngineModel *-- EngineName : identifiedBy
   EngineModel *-- Power : ratedAt
   EngineModel *-- "2" Thrust : characterisedBy
   EngineModel *-- TSFC : ratedBy
@@ -51,40 +60,44 @@ package "EngineModel_Aggregate" <<aggregate>> {
 
 package "AircraftModel_Aggregate" <<aggregate>> {
   class AircraftModel <<entity>> <<root>> {
+    designerName : String
+    maxPassengerCapacity : int
   }
-  class ModelID <<value object>> {
-    id
+  class AircraftModelCode <<value object>> {
+    code : String
   }
-  note right of ModelID : name + manufacturer\nmust be unique (US055)
+  note right of AircraftModelCode : unique in system (US055)
   enum AircraftType {
     passenger
     cargo
     mixed
   }
   class AircraftWeights <<value object>> {
-    emptyWeight
-    MTOW
-    MZFW
-    maxFuelCapacity
+    emptyWeight : double
+    MTOW : double
+    MZFW : double
+    maxFuelCapacity : double
   }
   note right of AircraftWeights : Invariant:\nMTOW > MZFW > emptyWeight\nAll values positive (sec. 3.2)
   class AircraftPerformance <<value object>> {
-    serviceCeiling
-    cruiseSpeed
-    maximumRange
+    serviceCeiling : double
+    cruiseSpeed : double
+    maximumRange : double
   }
   note right : Each value has its own unit\ndefined at implementation time
 
   class AerodynamicCoefficients <<value object>> {
-    wingArea
-    dragCoefficient
-    liftCoefficient
+    wingArea : double
+    dragCoefficient : double
+    liftCoefficient : double
   }
   note right of AerodynamicCoefficients : Used in lift/drag\nformulas (sec. 3.3)
   class AircraftVariant <<entity>> {
+    engineModelCode : EngineModelCode
+    motorizationType : MotorizationType
   }
   note right of AircraftVariant : US057: "combination of\nmodel and engine configuration"
-  AircraftModel *--- ModelID : identifiedBy
+  AircraftModel *--- AircraftModelCode : identifiedBy
   AircraftModel ---> AircraftType : ofType
   AircraftModel *--- AircraftWeights : weights
   AircraftModel *--- AircraftPerformance : performs

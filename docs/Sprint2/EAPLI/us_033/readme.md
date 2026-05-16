@@ -73,29 +73,23 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Only ADMIN can list users.
+**AT1 — Only ADMIN can list users (US033.1)**
 
-**Refers to:** US033.1
+Given a user authenticated with the WEATHER_PERSON role,
+When they attempt to access the list of all system users,
+Then the system rejects the operation with an authorization error indicating the ADMIN role is required.
 
-```java
-@Test(expected = IllegalStateException.class)
-public void ensureOnlyAdminCanListUsers() {
-    // authenticated as WEATHER_PERSON
-    controller.allUsers();
-}
-```
+**AT2 — Previously registered users appear in the list (US033.2)**
 
-**Test 2:** List contains previously registered users.
+Given at least one user has been registered in the system,
+When the admin requests the full user list,
+Then the system returns a non-empty list containing the registered users with their username, full name, email, roles, and status.
 
-**Refers to:** US033.2
+**AT3 — Both active and inactive users are shown (US033.2)**
 
-```java
-@Test
-public void ensureRegisteredUsersAppearInList() {
-    Iterable<SystemUser> users = controller.allUsers();
-    assertTrue(users.iterator().hasNext());
-}
-```
+Given the system has both active and inactive user accounts,
+When the admin requests the full user list,
+Then all users are returned regardless of their account status.
 
 ---
 

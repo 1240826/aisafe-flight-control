@@ -43,12 +43,12 @@ This task was assigned in Sprint 2. It is the first time this task is being deve
 
 Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-**Prompt 1:** "Design RegisterAirControlArea for EAPLI. Domain: AirControlArea (root), AreaCode (VO, unique), name (unique String), Coordinates_ACA (VO, rectangle). Controller checks code uniqueness, name uniqueness, overlap, then creates entity."
+**Prompt 1:** "Design RegisterAirControlArea for EAPLI. Domain: AirControlArea (root), AreaCode (VO, unique), name (unique String), BoundingBox (VO, rectangle). Controller checks code uniqueness, name uniqueness, overlap, then creates entity."
 
 **LLM suggestions adopted:**
 - Controller performs three pre-creation checks: code uniqueness, name uniqueness, overlap
 - `AreaCode` VO validates non-empty in constructor
-- `Coordinates_ACA` VO validates ranges and strict min < max in constructor
+- `BoundingBox` VO validates ranges and strict min < max in constructor
 - `maxAltitudeMetres` read from `Application.settings()` at creation time
 
 **Decisions made by the team:**
@@ -62,7 +62,8 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 **Aggregate: AirControlArea**
 - Root: `AirControlArea` — has `name` (unique operational name), `maxAltitudeMetres` (from config)
 - VO: `AreaCode` — unique internal code; validates non-empty
-- VO: `Coordinates_ACA` — horizontal rectangle boundary; validates ranges and min < max
+- VO: `AreaName` — unique operational name; validates non-empty
+- VO: `BoundingBox` — horizontal rectangle boundary; validates ranges and min < max
 
 **Repository:** `AirControlAreaRepository` — one per aggregate
 
@@ -71,8 +72,8 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 | VO / Entity | Invariant |
 |-------------|-----------|
 | `AreaCode` | not null, not empty |
-| `Coordinates_ACA` | lat in [-90,90]; lon in [-180,180]; minLat < maxLat; minLon < maxLon |
-| `AirControlArea` | `AreaCode` unique; `name` unique (both enforced by controller) |
+| `BoundingBox` | lat in [-90,90]; lon in [-180,180]; minLat < maxLat; minLon < maxLon |
+| `AirControlArea` | `AreaCode` unique; `AreaName` unique (both enforced by controller) |
 | `AirControlArea` | no rectangle overlap with existing ACAs (controller check) |
 | `AirControlArea` | `maxAltitudeMetres > 0` |
 
@@ -90,7 +91,8 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 | `RegisterAirControlAreaController` | `aisafe.core` | Auth; 3 uniqueness/overlap checks; creates ACA; saves |
 | `AirControlArea` | `aisafe.core` | Aggregate root |
 | `AreaCode` | `aisafe.core` | VO — validates code |
-| `Coordinates_ACA` | `aisafe.core` | VO — validates rectangle boundary |
+| `AreaName` | `aisafe.core` | VO — validates operational name |
+| `BoundingBox` | `aisafe.core` | VO — validates rectangle boundary |
 | `AirControlAreaRepository` | `aisafe.core` | Repository interface |
 | `JpaAirControlAreaRepository` | `aisafe.persistence.impl` | JPA implementation |
 | `InMemoryAirControlAreaRepository` | `aisafe.persistence.impl` | In-memory implementation |
@@ -101,49 +103,29 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** `Coordinates_ACA` rejects `minLatitude >= maxLatitude`.
+**AT1 — BoundingBox rejects invalid latitude order (US050.5)**
 
-**Refers to:** US050.5 / invariant
+Given a `BoundingBox` where `minLatitude` is greater than or equal to `maxLatitude` (e.g., minLat=50, maxLat=40),
+When the system attempts to create the `BoundingBox`,
+Then the system rejects the creation with an error indicating that `minLatitude` must be strictly less than `maxLatitude`.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureCoordinatesRejectInvalidLatitudeOrder() {
-    new Coordinates_ACA(50.0, 40.0, -10.0, 5.0); // minLat > maxLat
-}
-```
+**AT2 — AreaCode rejects null or empty (US050.2)**
 
-**Test 2:** `AreaCode` rejects null or empty.
+Given a null or empty string as the area code,
+When the system attempts to create the `AreaCode` value object,
+Then the system rejects the creation with an error indicating a valid non-empty code is required.
 
-**Refers to:** US050.2 / invariant
+**AT3 — BoundingBox rejects latitude out of valid range (US050.5)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureAreaCodeRejectsNull() {
-    new AreaCode(null);
-}
-```
+Given a `BoundingBox` where a latitude value is outside the range [-90, 90] (e.g., -91.0),
+When the system attempts to create the `BoundingBox`,
+Then the system rejects the creation with an error indicating the latitude is out of the allowed range.
 
-**Test 3:** `Coordinates_ACA` rejects latitude out of range.
+**AT4 — AirControlArea rejects non-positive maxAltitudeMetres (US050.7)**
 
-**Refers to:** US050.5 / invariant
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureCoordinatesRejectLatitudeOutOfRange() {
-    new Coordinates_ACA(-91.0, 50.0, -10.0, 5.0);
-}
-```
-
-**Test 4:** `AirControlArea` rejects non-positive `maxAltitudeMetres`.
-
-**Refers to:** US050.7 / invariant
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureAirControlAreaRejectsNonPositiveMaxAltitude() {
-    new AirControlArea(validAreaCode, "Lisboa FIR", validCoords, 0.0);
-}
-```
+Given an `AirControlArea` with a `maxAltitudeMetres` value of 0 or negative,
+When the system attempts to create the air control area,
+Then the system rejects the creation with an error indicating the maximum altitude must be a positive value.
 
 ---
 
@@ -151,9 +133,10 @@ public void ensureAirControlAreaRejectsNonPositiveMaxAltitude() {
 
 **Key new files:**
 
-- `eapli.aisafe.aircontrolarea.domain.AirControlArea` — aggregate root with `name`, `maxAltitudeMetres`
+- `eapli.aisafe.aircontrolarea.domain.AirControlArea` — aggregate root with `maxAltitudeMetres`
 - `eapli.aisafe.aircontrolarea.domain.AreaCode` — VO
-- `eapli.aisafe.aircontrolarea.domain.Coordinates_ACA` — VO
+- `eapli.aisafe.aircontrolarea.domain.AreaName` — VO
+- `eapli.aisafe.aircontrolarea.domain.BoundingBox` — VO (rectangle boundary)
 - `eapli.aisafe.aircontrolarea.repositories.AirControlAreaRepository` — interface with `findByAreaCode`, `findByName`, `findOverlapping`
 - `eapli.aisafe.aircontrolarea.application.RegisterAirControlAreaController` — controller
 - `eapli.aisafe.app.backoffice.console.presentation.aircontrolarea.RegisterAirControlAreaUI` — UI

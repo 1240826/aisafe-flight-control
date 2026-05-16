@@ -91,39 +91,23 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** WeatherSubArea rejects invalid bounds.
+**AT1 — WeatherSubArea rejects invalid latitude bounds (AC 041.3)**
 
-**Refers to:** AC 041.3
+Given a `WeatherSubArea` where `minLatitude` is greater than `maxLatitude` (e.g., minLat=10, maxLat=5),
+When the system attempts to create the `WeatherSubArea` value object,
+Then the system rejects the creation with an error indicating `minLatitude` must be strictly less than `maxLatitude`.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureWeatherSubAreaRejectsInvalidBounds() {
-    new WeatherSubArea(10.0, 5.0, -10.0, -20.0, 0, 1000); // minLat > maxLat
-}
-```
+**AT2 — WindCondition rejects direction out of [0, 360) range (AC 041.4)**
 
-**Test 2:** WindCondition rejects direction out of range.
+Given a `WindCondition` with a direction of 360 degrees (outside the valid range),
+When the system attempts to create the `WindCondition` value object,
+Then the system rejects the creation with an error indicating direction must be within [0, 360).
 
-**Refers to:** AC 041.4
+**AT3 — WeatherData rejects validTo before validFrom (AC 041.6)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureWindConditionRejectsDirectionOutOfRange() {
-    new WindCondition(10.0, 360); // 360 is out of [0,360)
-}
-```
-
-**Test 3:** WeatherData rejects validTo before validFrom.
-
-**Refers to:** AC 041.6
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureWeatherDataRejectsInvalidValidityPeriod() {
-    LocalDateTime now = LocalDateTime.now();
-    new WeatherData(AreaCode.valueOf("LPPT"), sub, wind, 15.0, now, now.minusHours(1));
-}
-```
+Given weather data where `validTo` is one hour before `validFrom`,
+When the system attempts to create the `WeatherData` aggregate,
+Then the system rejects the creation with an error indicating `validTo` must be strictly after `validFrom`.
 
 ---
 

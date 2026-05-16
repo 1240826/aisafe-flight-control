@@ -74,25 +74,17 @@ VOs are immutable. To update a VO attribute on `Collaborator`:
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Renewing with a past date is rejected.
+**AT1 — Security clearance renewal with past date is rejected (US063.5)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureRenewingWithPastDateIsRejected() {
-    new SecurityClearance(LocalDate.now().minusDays(1));
-}
-```
+Given an admin attempts to renew a collaborator's security clearance with an expiry date in the past,
+When the system processes the renewal,
+Then the system rejects the operation with an error indicating the new expiry date must be in the future.
 
-**Test 2:** Name is updated correctly.
+**AT2 — Name update is persisted correctly (US063.3)**
 
-```java
-@Test
-public void ensureNameIsUpdated() {
-    Collaborator collab = createTestCollaborator();
-    collab.updateName("New Name");
-    assertEquals("New Name", collab.name());
-}
-```
+Given an existing collaborator with a known name,
+When the admin updates the collaborator's name to a new valid non-empty string and saves,
+Then the system confirms the update and the collaborator's name reflects the new value.
 
 ---
 

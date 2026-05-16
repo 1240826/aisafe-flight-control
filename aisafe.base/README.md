@@ -1,195 +1,128 @@
-# Exemplo Management
-    ____                 
-    |  _ \                
-    | |_) | __ _ ___  ___ 
-    |  _ < / _` / __|/ _ \
-    | |_) | (_| \__ \  __/
-    |____/ \__,_|___/\___|
+# AISafe Management
+     _    ___ ____        __
+    / \  |_ _/ ___|  __ _/ _| ___
+   / _ \  | |\___ \ / _` | |_ / _ \
+  / ___ \ | | ___) | (_| |  _|  __/
+ /_/   \_\___|____/ \__,_|_|  \___|
 
 Engenharia de Aplicações (EAPLI)
 
-Polythecnic of Porto, School of Engineering
+Polytechnic of Porto, School of Engineering
 
----------------------------------------------
+---
 
-This application is part of the lab project for the course unit EAPLI. Parts of 
-the application were developed to show specific approaches or techniques; as such, 
-the overall application is not consistent in terms of design. for production ready 
-code this would obvisously be a problem as we should strive for consistency. In 
-this case, it is acceptable as the inconsistencies are meant to provide samples 
-of different valid approaches.
-
-_Base logo created with [kammerl ascii signature](https://www.kammerl.de/ascii/AsciiSignature.php) using font "big"_
+AISafe is a flight control information management system developed as part of
+the EAPLI integrative project. It manages manufacturers, engine models, aircraft
+models, aircraft, air control areas, airports, air transport companies,
+collaborators and weather data.
 
 ## Who do I talk to?
 
-Nuno Pereira [nap@isep.ipp.pt](emailto:nap@isep.ipp.pt)
+Nuno Pereira [nap@isep.ipp.pt](mailto:nap@isep.ipp.pt)
 
 ## License and copyright
 
-Paulo Gandra de Sousa [pag@isep.ipp.pt](emailto:pag@isep.ipp.pt) / [pagsousa@gmail.com](emailto:pagsousa@gmail.com)
+Paulo Gandra de Sousa [pag@isep.ipp.pt](mailto:pag@isep.ipp.pt)
 
 Copyright (c) 2013-2024 the original author or authors.
 
 MIT License
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
 ## Build
 
-make sure Maven is installed and on the PATH
+Make sure Maven and a JDK (Java 21+) are installed and on the PATH.
 
-If using an Oracle database, you will need to change your maven settings for 
-downloading the Oracle drivers. see <https://blogs.oracle.com/dev2dev/entry/how_to_get_oracle_jdbc#settings> for more information.
+```
+quickbuild.bat          (Windows)
+./quickbuild.sh         (Linux/macOS)
+```
 
-run script 
+For a full build including tests and reports:
 
-    rebuild-all.bat
+```
+build-all.bat           (Windows)
+./build-all.sh          (Linux/macOS)
+```
+
+For a clean rebuild:
+
+```
+rebuild-all.bat         (Windows)
+./rebuild-all.sh        (Linux/macOS)
+```
 
 ## Running
 
-make sure a JRE is installed and on the PATH
+Make sure a JRE is installed and on the PATH.
+Run `quickbuild` first (copies dependencies to `app/target/dependency/`).
 
-run script 
+**Back office console:**
+```
+run-backoffice.bat      (Windows)
+./run-backoffice.sh     (Linux/macOS)
+```
 
-    run-backoffice 
-
-or 
-
-    run-user.bat
+**Bootstrap data (seed master + demo data):**
+```
+run-bootstrap.bat       (Windows)
+./run-bootstrap.sh      (Linux/macOS)
+```
 
 ## Project structure
 
-- eapli.exemplo.app.XYZ.console
+```
+aisafe/
+  core/           Domain model, application controllers, repository interfaces,
+                  infrastructure (Application, AppSettings, auth, persistence context)
 
-  - presentation using console
-  - Main class 
-  - application properties in resource folder
+  persistence/    JPA and InMemory repository implementations
+                  persistence.xml, application.properties
 
-- eapli.exemplo.bootstrap 
-  - bootstrap data. should be ignored on a "real" instalation
+  app/            Console UI (ui/), bootstrappers (bootstrap/)
+                  Two entry points: AISafeBackoffice, AISafeBootstrapApp
 
-- eapli.exemplo.core 
-  - use case controllers, model, and persistence
+aisafe.dsl/       ANTLR grammar and flight plan DSL (LPROG)
+```
 
 ## Architecture
 
-The application follows a typical layered approach
+The application follows a layered approach:
 
-    UI -> Controller -+-> Domain
-                      |     ^
-                      |     |
-                      +-> Repositories
+```
+UI  →  Controller  →  Repository (interface)
+              |              ↑
+              ↓              |
+           Domain    Persistence impl (JPA / InMemory)
+```
 
+### Domain objects
 
-### Domain objects with persistence knowledge or not
+Domain objects have no persistence logic — the controller retrieves them from the
+repository, delegates business logic to the domain object, then stores them back.
+This keeps domain classes independently testable.
 
-Two different approaches are possible:
+### JPA persistence
 
-- pure domain objects without any knowledge of the persistence
-- domain objects that can save and load thenselves from persistence (thus, an Active Record)
+- `@Entity` / `@Embeddable` for aggregates and value objects
+- `@EmbeddedId` for natural VO-based primary keys
+- `@GeneratedValue` for surrogate keys (Collaborator)
+- `@Version` for optimistic locking on all aggregates
+- `@Inheritance(SINGLE_TABLE)` for Collaborator hierarchy (ATC / FCO / WeatherPerson)
 
-In the first case, the controller is responsible for obtaining the domain objects 
-from the repository, asking the domain objects to perform the business logic and 
-then pass them back to the repository. in this case, the domain objects can "easily" 
-be tested as they do not depend on any other package this gets trickier when we 
-need/want to have lazy load of collections...
+### Switching between JPA and InMemory
 
-In the second case, the controller asks the domain object class to load a certain 
-instance, asks that object to perform the business operation and then asks the object 
-to save itself back to the database
+In `app/src/main/resources/application.properties`:
 
-### Passing domain objects to the UI or not
+```properties
+# JPA (H2 file database — default)
+persistence.repositoryFactory=eapli.aisafe.persistence.jpa.JpaRepositoryFactory
 
-The decision is to use domain objects outside of the controllers boundary. One could 
-argue that domain objects should be known only "inside" the application boundary and 
-as such other data structures should be returned to outside layers, i.e., DTO (Data Transfer Objects).
+# InMemory (for quick local testing, no DB required)
+#persistence.repositoryFactory=eapli.aisafe.persistence.inmemory.InMemoryRepositoryFactory
+```
 
-### Performing calculations in memory or directly at the persistence layer
+### References
 
-Both approaches have advantages and disavantages:
-
-- in memory
-
-  - advantages
-
-    - allows the use of business logic in code
-    - disavantages performance may be poor
-
-- at persistence layer
-
-  - advantages
-
-    - use of aggregated SQL functions is straigth forward
-    - performance
-
-  - disavantages
-
-    - complicated business logic is hard to implement
-
-//TODO provide one example of each approach.
-
-See also <http://www.martinfowler.com/articles/dblogic.html>
-
-### Factoring out common behaviour
-
-use services at the application or domain layer
-
-### Can controllers call other controllers?
-
-it is best if they call application services
-
-### Should the UI/controller create domain objects directly
-
-Should the rules for the Creator pattern be fully enforced, e.g., the responsibility to 
-create a Payment should be of Expense, or can the controller/UI create a Payment and
- pass it to the Expense?
-
-### How to reuse behavior betwen controllers
-
-Factor out common behaviour in an application service.
-
-### When showing movements gruped by type, who performs the sum operation? UI, Controller or Domain object?
-
-the UI might not be smart enough to compute the total sum with enough precision, and 
-would carry a burden for the computer running the interface
-
-the Controller might indeed perform such calculation as it has all the data is needs 
-for a short period of time, but it is not the controller function to perform mathematical 
-operations
-
-the domain object might indeed be the very best resource to calculate the sum for each 
-expense type, but it would not make sense to delegate the domain object to the interface.
-
-### When showing movements gruped by type, should types with no values also appear?
-
-this can be another strategy
-
-## References and bibliography
-
-Start by reading the essential material listed in [EAPLI framework](https://bitbucket.org/pag_isep/eapli.framework/src/master/README.md)
-
-### JPA
-
+- [EAPLI framework](https://bitbucket.org/pag_isep/eapli.framework/src/master/README.md)
 - [Entities or DTOs in JPA Queries](https://thoughts-on-java.org/entities-dtos-use-projection/)
 - [Primary key mapping](https://thoughts-on-java.org/primary-key-mappings-jpa-hibernate/)
-
-### Other useful readings
-
-T.B.D.

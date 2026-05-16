@@ -22,6 +22,10 @@ dependency-reduced-pom.xml
 *.zip
 *.tar.gz
 *.rar
+*.class
+
+# ANTLR generated sources
+aisafe.dsl/gen/
 
 # JaCoCo coverage
 *.exec

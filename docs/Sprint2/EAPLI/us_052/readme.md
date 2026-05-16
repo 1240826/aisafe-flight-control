@@ -42,33 +42,33 @@ This task was assigned in Sprint 2. It is the first time this task is being deve
 
 Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-**Prompt 1:** "Design CreateAirport for EAPLI. Domain: Airport (root), IATACode (VO, 3 uppercase letters), ICAOCode (VO, 4 uppercase alphanumeric), Coordinates_Apt (VO, lat/lon), Elevation (VO, value+unit). Controller: IATA unique, ICAO unique, ACA exists, coordinates inside ACA."
+**Prompt 1:** "Design CreateAirport for EAPLI. Domain: Airport (root), AirportIATA (VO, 3 uppercase letters), AirportICAO (VO, 4 uppercase alphanumeric), Coordinates (VO, lat/lon), Elevation (VO, value+unit). Controller: IATA unique, ICAO unique, ACA exists, coordinates inside ACA."
 
 **LLM suggestions adopted:**
 - Controller performs three checks: IATA uniqueness, ICAO uniqueness, ACA lookup + coordinate containment
-- `IATACode` VO validates 3 uppercase letters; `ICAOCode` validates 4 uppercase alphanumeric
+- `AirportIATA` VO normalises input to uppercase; `AirportICAO` validates 4 uppercase alphanumeric
 
 **Decisions made by the team:**
-- `country` is selected from a bootstrapped list (client confirmed); `town`/`city` is free text
+- `country` is selected from a bootstrapped list (client confirmed); `city` is free text
 - Coordinate containment (US052.5) is a controller-level cross-aggregate check — the `Airport` itself cannot enforce it
 - `Elevation` unit is a plain String (e.g., "m", "ft")
 
 ### 3.1 Domain Model Navigation
 
 **Aggregate: Airport**
-- Root: `Airport` — `name`, `town` (free text), `country` (bootstrapped); references `AirControlArea` by `AreaCode` only
-- VO: `IATACode` — validates 3 uppercase letters
-- VO: `ICAOCode` — validates 4 uppercase alphanumeric
-- VO: `Coordinates_Apt` — validates lat/lon ranges
+- Root: `Airport` — `name`, `city` (free text), `country` (bootstrapped); references `AirControlArea` by `AreaCode` only
+- VO: `AirportIATA` — normalises to 3 uppercase letters
+- VO: `AirportICAO` — validates 4 uppercase alphanumeric
+- VO: `Coordinates` — shared VO; validates lat/lon ranges (used by Airport and Simulation)
 - VO: `Elevation` — `value > 0`, unit not empty
 
 ### 3.2 Invariants
 
 | VO / Entity | Invariant |
 |-------------|-----------|
-| `IATACode` | exactly 3 uppercase letters; not null |
-| `ICAOCode` | exactly 4 uppercase alphanumeric; not null |
-| `Coordinates_Apt` | lat in [-90, 90]; lon in [-180, 180] |
+| `AirportIATA` | exactly 3 letters; normalised to uppercase |
+| `AirportICAO` | exactly 4 uppercase alphanumeric; not null |
+| `Coordinates` | lat in [-90, 90]; lon in [-180, 180] |
 | `Elevation` | value > 0; unit not empty |
 | `Airport` | IATA unique; ICAO unique; coordinates inside ACA boundary (all via controller) |
 
@@ -85,9 +85,9 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 | `CreateAirportUI` | `aisafe.app.backoffice.console` | Collects input; shows country list; calls controller |
 | `CreateAirportController` | `aisafe.core` | Auth; uniqueness checks; ACA lookup + coordinate containment; creates Airport; saves |
 | `Airport` | `aisafe.core` | Aggregate root |
-| `IATACode` | `aisafe.core` | VO — validates IATA format |
-| `ICAOCode` | `aisafe.core` | VO — validates ICAO format |
-| `Coordinates_Apt` | `aisafe.core` | VO — lat/lon point |
+| `AirportIATA` | `aisafe.core` | VO — validates IATA format (3 letters, normalised uppercase) |
+| `AirportICAO` | `aisafe.core` | VO — validates ICAO format (4 alphanumeric) |
+| `Coordinates` | `aisafe.core` | Shared VO — lat/lon point (also used by Simulation) |
 | `Elevation` | `aisafe.core` | VO — value + unit |
 | `AirportRepository` | `aisafe.core` | Repository interface |
 | `JpaAirportRepository` | `aisafe.persistence.impl` | JPA implementation |
@@ -99,38 +99,29 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** `IATACode` rejects lowercase.
+**AT1 — AirportIATA normalises lowercase input (US052.2)**
 
-**Refers to:** US052.2 / invariant
+Given an IATA code entered in lowercase (e.g., "opo"),
+When the system creates an `AirportIATA` value object with that code,
+Then the system normalises it to uppercase "OPO" automatically — no exception is thrown.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureIATACodeRejectsLowercase() {
-    new IATACode("opo");
-}
-```
+**AT2 — AirportICAO rejects wrong length (US052.3)**
 
-**Test 2:** `ICAOCode` rejects wrong length.
+Given an ICAO code with fewer than 4 characters (e.g., "LPP"),
+When the system attempts to create an `AirportICAO` value object,
+Then the system rejects the creation with an error indicating the code must be exactly 4 alphanumeric characters.
 
-**Refers to:** US052.3 / invariant
+**AT3 — Elevation rejects non-positive value (US052.6)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureICAOCodeRejectsWrongLength() {
-    new ICAOCode("LPP"); // only 3 chars
-}
-```
+Given an `Elevation` with a non-positive value (e.g., -10 metres),
+When the system attempts to create the `Elevation` value object,
+Then the system rejects the creation with an error indicating elevation must be a positive value.
 
-**Test 3:** `Elevation` rejects non-positive value.
+**AT4 — Airport coordinates must fall within ACA boundary (US052.5)**
 
-**Refers to:** US052.6 / invariant
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureElevationRejectsNonPositiveValue() {
-    new Elevation(-10.0, "m");
-}
-```
+Given an airport whose latitude/longitude falls outside the boundary of the selected air control area,
+When the admin submits the airport creation form,
+Then the system rejects the creation with an error indicating the airport coordinates must be within the ACA's bounding box.
 
 ---
 
@@ -139,9 +130,9 @@ public void ensureElevationRejectsNonPositiveValue() {
 **Key new files:**
 
 - `eapli.aisafe.airport.domain.Airport` — aggregate root
-- `eapli.aisafe.airport.domain.IATACode` — VO
-- `eapli.aisafe.airport.domain.ICAOCode` — VO
-- `eapli.aisafe.airport.domain.Coordinates_Apt` — VO
+- `eapli.aisafe.airport.domain.AirportIATA` — VO
+- `eapli.aisafe.airport.domain.AirportICAO` — VO
+- `eapli.aisafe.shared.domain.Coordinates` — shared VO (lat/lon point)
 - `eapli.aisafe.airport.domain.Elevation` — VO
 - `eapli.aisafe.airport.repositories.AirportRepository` — interface
 - `eapli.aisafe.airport.application.CreateAirportController` — controller
@@ -170,4 +161,4 @@ Country data is bootstrapped at startup (list of country names or ISO codes). Ci
 
 The coordinate containment check (US052.5) is enforced at controller level — it retrieves the ACA and calls `aca.coordinates().contains(lat, lon)`. The `Airport` entity itself cannot perform this check.
 
-`IATACode` and `ICAOCode` are shared VOs — the same classes are also used in `AirTransportCompany` (US060). A single VO definition is shared across aggregates (VOs are immutable, identity-free, reusable).
+`AirportIATA` and `AirportICAO` are distinct classes from `CompanyIATA` / `CompanyICAO` (used in US060), because airport and company codes have different format rules (airport IATA: 3 letters; company IATA: 2 letters). The shared `Coordinates` VO is also used by the `Simulation` aggregate.

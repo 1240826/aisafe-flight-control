@@ -42,39 +42,39 @@ This task was assigned in Sprint 2. It is the first time this task is being deve
 
 Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-**Prompt 1:** "Design CreateAircraftModel for EAPLI. Domain: AircraftModel (root), ModelID (VO, unique per manufacturer), AircraftWeights (VO, MTOW>MZFW>emptyWeight invariant), AircraftPerformance (VO), AerodynamicCoefficients (VO). Manufacturer is a full aggregate."
+**Prompt 1:** "Design CreateAircraftModel for EAPLI. Domain: AircraftModel (root), AircraftModelCode (VO, unique), AircraftWeights (VO, MTOW>MZFW>emptyWeight invariant), AircraftPerformance (VO), AerodynamicCoefficients (VO). Manufacturer is a full aggregate."
 
 **LLM suggestions adopted:**
 - `AircraftWeights` validates all four values and the MTOW > MZFW > emptyWeight chain
 - `AerodynamicCoefficients` groups wingArea + dragCoefficient + liftCoefficient — used together in physics formulas
-- Controller looks up `Manufacturer` by ID before creating `ModelID`
+- Controller looks up `Manufacturer` by name before creating the `AircraftModel`
 
 **Decisions made by the team:**
 - `Manufacturer` is a **full aggregate** (not a VO) — client confirmed "obviously, a manufacturer cannot be a VO"
 - Manufacturer name uniqueness is **case-insensitive** — "Airbus" == "AIRBUS" (client clarification)
 - Manufacturer is bootstrapped for Sprint 2 (Airbus, Boeing, Embraer, Bombardier, Cessna, Antonov)
 - `AircraftVariant` (engine configuration) is NOT created here — added via US057
-- `ModelID` VO combines `modelName` + `manufacturerId` (cross-aggregate reference by ID)
+- `AircraftModelCode` is the identity VO of `AircraftModel`; `ManufacturerName` is the identity VO of `Manufacturer`
 
 ### 3.1 Domain Model Navigation
 
 **Aggregate: AircraftModel**
-- Root: `AircraftModel`
-- VO: `ModelID` — `modelName` (String) + `manufacturerId` reference
+- Root: `AircraftModel` — `name` (String), manufacturer name stored for display
+- VO: `AircraftModelCode` — identity VO; validates non-empty
 - Enum: `AircraftType` — passenger / cargo / mixed
 - VO: `AircraftWeights` — emptyWeight, MTOW, MZFW, maxFuelCapacity
 - VO: `AircraftPerformance` — serviceCeiling, cruiseSpeed, maximumRange
 - VO: `AerodynamicCoefficients` — wingArea, dragCoefficient, liftCoefficient
 - Entity: `AircraftVariant` — added via US057; not created here
 
-**Aggregate: Manufacturer** *(referenced by ID from AircraftModel)*
-- Root: `Manufacturer` — `ManufacturerName` (VO, case-insensitive unique)
+**Aggregate: Manufacturer** *(referenced by ManufacturerName from AircraftModel)*
+- Root: `Manufacturer` — `ManufacturerName` (VO, case-insensitive unique identity)
 
 ### 3.2 Invariants
 
 | VO | Invariant |
 |----|-----------|
-| `ModelID` | modelName not empty; manufacturerId not null |
+| `AircraftModelCode` | not null, not empty |
 | `AircraftWeights` | all values > 0; MTOW > MZFW > emptyWeight |
 | `AircraftPerformance` | all values > 0 |
 | `AerodynamicCoefficients` | all values > 0 |
@@ -91,9 +91,9 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 | Class | Module | Responsibility |
 |-------|--------|----------------|
 | `CreateAircraftModelUI` | `aisafe.app.backoffice.console` | Collects input; shows manufacturer list; calls controller |
-| `CreateAircraftModelController` | `aisafe.core` | Auth; manufacturer lookup; ModelID uniqueness; creates AircraftModel; saves |
+| `CreateAircraftModelController` | `aisafe.core` | Auth; manufacturer lookup; model code uniqueness; creates AircraftModel; saves |
 | `AircraftModel` | `aisafe.core` | Aggregate root |
-| `ModelID` | `aisafe.core` | VO — modelName + manufacturerId |
+| `AircraftModelCode` | `aisafe.core` | VO — identity of AircraftModel |
 | `AircraftWeights` | `aisafe.core` | VO — four weights with invariant chain |
 | `AircraftPerformance` | `aisafe.core` | VO — three performance values |
 | `AerodynamicCoefficients` | `aisafe.core` | VO — wing area + Cd + Cl |
@@ -110,38 +110,23 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** `AircraftWeights` rejects MTOW <= MZFW.
+**AT1 — AircraftWeights rejects MTOW ≤ MZFW (US055.4)**
 
-**Refers to:** US055.4 / invariant
+Given `AircraftWeights` where MTOW is less than or equal to MZFW (e.g., MTOW=60 000 kg, MZFW=70 000 kg),
+When the system attempts to create the weight configuration,
+Then the system rejects the creation with an error indicating MTOW must be strictly greater than MZFW.
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureWeightsRejectMTOWLessThanMZFW() {
-    new AircraftWeights(50000.0, 60000.0, 70000.0, 20000.0); // MTOW(60000) < MZFW(70000)
-}
-```
+**AT2 — AircraftWeights rejects non-positive empty weight (US055.4)**
 
-**Test 2:** `AircraftWeights` rejects non-positive values.
+Given `AircraftWeights` with a non-positive empty weight (e.g., -1 kg),
+When the system attempts to create the weight configuration,
+Then the system rejects the creation with an error indicating all weight values must be positive.
 
-**Refers to:** US055.4 / invariant
+**AT3 — AerodynamicCoefficients rejects non-positive wing area (US055.6)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureWeightsRejectNonPositiveEmptyWeight() {
-    new AircraftWeights(-1.0, 80000.0, 70000.0, 20000.0);
-}
-```
-
-**Test 3:** `AerodynamicCoefficients` rejects non-positive wing area.
-
-**Refers to:** US055.6 / invariant
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureAeroCoefficientsRejectNonPositiveWingArea() {
-    new AerodynamicCoefficients(0.0, 0.025, 1.2);
-}
-```
+Given `AerodynamicCoefficients` with a wing area of 0.0 m²,
+When the system attempts to create the aerodynamic coefficients,
+Then the system rejects the creation with an error indicating the wing area must be a positive value.
 
 ---
 
@@ -150,7 +135,7 @@ public void ensureAeroCoefficientsRejectNonPositiveWingArea() {
 **Key new files:**
 
 - `eapli.aisafe.aircraftmodel.domain.AircraftModel` — aggregate root
-- `eapli.aisafe.aircraftmodel.domain.ModelID` — VO
+- `eapli.aisafe.aircraftmodel.domain.AircraftModelCode` — VO (identity)
 - `eapli.aisafe.aircraftmodel.domain.AircraftWeights` — VO with MTOW invariant
 - `eapli.aisafe.aircraftmodel.domain.AircraftPerformance` — VO
 - `eapli.aisafe.aircraftmodel.domain.AerodynamicCoefficients` — VO

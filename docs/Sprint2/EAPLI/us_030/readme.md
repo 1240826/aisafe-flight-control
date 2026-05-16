@@ -96,31 +96,23 @@ public class AISafeRoles {
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Expired security clearance blocks login.
+**AT1 — Expired security clearance blocks login (US030.4)**
 
-**Refers to:** US030.4
+Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
+When the user attempts to log in with valid credentials,
+Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
 
-```java
-@Test
-public void ensureExpiredClearanceBlocksLogin() {
-    UserSecurityProfile profile = new UserSecurityProfile("user1",
-        LocalDate.now().minusDays(1)); // expired yesterday
-    assertFalse(profile.isClearanceValid());
-}
-```
+**AT2 — Valid security clearance allows login (US030.4)**
 
-**Test 2:** Valid security clearance allows login.
+Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
+When the user logs in with valid credentials,
+Then the system grants access and the user is directed to the main menu.
 
-**Refers to:** US030.4
+**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
 
-```java
-@Test
-public void ensureValidClearanceAllowsLogin() {
-    UserSecurityProfile profile = new UserSecurityProfile("user1",
-        LocalDate.now().plusDays(30));
-    assertTrue(profile.isClearanceValid());
-}
-```
+Given a session where no user is authenticated,
+When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
+Then the system rejects the operation with an authorization error.
 
 ---
 

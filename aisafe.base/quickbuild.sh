@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-mvn -B $1 dependency:copy-dependencies verify -D maven.javadoc.skip=true
+# Build all modules (skip javadoc, copy dependencies for running)
+mvn -B $1 verify dependency:copy-dependencies -D maven.javadoc.skip=true

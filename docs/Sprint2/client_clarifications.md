@@ -296,6 +296,94 @@
 
 ---
 
+---
+
+## 21. US050/US052 — ACA Does Not Require Airports
+
+**Q:** Must an Air Control Area have at least one airport to be valid?
+
+**A (PO):** No — an ACA can exist without any airports. The relationship is from Airport → ACA (airport belongs to an ACA), not the other way around.
+
+**Team decision:** `AirControlArea` has no back-reference to airports. Creating an ACA with no airports is perfectly valid.
+
+---
+
+## 22. US056 — Real Engine Names and Fuel Compatibility
+
+**Q:** Are there real engine naming conventions we should follow? Can an engine model work with limited fuel types?
+
+**A (PO):** Real engine names: Trent XWB, Trent 1000, Trent 7000, Trent 900, BR710, RB199 (Rolls-Royce family). Fuel types are extensible (not a fixed enum) — an engine model declares which fuel types it accepts, and the bootstrapped list can be extended. Engine models can work with a subset of available fuel types.
+
+**Team decisions:**
+- Engine names follow manufacturer conventions; examples bootstrapped: GE90-94B, Trent 970, CFM56-5B4, LEAP-1B.
+- `fuelType` stored as free text String (selected from bootstrapped list in the UI); currently `EngineModel` stores a single `fuelType`.
+- Fuel list for MVP: "Jet-A1", "AvGas 100LL", "SAF" (Sustainable Aviation Fuel).
+
+---
+
+## 23. US055/056 — Manufacturer Concept Shared by Aircraft and Engines
+
+**Q:** Is the `Manufacturer` concept the same for aircraft models and engine models?
+
+**A (PO):** Yes — the manufacturer concept is the same. A manufacturer can produce both airframes and engines (e.g., GE Aviation makes engines; Boeing makes airframes).
+
+**Team decision:** A single `Manufacturer` aggregate is used as the cross-aggregate reference for both `AircraftModel` and `EngineModel`. Both store `manufacturerName` as a String reference.
+
+---
+
+## 24. US061 — Propeller Engines: Power + Propeller = Thrust
+
+**Q:** For turboprop and propeller engines, is "power" the only relevant output metric?
+
+**A (PO):** For propeller-driven engines, thrust comes from power + propeller configuration — not from power alone.
+
+**Team decision:** The `Power` VO (kW or shaft HP) is retained for turboprop/electric engines. The `Thrust` VOs (static and cruise) represent derived thrust at the propeller shaft. No separate propeller configuration VO in Sprint 2 — noted as future enhancement.
+
+---
+
+## 25. US061 — Collaborator Works in One ACA; ACA is the Customer
+
+**Q:** Can a collaborator (FCO or WeatherPerson) work in multiple ACAs at the same time?
+
+**A (PO):** A collaborator works in one ACA at a time. The ACA is the "customer" in the system. A company may own or manage several ACAs.
+
+**Team decisions:**
+- `FlightControlOperator` and `WeatherPerson` reference exactly one `AreaCode` (as implemented).
+- Moving a collaborator to a different ACA would require editing the collaborator (US063).
+- `AirTransportCompany` is distinct from ACA — a company may be associated with multiple ACAs (future US).
+
+---
+
+## 26. US072 — Aircraft Decommission: Only Validated Flight Plans Count
+
+**Q:** When decommissioning an aircraft, should the check consider draft flight plans or only validated ones?
+
+**A (PO):** Only consider validated flight plans — drafts should not block decommissioning.
+
+**Team decision:** The decommission controller fetches flight plans linked to the aircraft and filters for status = VALIDATED. Only if there are validated future flights is the decommission rejected. Draft plans are ignored.
+
+---
+
+## 27. Bootstrap Test Data Responsibility
+
+**Q:** Who is responsible for defining ACA test data for Sprint 2 demos?
+
+**A (PO):** That is the team's responsibility.
+
+**Team decision:** The team bootstraps 23 real-world-inspired Air Control Areas (FIR/ARTCC boundaries), 50 airports, 8 manufacturers, 6 engine models, 5 aircraft models, 10 air transport companies, and 6 collaborators. All seeded via `AISafeDemoDataBootstrapper` (run with `-bootstrap:demo`).
+
+---
+
+## 28. Database Technology — H2 in Docker Acceptable
+
+**Q:** Can we use H2 in a Docker container? Would PostgreSQL + PostGIS be better for coordinates?
+
+**A (PO):** H2 in Docker is acceptable for Sprint 2. PostgreSQL + PostGIS would be a clever choice for handling geographic coordinate queries natively (e.g., finding airports within an ACA boundary using spatial indexes).
+
+**Team decision:** Sprint 2 uses H2 file-based (`jdbc:h2:~/aisafe`). Migrating to PostgreSQL + PostGIS is noted as a future improvement, especially relevant for US050 overlap checks and US052 coordinate validation.
+
+---
+
 ## Summary of Documentation Changes per US
 
 | US | Change Required | Status |

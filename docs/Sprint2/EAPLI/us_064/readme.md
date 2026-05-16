@@ -82,41 +82,23 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** Disabling an active collaborator sets status to INACTIVE.
+**AT1 — Disabling an active collaborator sets status to INACTIVE (US064.3)**
 
-**Refers to:** US064.3
+Given an active collaborator exists in the system,
+When the admin selects that collaborator and confirms the disable action,
+Then the collaborator's status is changed to INACTIVE and the system confirms the operation.
 
-```java
-@Test
-public void ensureDisabledCollaboratorIsInactive() {
-    Collaborator collab = createActiveCollaborator();
-    controller.disableCollaborator(collab.identity());
-    assertFalse(collab.isActive());
-}
-```
+**AT2 — Only active collaborators appear in the selection list (US064.2)**
 
-**Test 2:** Only active collaborators appear in the selection list.
+Given a mix of active and inactive collaborators in the system,
+When the system presents the selection list for the disable operation,
+Then only collaborators with ACTIVE status are shown — inactive collaborators do not appear.
 
-**Refers to:** US064.2
+**AT3 — Attempting to disable a non-existent collaborator produces an error (US064.1)**
 
-```java
-@Test
-public void ensureOnlyActiveCollaboratorsAreListedForDisable() {
-    Iterable<Collaborator> active = controller.activeCollaborators();
-    for (Collaborator c : active) {
-        assertTrue(c.isActive());
-    }
-}
-```
-
-**Test 3:** Non-existent collaborator throws exception.
-
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureDisablingNonExistentCollaboratorThrows() {
-    controller.disableCollaborator(-999L);
-}
-```
+Given an identity that does not correspond to any existing collaborator,
+When the system attempts to look up and disable that collaborator,
+Then the system reports an error indicating the collaborator was not found.
 
 ---
 

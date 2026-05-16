@@ -101,32 +101,23 @@ Cross-aggregate refs: `AircraftModelId`, `AirTransportCompanyId`
 
 ### 4.2 Acceptance Tests
 
-**Test 1:** `SeatClass` rejects non-positive seats.
+**AT1 — SeatClass rejects non-positive seat count (US070.5)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureSeatClassRejectsNonPositiveSeats() {
-    new SeatClass("Business", 0);
-}
-```
+Given a `SeatClass` with a seat count of 0 (or negative),
+When the system attempts to create the `SeatClass` value object,
+Then the system rejects the creation with an error indicating the number of seats must be a positive integer.
 
-**Test 2:** `CabinConfiguration` rejects empty list.
+**AT2 — CabinConfiguration rejects empty seat class list (US070.5)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureCabinConfigurationRejectsEmptyList() {
-    new CabinConfiguration(Collections.emptyList());
-}
-```
+Given an empty list of seat classes for the cabin configuration,
+When the system attempts to create the `CabinConfiguration` value object,
+Then the system rejects the creation with an error indicating at least one seat class must be provided.
 
-**Test 3:** `RegistrationNumber` rejects null.
+**AT3 — RegistrationNumber rejects null (US070.2)**
 
-```java
-@Test(expected = IllegalArgumentException.class)
-public void ensureRegistrationNumberRejectsNull() {
-    new RegistrationNumber(null);
-}
-```
+Given a null registration number,
+When the system attempts to create the `RegistrationNumber` value object,
+Then the system rejects the creation with an error indicating the registration number must not be null or empty.
 
 ---
 
