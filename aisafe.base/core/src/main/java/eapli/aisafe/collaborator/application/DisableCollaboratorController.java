@@ -31,7 +31,7 @@ public class DisableCollaboratorController {
     }
 
     public Iterable<Collaborator> activeCollaborators() {
-        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.BACKOFFICE_OPERATOR);
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN, AISafeRoles.BACKOFFICE_OPERATOR);
         return repo.findAllActive();
     }
 
@@ -39,7 +39,7 @@ public class DisableCollaboratorController {
      * Disable the collaborator — irreversible.
      */
     public Collaborator disableCollaborator(final Long collaboratorId) {
-        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.BACKOFFICE_OPERATOR);
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ADMIN, AISafeRoles.BACKOFFICE_OPERATOR);
 
         final Collaborator collab = repo.ofIdentity(collaboratorId)
                 .orElseThrow(() -> new IllegalArgumentException("Collaborator not found: " + collaboratorId));

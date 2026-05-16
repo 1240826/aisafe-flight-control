@@ -7,9 +7,10 @@ import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import java.util.Optional;
 import java.time.LocalDateTime;
 import java.util.List;
+import eapli.aisafe.aircontrolarea.domain.AirControlArea;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -29,6 +30,9 @@ class RegisterWeatherDataControllerTest {
         repo = mock(WeatherDataRepository.class);
         acaRepo = mock(AirControlAreaRepository.class);
         controller = new RegisterWeatherDataController(authz, repo, acaRepo);
+
+        when(acaRepo.ofIdentity(any())).thenReturn(Optional.of(mock(AirControlArea.class)));
+
     }
 
     // ── Happy path ────────────────────────────────────────────────────────────
@@ -140,4 +144,14 @@ class RegisterWeatherDataControllerTest {
                         null),
                 "Null recordedDateTime must be rejected");
     }
+    @Test
+    void ensureRegisterWeatherDataWithNonExistentAcaThrows() {
+        when(acaRepo.ofIdentity(any())).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.registerWeatherData(
+                        "XXXX", 38.7, -9.1, 1000, 15.0, 270.0, 10.0, "IPMA", RECORDED_AT),
+                "Non-existent ACA must be rejected");
+    }
+
 }

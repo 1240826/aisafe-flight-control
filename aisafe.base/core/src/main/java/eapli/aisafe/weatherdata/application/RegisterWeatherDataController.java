@@ -65,6 +65,9 @@ public class RegisterWeatherDataController {
                                             final LocalDateTime recordedDateTime) {
         authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.WEATHER_PERSON);
 
+        acaRepo.ofIdentity(AreaCode.valueOf(areaCode))
+                .orElseThrow(() -> new IllegalArgumentException("Air Control Area not found: " + areaCode));
+
         final WeatherData weatherData = new WeatherData(
                 AreaCode.valueOf(areaCode),
                 new WindCondition(windSpeedKnots, (int) windDirectionDeg,

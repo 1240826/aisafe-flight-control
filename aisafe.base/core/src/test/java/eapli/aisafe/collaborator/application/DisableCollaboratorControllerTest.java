@@ -77,7 +77,7 @@ class DisableCollaboratorControllerTest {
         controller.disableCollaborator(1L);
 
         // Assert
-        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
     }
 
     // ── Not found ─────────────────────────────────────────────────────────────
