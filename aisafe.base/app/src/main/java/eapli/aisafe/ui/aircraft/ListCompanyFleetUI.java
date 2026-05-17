@@ -11,17 +11,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * UI for US072 — List Company Fleet.
+ * UI for US072 — List Company Fleet (and sub-filters US072a, US072b, US072c).
  */
 @SuppressWarnings("squid:S106")
 public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
 
     private final ListCompanyFleetController controller = new ListCompanyFleetController();
     private String selectedCompanyIata = null;
+    private int filterMode = 0; // 0=none, 1=model, 2=maker, 3=capacity
+    private String filterModel = null;
+    private String filterMaker = null;
+    private int filterMinCapacity = 0;
 
     @Override
     protected boolean doShow() {
-        // --- Load companies ---
+        // --- 1. Pick company ---
         final List<AirTransportCompany> companies = new ArrayList<>();
         try {
             controller.allCompanies().forEach(companies::add);
@@ -34,8 +38,7 @@ public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
         System.out.println("  0. Show all aircraft");
         for (int i = 0; i < companies.size(); i++) {
             final AirTransportCompany c = companies.get(i);
-            System.out.printf("  %d. %s/%s - %s%n",
-                    i + 1, c.iata(), c.icao(), c.name());
+            System.out.printf("  %d. %s/%s - %s%n", i + 1, c.iata(), c.icao(), c.name());
         }
 
         int idx;
@@ -48,8 +51,34 @@ public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
 
         if (idx == 0) {
             selectedCompanyIata = null;
+            filterMode = 0;
         } else {
             selectedCompanyIata = companies.get(idx - 1).iata().toString();
+
+            // --- 2. Pick filter ---
+            System.out.println("\nFilter by:");
+            System.out.println("  0. No filter (show all)");
+            System.out.println("  1. Model (US072a)");
+            System.out.println("  2. Maker (US072b)");
+            System.out.println("  3. Minimum capacity (US072c)");
+
+            int filter;
+            do {
+                filter = Console.readInteger("Select filter (0-3)");
+                if (filter < 0 || filter > 3) {
+                    System.out.println("  [!] Please enter a number between 0 and 3.");
+                }
+            } while (filter < 0 || filter > 3);
+
+            filterMode = filter;
+
+            if (filterMode == 1) {
+                filterModel = Console.readLine("Enter model code (e.g. A320, B738)").trim().toUpperCase();
+            } else if (filterMode == 2) {
+                filterMaker = Console.readLine("Enter maker name (e.g. Boeing, Airbus)").trim();
+            } else if (filterMode == 3) {
+                filterMinCapacity = Console.readInteger("Enter minimum capacity (number of passengers)");
+            }
         }
 
         return super.doShow();
@@ -66,7 +95,12 @@ public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
         if (selectedCompanyIata == null) {
             return controller.allActiveAircraft();
         }
-        return controller.fleetOfCompany(selectedCompanyIata);
+        switch (filterMode) {
+            case 1: return controller.fleetByModel(selectedCompanyIata, filterModel);
+            case 2: return controller.fleetByMaker(selectedCompanyIata, filterMaker);
+            case 3: return controller.fleetByCapacity(selectedCompanyIata, filterMinCapacity);
+            default: return controller.fleetOfCompany(selectedCompanyIata);
+        }
     }
 
     @Override

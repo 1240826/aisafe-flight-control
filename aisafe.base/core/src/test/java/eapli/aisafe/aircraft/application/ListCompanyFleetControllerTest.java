@@ -5,7 +5,9 @@ import eapli.aisafe.aircraft.domain.CabinConfiguration;
 import eapli.aisafe.aircraft.domain.RegistrationNumber;
 import eapli.aisafe.aircraft.domain.SeatClass;
 import eapli.aisafe.aircraft.repositories.AircraftRepository;
+import eapli.aisafe.aircraftmodel.domain.AircraftModel;
 import eapli.aisafe.aircraftmodel.domain.AircraftModelCode;
+import eapli.aisafe.aircraftmodel.repositories.AircraftModelRepository;
 import eapli.aisafe.company.domain.AirTransportCompany;
 import eapli.aisafe.company.domain.CompanyIATA;
 import eapli.aisafe.company.domain.CompanyICAO;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -25,6 +28,7 @@ class ListCompanyFleetControllerTest {
     private AuthorizationService authz;
     private AircraftRepository aircraftRepo;
     private AirTransportCompanyRepository companyRepo;
+    private AircraftModelRepository aircraftModelRepo;
     private ListCompanyFleetController controller;
 
     @BeforeEach
@@ -32,7 +36,8 @@ class ListCompanyFleetControllerTest {
         authz = mock(AuthorizationService.class);
         aircraftRepo = mock(AircraftRepository.class);
         companyRepo = mock(AirTransportCompanyRepository.class);
-        controller = new ListCompanyFleetController(authz, aircraftRepo, companyRepo);
+        aircraftModelRepo = mock(AircraftModelRepository.class);
+        controller = new ListCompanyFleetController(authz, aircraftRepo, companyRepo, aircraftModelRepo);
     }
 
     private Aircraft makeAircraft(final String reg, final String country) {
@@ -95,13 +100,13 @@ class ListCompanyFleetControllerTest {
 
     @Test
     void ensureAllActiveAircraftChecksAuthorization() {
-        // Arrange — US072: ATC_COLLABORATOR and FLIGHT_CONTROL_OPERATOR must both be allowed
+        // Arrange
         when(aircraftRepo.findAllActive()).thenReturn(List.of());
 
         // Act
         controller.allActiveAircraft();
 
-        // Assert — two roles must be passed (ATC_COLLABORATOR, FLIGHT_CONTROL_OPERATOR)
+        // Assert
         verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
     }
 
@@ -130,5 +135,100 @@ class ListCompanyFleetControllerTest {
 
         // Assert
         verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
+    }
+
+    // ── US072a: filter by model ───────────────────────────────────────────────
+
+    @Test
+    void ensureFleetByModelDelegatesToRepo() {
+        // Arrange
+        final List<Aircraft> fleet = List.of(makeAircraft("CS-TUI", "Portugal"));
+        when(aircraftRepo.findByCompanyIdAndModel(CompanyIATA.valueOf("TP"),
+                AircraftModelCode.valueOf("A320"))).thenReturn(fleet);
+
+        // Act
+        final Iterable<Aircraft> result = controller.fleetByModel("TP", "A320");
+
+        // Assert
+        verify(aircraftRepo).findByCompanyIdAndModel(CompanyIATA.valueOf("TP"),
+                AircraftModelCode.valueOf("A320"));
+        assertNotNull(result);
+    }
+
+    @Test
+    void ensureFleetByModelChecksAuthorization() {
+        // Arrange
+        when(aircraftRepo.findByCompanyIdAndModel(any(), any())).thenReturn(List.of());
+
+        // Act
+        controller.fleetByModel("TP", "A320");
+
+        // Assert
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
+    }
+
+    // ── US072b: filter by maker ───────────────────────────────────────────────
+
+    @Test
+    void ensureFleetByMakerFiltersCorrectly() {
+        // Arrange
+        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal");
+        when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
+        final AircraftModel model = mock(AircraftModel.class);
+        when(model.manufacturerName()).thenReturn("Airbus");
+        when(aircraftModelRepo.ofIdentity(AircraftModelCode.valueOf("A320")))
+                .thenReturn(Optional.of(model));
+
+        // Act
+        final Iterable<Aircraft> result = controller.fleetByMaker("TP", "Airbus");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.iterator().hasNext(), "Should return aircraft matching maker");
+    }
+
+    @Test
+    void ensureFleetByMakerExcludesNonMatchingMaker() {
+        // Arrange
+        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal");
+        when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
+        final AircraftModel model = mock(AircraftModel.class);
+        when(model.manufacturerName()).thenReturn("Airbus");
+        when(aircraftModelRepo.ofIdentity(AircraftModelCode.valueOf("A320")))
+                .thenReturn(Optional.of(model));
+
+        // Act
+        final Iterable<Aircraft> result = controller.fleetByMaker("TP", "Boeing");
+
+        // Assert
+        assertFalse(result.iterator().hasNext(), "Should not return aircraft of different maker");
+    }
+
+    // ── US072c: filter by capacity ────────────────────────────────────────────
+
+    @Test
+    void ensureFleetByCapacityFiltersCorrectly() {
+        // Arrange
+        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal"); // capacity = 180
+        when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
+
+        // Act
+        final Iterable<Aircraft> result = controller.fleetByCapacity("TP", 150);
+
+        // Assert
+        assertTrue(result.iterator().hasNext(), "Should return aircraft with capacity >= 150");
+    }
+
+    @Test
+    void ensureFleetByCapacityExcludesBelowMinimum() {
+        // Arrange
+        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal"); // capacity = 180
+        when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
+
+        // Act
+        final Iterable<Aircraft> result = controller.fleetByCapacity("TP", 200);
+
+        // Assert
+        assertFalse(result.iterator().hasNext(), "Should not return aircraft with capacity < 200");
     }
 }

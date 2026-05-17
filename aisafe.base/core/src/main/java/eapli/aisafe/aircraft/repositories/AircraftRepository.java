@@ -14,15 +14,38 @@ import java.util.Optional;
  */
 public interface AircraftRepository extends DomainRepository<RegistrationNumber, Aircraft> {
 
-    /** US070: uniqueness check. */
+    /**
+     * US070: uniqueness check.
+     */
     Optional<Aircraft> findByRegistrationNumber(RegistrationNumber registrationNumber);
 
-    /** US071: only ACTIVE aircraft shown for decommission selection. */
+    /**
+     * US071: only ACTIVE aircraft shown for decommission selection.
+     */
     Iterable<Aircraft> findAllActive();
 
-    /** US072: all aircraft (ACTIVE + DECOMMISSIONED) for a company. */
+    /**
+     * US072: all aircraft (ACTIVE + DECOMMISSIONED) for a company.
+     */
     Iterable<Aircraft> findByCompanyId(CompanyIATA companyId);
 
-    /** US058: find active aircraft that use a given model (blocks variant removal when in use). */
+    /**
+     * US058: find active aircraft that use a given model (blocks variant removal when in use).
+     */
     Iterable<Aircraft> findActiveByAircraftModelCode(AircraftModelCode modelCode);
+
+    /**
+     * US072a: filter by model.
+     */
+    Iterable<Aircraft> findByCompanyIdAndModel(CompanyIATA companyId, AircraftModelCode modelCode);
+
+    /**
+     * US072b: filter by maker name.
+     */
+    Iterable<Aircraft> findByCompanyIdAndMaker(CompanyIATA companyId, String makerName);
+
+    /**
+     * US072c: filter by minimum capacity.
+     */
+    Iterable<Aircraft> findByCompanyIdAndMinCapacity(CompanyIATA companyId, int minCapacity);
 }

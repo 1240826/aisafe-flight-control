@@ -40,4 +40,32 @@ public class InMemoryAircraftRepository
                 .filter(a -> a.aircraftModelCode().equals(modelCode))
                 .iterator();
     }
+
+    @Override
+    public Iterable<Aircraft> findByCompanyIdAndModel(final CompanyIATA companyId,
+                                                      final AircraftModelCode modelCode) {
+        return () -> StreamSupport.stream(findAll().spliterator(), false)
+                .filter(a -> a.companyId().equals(companyId))
+                .filter(a -> a.aircraftModelCode().equals(modelCode))
+                .iterator();
+    }
+
+    @Override
+    public Iterable<Aircraft> findByCompanyIdAndMaker(final CompanyIATA companyId,
+                                                      final String makerName) {
+        return () -> StreamSupport.stream(findAll().spliterator(), false)
+                .filter(a -> a.companyId().equals(companyId))
+                .filter(a -> a.aircraftModelCode().toString()
+                        .toLowerCase().contains(makerName.toLowerCase()))
+                .iterator();
+    }
+
+    @Override
+    public Iterable<Aircraft> findByCompanyIdAndMinCapacity(final CompanyIATA companyId,
+                                                            final int minCapacity) {
+        return () -> StreamSupport.stream(findAll().spliterator(), false)
+                .filter(a -> a.companyId().equals(companyId))
+                .filter(a -> a.totalCapacity() >= minCapacity)
+                .iterator();
+    }
 }

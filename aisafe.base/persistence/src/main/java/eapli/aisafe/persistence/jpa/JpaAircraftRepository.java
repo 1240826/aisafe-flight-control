@@ -47,4 +47,24 @@ public class JpaAircraftRepository
         return match("e.aircraftModelCode.code = '" + modelCode.toString() + "'"
                 + " AND e.operationalStatus = eapli.aisafe.aircraft.domain.OperationalStatus.ACTIVE");
     }
+
+    @Override
+    public Iterable<Aircraft> findByCompanyIdAndModel(final CompanyIATA companyId,
+                                                      final AircraftModelCode modelCode) {
+        return match("e.companyId.iataCode = '" + companyId + "'"
+                + " AND e.aircraftModelCode.code = '" + modelCode + "'");
+    }
+
+    @Override
+    public Iterable<Aircraft> findByCompanyIdAndMaker(final CompanyIATA companyId,
+                                                      final String makerName) {
+        return match("e.companyId.iataCode = '" + companyId + "'"
+                + " AND LOWER(e.aircraftModelCode.manufacturer) = LOWER('" + makerName + "')");
+    }
+
+    @Override
+    public Iterable<Aircraft> findByCompanyIdAndMinCapacity(final CompanyIATA companyId,
+                                                            final int minCapacity) {
+        return findByCompanyId(companyId);
+    }
 }
