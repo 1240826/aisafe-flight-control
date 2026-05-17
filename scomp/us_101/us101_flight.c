@@ -18,6 +18,7 @@
 static volatile sig_atomic_t got_violation = 0;
 static volatile sig_atomic_t do_terminate  = 0;
 
+/* called when parent detects a safety violation near this flight */
 static void handle_usr1(int sig){
 	const char msg[] = "[FLIGHT] SIGUSR1 - violation detected\n";
 	(void)sig;
@@ -25,6 +26,7 @@ static void handle_usr1(int sig){
 	got_violation = 1;
 }
 
+/* called when parent orders this flight to shut down */
 static void handle_term(int sig){
 	const char msg[] = "[FLIGHT] SIGTERM - shutting down\n";
 	(void)sig;
@@ -35,7 +37,7 @@ static void handle_term(int sig){
 static void setup_signals(void){
 	struct sigaction act;
 
-    /* SIGUSR1: sigfillset blocks all signals during handler */
+    /* block all signals while handling SIGUSR1 (US102 requirement) */
 	memset(&act, 0, sizeof(struct sigaction));
 	sigfillset(&act.sa_mask);
 	act.sa_handler = handle_usr1;
@@ -50,16 +52,7 @@ static void setup_signals(void){
 	sigaction(SIGINT,  &act, NULL);
 }
 
-/*
- * run_flight
- *   Child process entry point. calls exit().
- *
- *   Per step:
- *     1. Read GoToken (blocks, US103 barrier)
- *     2. Apply altitude adjustment if ordered by controller (US102)
- *     3. Advance position  if tok.safe == 1
- *     4. Send PosUpdate to parent
- */
+/* child process - runs one flight, never returns */
 void run_flight(FlightPlan *plan, int idx, int rfd, int gfd, int timestep){
 	Pos3D pos;
 	Vel3D vel;
@@ -85,25 +78,20 @@ void run_flight(FlightPlan *plan, int idx, int rfd, int gfd, int timestep){
 
 	while (!do_terminate) {
 
-        /* US103 block until parent sends GoToken */
+            /* wait for parent to release this step (US103) */
         	n = read(gfd, &tok, sizeof(GoToken));
         	if (n <= 0) break;
         	if (do_terminate) break;
 
-        /*
-         * US102 apply altitude adjustment if controller ordered it.
-         * This is the route change: the controller sets a positive
-         * alt_adjust to push one aircraft away from the other.
-         * The adjustment is added directly to the current altitude.
-         */
+            /* parent ordered an altitude change to avoid collision (US102) */
         	if (tok.alt_adjust != 0.0) {
             		pos.alt += tok.alt_adjust;
             		printf("[FLIGHT %s] step=%d  CTRL ORDER: altitude adjusted" " %+.0fm -> now %.0fm\n", plan->id, step, tok.alt_adjust, pos.alt);
             		fflush(stdout);
         	}
 
+            /* safe=0 means hold position this step */
         	if (!tok.safe) {
-            /* send current position without advancing */
             		upd.idx   = idx;  upd.step  = step;
             		upd.pos   = pos;  upd.vel   = vel;
             		upd.phase = (cur < plan->n_seg) ? plan->seg[cur].phase : CRUISE;
@@ -119,6 +107,7 @@ void run_flight(FlightPlan *plan, int idx, int rfd, int gfd, int timestep){
         	if (done) {
             		cur++;
             		if (cur >= plan->n_seg) {
+            		    /* all segments finished, notify parent and exit */
                 		upd.idx   = idx;  upd.step  = step;
                 		upd.pos   = pos;  upd.vel   = vel;
                 		upd.phase = plan->seg[plan->n_seg - 1].phase;
@@ -132,7 +121,7 @@ void run_flight(FlightPlan *plan, int idx, int rfd, int gfd, int timestep){
             		pos = plan->seg[cur].start;
         	}
 
-        	/* US101 send position update */
+        	/* US101: send current position to parent via pipe */
         	upd.idx   = idx;  upd.step  = step;
         	upd.pos   = pos;  upd.vel   = vel;
         	upd.phase = plan->seg[cur].phase;
