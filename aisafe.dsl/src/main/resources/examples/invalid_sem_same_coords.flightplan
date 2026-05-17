@@ -1,0 +1,22 @@
+// INVALID — R8: segment from and to coordinates are identical
+//
+// Expected: [SEMANTIC] line X - [R8] segment 'S1': from and to coordinates must differ
+
+flight TP108 : charter {
+
+    route {
+        origin      : LIS;
+        destination : LHR;
+    }
+
+    leg L1 {
+        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
+        arrival   { airport: LHR; time: 10:00; }
+        fuel      { quantity: 15000 kg; }
+        segment S1 {
+            from: (38.7813, -9.1359);
+            to:   (38.7813, -9.1359);
+            altitudes: [10000 m]; wind: (270, 15 m/s);
+        }
+    }
+}

@@ -1,6 +1,12 @@
-// Valid flight plan — direct flight Lisbon to London
+// INVALID — tests that the fuel block is mandatory inside a leg
+//
+// Error: the fuel block is missing from leg L1.
+// The grammar enforces departure → arrival → fuel → segment+
+//
+// Expected error (parser):
+//   [PARSER] line 22:8 - mismatched input 'segment' expecting 'fuel'
 
-flight TP1234 : regular {
+flight TP9005 : regular {
 
     route {
         origin      : LIS;
@@ -11,7 +17,7 @@ flight TP1234 : regular {
 
         departure {
             airport : LIS;
-            day     : Monday;
+            date    : 2026-05-10;
             time    : 08:30;
         }
 
@@ -20,14 +26,10 @@ flight TP1234 : regular {
             time    : 10:45;
         }
 
-        fuel {
-            quantity : 15000 kg;
-        }
-
         segment SEG1 {
             from      : (38.7813, -9.1359);
             to        : (51.4775, -0.4614);
-            altitudes : [10000 m WIDTH 50 m, 11000 m];
+            altitudes : [10000 m];
             wind      : (270, 15 m/s);
         }
     }

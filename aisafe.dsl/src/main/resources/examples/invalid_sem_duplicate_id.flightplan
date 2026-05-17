@@ -1,0 +1,39 @@
+// INVALID — R1: flight identifier 'TP100' declared twice in the same file
+//
+// Expected: [SEMANTIC] line X - [R1] flight identifier 'TP100' already declared in this file
+
+flight TP100 : charter {
+
+    route {
+        origin      : LIS;
+        destination : LHR;
+    }
+
+    leg L1 {
+        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
+        arrival   { airport: LHR; time: 10:00; }
+        fuel      { quantity: 15000 kg; }
+        segment S1 {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m]; wind: (270, 15 m/s);
+        }
+    }
+}
+
+flight TP100 : charter {
+
+    route {
+        origin      : OPO;
+        destination : CDG;
+    }
+
+    leg L1 {
+        departure { airport: OPO; date: 2026-05-20; time: 09:00; }
+        arrival   { airport: CDG; time: 11:30; }
+        fuel      { quantity: 14000 kg; }
+        segment S1 {
+            from: (41.2481, -8.6814); to: (49.0097, 2.5479);
+            altitudes: [10000 m]; wind: (270, 20 m/s);
+        }
+    }
+}

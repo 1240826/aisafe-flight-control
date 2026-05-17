@@ -1,0 +1,22 @@
+// INVALID — R6: route destination is 'CDG' but last leg arrives at 'LHR'
+//
+// Expected: [SEMANTIC] line X - [R6] route destination 'CDG' must match
+//           last leg arrival airport 'LHR'
+
+flight TP106 : charter {
+
+    route {
+        origin      : LIS;
+        destination : CDG;
+    }
+
+    leg L1 {
+        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
+        arrival   { airport: LHR; time: 10:00; }
+        fuel      { quantity: 15000 kg; }
+        segment S1 {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m]; wind: (270, 15 m/s);
+        }
+    }
+}

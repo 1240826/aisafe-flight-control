@@ -1,0 +1,42 @@
+// INVALID — tests that date format must be YYYY-MM-DD
+//
+// Error: date uses European DD-MM-YYYY format instead of ISO YYYY-MM-DD.
+// The DATE_LITERAL token requires exactly: DDDD'-'DD'-'DD (4 then 2 then 2 digits).
+// '10' is only 2 digits, so it is tokenised as NUMBER, not DATE_LITERAL.
+//
+// Expected error (parser):
+//   [PARSER] line 20:16 - mismatched input '10'
+//            expecting DATE_LITERAL
+
+flight TP9008 : regular {
+
+    route {
+        origin      : LIS;
+        destination : LHR;
+    }
+
+    leg L1 {
+
+        departure {
+            airport : LIS;
+            date    : 10-05-2026;    // ERROR: should be 2026-05-10
+            time    : 08:30;
+        }
+
+        arrival {
+            airport : LHR;
+            time    : 10:45;
+        }
+
+        fuel {
+            quantity : 15000 kg;
+        }
+
+        segment SEG1 {
+            from      : (38.7813, -9.1359);
+            to        : (51.4775, -0.4614);
+            altitudes : [10000 m];
+            wind      : (270, 15 m/s);
+        }
+    }
+}

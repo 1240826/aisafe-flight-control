@@ -1,0 +1,42 @@
+// INVALID — R7: 3-leg round trip LIS -> CDG -> LHR -> LIS revisits origin airport
+//
+// The flight returns to LIS which was already the departure point of leg 1.
+// Expected: [SEMANTIC] line X - [R7] airport 'LIS' is visited more than once
+
+flight TP107 : charter {
+
+    route {
+        origin      : LIS;
+        destination : LIS;
+    }
+
+    leg L1 {
+        departure { airport: LIS; date: 2026-07-10; time: 07:00; }
+        arrival   { airport: CDG; time: 09:30; }
+        fuel      { quantity: 14000 kg; }
+        segment S1 {
+            from: (38.7813, -9.1359); to: (49.0097, 2.5479);
+            altitudes: [10000 m]; wind: (270, 25 m/s);
+        }
+    }
+
+    leg L2 {
+        departure { airport: CDG; date: 2026-07-10; time: 11:00; }
+        arrival   { airport: LHR; time: 12:00; }
+        fuel      { quantity: 8000 kg; }
+        segment S2 {
+            from: (49.0097, 2.5479); to: (51.4775, -0.4614);
+            altitudes: [9000 m]; wind: (260, 18 m/s);
+        }
+    }
+
+    leg L3 {
+        departure { airport: LHR; date: 2026-07-10; time: 14:00; }
+        arrival   { airport: LIS; time: 16:30; }
+        fuel      { quantity: 16000 kg; }
+        segment S3 {
+            from: (51.4775, -0.4614); to: (38.7813, -9.1359);
+            altitudes: [10000 m]; wind: (90, 20 m/s);
+        }
+    }
+}

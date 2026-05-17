@@ -1,0 +1,34 @@
+// Valid regular multi-leg flight: Lisbon -> Madrid -> Paris (Mondays)
+// Regular flights use day-of-week in departure — this is the weekly schedule
+
+flight TP3000 : regular {
+
+    route {
+        origin      : LIS;
+        destination : CDG;
+    }
+
+    leg L1 {
+        departure { airport: LIS; day: Monday; time: 07:00; }
+        arrival   { airport: MAD; time: 08:30; }
+        fuel      { quantity: 8000 kg; }
+        segment SEG1 {
+            from      : (38.7813, -9.1359);
+            to        : (40.4983, -3.5676);
+            altitudes : [10000 m WIDTH 60 m];
+            wind      : (90, 20 m/s);
+        }
+    }
+
+    leg L2 {
+        departure { airport: MAD; day: Monday; time: 10:00; }
+        arrival   { airport: CDG; time: 12:30; }
+        fuel      { quantity: 9000 kg; }
+        segment SEG2 {
+            from      : (40.4983, -3.5676);
+            to        : (49.0097, 2.5479);
+            altitudes : [11000 m WIDTH 60 m];
+            wind      : (315, 15 m/s);
+        }
+    }
+}

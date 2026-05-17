@@ -1,0 +1,32 @@
+// INVALID — R4: leg1 arrives at 13:00 but leg2 departs at 11:00 on the same day
+//
+// Expected: [SEMANTIC] line X - [R4] leg 1 arrival (2026-05-20 13:00) must be before
+//           leg 2 departure (2026-05-20 11:00)
+
+flight TP104 : charter {
+
+    route {
+        origin      : LIS;
+        destination : WAW;
+    }
+
+    leg L1 {
+        departure { airport: LIS;  date: 2026-05-20; time: 07:00; }
+        arrival   { airport: EDDF; time: 13:00; }
+        fuel      { quantity: 18000 kg; }
+        segment S1 {
+            from: (38.7813, -9.1359); to: (50.0333, 8.5706);
+            altitudes: [10000 m]; wind: (90, 20 m/s);
+        }
+    }
+
+    leg L2 {
+        departure { airport: EDDF; date: 2026-05-20; time: 11:00; }
+        arrival   { airport: WAW;  time: 13:30; }
+        fuel      { quantity: 14000 kg; }
+        segment S2 {
+            from: (50.0333, 8.5706); to: (52.1657, 20.9671);
+            altitudes: [10000 m]; wind: (45, 15 m/s);
+        }
+    }
+}

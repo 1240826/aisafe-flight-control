@@ -1,6 +1,13 @@
-// Valid flight plan — direct flight Lisbon to London
+// INVALID — tests flight type validation
+//
+// Error: 'cargo' is not an accepted flight type.
+// Only 'regular' and 'charter' are valid (case-insensitive).
+//
+// Expected error (parser):
+//   [PARSER] line 3:15 - mismatched input 'cargo'
+//            expecting {REGULAR, CHARTER}
 
-flight TP1234 : regular {
+flight TP9001 : cargo {
 
     route {
         origin      : LIS;
@@ -11,7 +18,7 @@ flight TP1234 : regular {
 
         departure {
             airport : LIS;
-            day     : Monday;
+            date    : 2026-05-10;
             time    : 08:30;
         }
 
@@ -27,7 +34,7 @@ flight TP1234 : regular {
         segment SEG1 {
             from      : (38.7813, -9.1359);
             to        : (51.4775, -0.4614);
-            altitudes : [10000 m WIDTH 50 m, 11000 m];
+            altitudes : [10000 m];
             wind      : (270, 15 m/s);
         }
     }
