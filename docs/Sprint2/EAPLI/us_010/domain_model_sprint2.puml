@@ -1,0 +1,399 @@
+@startuml domain_model_sprint2
+skinparam dpi 150
+scale 0.5
+skinparam packageStyle rectangle
+skinparam nodesep 50
+skinparam ranksep 70
+hide empty members
+
+' =============================================
+' ROW 1 — Technical configuration
+' =============================================
+together {
+  package "Manufacturer_Aggregate" <<aggregate>> {
+    class Manufacturer <<entity>> <<root>> {
+      country
+    }
+    class ManufacturerName <<value object>> {
+      name
+    }
+    Manufacturer *-- ManufacturerName : identifiedBy
+  }
+
+  package "EngineModel_Aggregate" <<aggregate>> {
+    class EngineModel <<entity>> <<root>> {
+      fuelType
+    }
+    class EngineModelCode <<value object>> {
+      code
+    }
+    class EngineName <<value object>> {
+      name
+    }
+    note right of EngineName : name + manufacturer\nmust be unique (US056)
+    class Power <<value object>> {
+      value
+      unit
+    }
+    class Thrust <<value object>> {
+      value
+      unit
+      speedReference
+    }
+    note right of Thrust : two instances per engine:\nstaticThrust + cruiseThrust (sec. 3.3)
+    class TSFC <<value object>> {
+      value
+      unit
+    }
+    enum MotorizationType {
+      TURBOPROP
+      TURBOFAN
+      TURBOJET
+      RAMJET
+      ELECTRIC_PROPELLER
+    }
+    EngineModel *-- EngineModelCode : identifiedBy
+    EngineModel *-- EngineName : namedAs
+    EngineModel --> MotorizationType : ofType
+    EngineModel *-- Power : ratedAt
+    EngineModel *-- "staticThrust" Thrust : characterisedBy
+    EngineModel *-- "cruiseThrust" Thrust : characterisedBy
+    EngineModel *-- TSFC : ratedBy
+  }
+
+  package "AircraftModel_Aggregate" <<aggregate>> {
+    class AircraftModel <<entity>> <<root>> {
+      name
+      maxPassengers
+    }
+    class AircraftModelCode <<value object>> {
+      code
+    }
+    note right of AircraftModelCode : name + manufacturer\nmust be unique (US055)
+    enum AircraftType {
+      PASSENGER
+      CARGO
+      MIXED
+    }
+    class AircraftWeights <<value object>> {
+      emptyWeight
+      MTOW
+      MZFW
+      maxFuelCapacity
+    }
+    note right of AircraftWeights : MTOW > MZFW > emptyWeight (sec. 3.2)
+    class AircraftPerformance <<value object>> {
+      serviceCeiling
+      cruiseSpeed
+      maximumRange
+    }
+    class AerodynamicCoefficients <<value object>> {
+      wingArea
+      dragCoefficient
+      liftCoefficient
+    }
+    class AircraftVariant <<entity>> {
+      motorizationType
+    }
+    note right of AircraftVariant : all variants in a model\nmust share MotorizationType (US057)
+    AircraftModel *-- AircraftModelCode : identifiedBy
+    AircraftModel --> AircraftType : ofType
+    AircraftModel *-- AircraftWeights : weights
+    AircraftModel *-- AircraftPerformance : performs
+    AircraftModel *-- AerodynamicCoefficients : characterisedBy
+    AircraftModel *-- "0..*" AircraftVariant : comprises
+  }
+}
+
+' =============================================
+' ROW 2 — Infrastructure
+' =============================================
+together {
+  package "AirTransportCompany_Aggregate" <<aggregate>> {
+    class AirTransportCompany <<entity>> <<root>> {
+      name
+    }
+    class CompanyIATA <<value object>> {
+      iataCode
+    }
+    class CompanyICAO <<value object>> {
+      icaoCode
+    }
+    AirTransportCompany *-- CompanyIATA : identifiedBy
+    AirTransportCompany *-- CompanyICAO : identifiedBy
+  }
+
+  package "AirControlArea_Aggregate" <<aggregate>> {
+    class AirControlArea <<entity>> <<root>> {
+      maxAltitudeMetres
+    }
+    note right of AirControlArea : from Application.settings()\ndefault 14 000 m (US050.7)
+    class AreaCode <<value object>> {
+      code
+    }
+    note right of AreaCode : unique in system (US050)
+    class AreaName <<value object>> {
+      name
+    }
+    note right of AreaName : unique (US050.3)
+    class BoundingBox <<value object>> {
+      minLat
+      maxLat
+      minLon
+      maxLon
+    }
+    note right of BoundingBox : minLat < maxLat;\nminLon < maxLon (US050.5)
+    AirControlArea *-- AreaCode : identifiedBy
+    AirControlArea *-- AreaName : namedAs
+    AirControlArea *-- BoundingBox : boundedBy
+  }
+
+  package "Airport_Aggregate" <<aggregate>> {
+    class Airport <<entity>> <<root>> {
+      name
+      city
+      country
+    }
+    class AirportIATA <<value object>> {
+      iataCode
+    }
+    class AirportICAO <<value object>> {
+      icaoCode
+    }
+    class Coordinates <<value object>> {
+      latitude
+      longitude
+    }
+    class Elevation <<value object>> {
+      value
+      unit
+    }
+    Airport *-- AirportIATA : identifiedBy
+    Airport *-- AirportICAO : identifiedBy
+    Airport *-- Coordinates : locatedAt
+    Airport *-- Elevation : situatedAt
+  }
+}
+
+' =============================================
+' ROW 3 — Aircraft + Collaborators
+' =============================================
+together {
+  package "Aircraft_Aggregate" <<aggregate>> {
+    class Aircraft <<entity>> <<root>> {
+      numberOfFlightCrewMembers
+      registrationDate
+    }
+    class RegistrationNumber <<value object>> {
+      number
+      registrationCountry
+    }
+    note right of RegistrationNumber : unique worldwide (US070)
+    class CabinConfiguration <<value object>> {
+    }
+    class SeatClass <<value object>> {
+      className
+      numberOfSeats
+    }
+    note right of CabinConfiguration : totalCapacity() ≤ maxPassengers (US070)
+    enum OperationalStatus {
+      ACTIVE
+      DECOMMISSIONED
+    }
+    CabinConfiguration *-- "1..*" SeatClass : contains
+    Aircraft *-- RegistrationNumber : identifiedBy
+    Aircraft *-- CabinConfiguration : configuredWith
+    Aircraft --> OperationalStatus : hasStatus
+  }
+
+  package "Collaborator_Aggregate" <<aggregate>> {
+    class Collaborator <<entity>> <<root>> {
+      name
+      position
+      phone
+      active
+    }
+    enum CollaboratorType {
+      ATC
+      FCO
+      WEATHER
+    }
+    note right of CollaboratorType : ATC → companyId (employedBy ATC)\nFCO/WEATHER → areaCode (worksFor ACA)
+    class SecurityClearance <<value object>> {
+      expiryDate
+    }
+    class SkillsAssessment <<value object>> {
+      assessmentDate
+    }
+    note right of SkillsAssessment : regulatory period: 5 years (sec. 3.1.1)
+    class SystemUser <<entity>> {
+    }
+    note left of SystemUser : EAPLI framework.\nemail unique (sec. 3.1.1).\nAuth managed by framework.
+    Collaborator --> CollaboratorType : ofType
+    Collaborator *-- SecurityClearance : holds
+    Collaborator *-- SkillsAssessment : assessed
+    Collaborator --> SystemUser : linkedTo
+  }
+}
+
+' =============================================
+' ROW 4 — Pilot + FlightRoute + Flight  (Sprint 3)
+' =============================================
+note "Sprint 3 — not yet implemented" as N3
+
+package "Pilot_Aggregate" <<aggregate>> {
+  class Pilot <<entity>> <<root>> {
+  }
+}
+Pilot .. N3
+
+package "FlightRoute_Aggregate" <<aggregate>> {
+  class FlightRoute <<entity>> <<root>> {
+    deactivationDate
+  }
+  class RouteName <<value object>> {
+    name
+  }
+  note right of RouteName : 2 letters + up to 4 digits\ne.g. TP123 (US073)
+  FlightRoute *-- RouteName : identifiedBy
+}
+FlightRoute .. N3
+
+package "Flight_Aggregate" <<aggregate>> {
+  class Flight <<entity>> <<root>> {
+    scheduledArrivalTime
+  }
+  class FlightDesignator <<value object>> {
+    airlineDesignator
+    flightNumber
+    operationalSuffix
+  }
+  note right of FlightDesignator : format: xxn(n)(n)(n)(a)\nunique (sec. 3.2)
+  enum FlightType {
+    regular
+    charter
+  }
+  note right of FlightType : if regular → RegularSchedule;\nif charter → CharterSchedule
+  abstract class DepartureSchedule <<value object>> {
+  }
+  class RegularSchedule <<value object>> {
+  }
+  class ScheduleEntry <<value object>> {
+    dayOfWeek
+    departureTime
+  }
+  class CharterSchedule <<value object>> {
+    departureDate
+    departureTime
+  }
+  class FlightPlan <<entity>> {
+  }
+  note right of FlightPlan : draft → validated | rejected\nUS080, US082, US085
+  enum FlightPlanStatus {
+    draft
+    validated
+    rejected
+  }
+  class FuelQuantity <<value object>> {
+    value
+    unit
+  }
+  note right of FuelQuantity : must be positive (US080)
+  Flight *-- FlightDesignator : identifiedBy
+  Flight --> FlightType : ofType
+  Flight *-- DepartureSchedule : scheduledAt
+  DepartureSchedule <|-- RegularSchedule
+  DepartureSchedule <|-- CharterSchedule
+  RegularSchedule *-- "1..*" ScheduleEntry : composedOf
+  Flight *-- "1..*" FlightPlan : hasPlan
+  FlightPlan --> FlightPlanStatus : hasStatus
+  FlightPlan *-- FuelQuantity : carries
+}
+Flight .. N3
+
+' =============================================
+' ROW 5 — Weather + Simulation
+' =============================================
+together {
+  package "WeatherData_Aggregate" <<aggregate>> {
+    class WeatherData <<entity>> <<root>> {
+      temperatureCelsius
+      sourceProvider
+      recordedDateTime
+    }
+    note right of WeatherData : data from multiple\nproviders (US041)
+    class WindCondition <<value object>> {
+      speedKnots
+      directionDegrees
+      latitude
+      longitude
+      altitudeMetres
+    }
+    WeatherData *-- WindCondition : records
+  }
+
+  package "Simulation_Aggregate" <<aggregate>> {
+    class Simulation <<entity>> <<root>> {
+    }
+    class SimulationTimeRange <<value object>> {
+      startDateTime
+      endDateTime
+    }
+    note right of SimulationTimeRange : start < end (US100)
+    class SafetyThreshold <<value object>> {
+      value
+      unit
+    }
+    class SimulationReport <<value object>> {
+      filePath
+      content
+    }
+    note right of SimulationReport : raw file from C module.\nimmutable (US109/US111)
+    enum ValidationResult {
+      PASSED
+      FAILED
+      PENDING
+    }
+    Simulation *-- SimulationTimeRange : scheduledFor
+    Simulation *-- SafetyThreshold : boundedBy
+    Simulation *-- "0..1" SimulationReport : produces
+    Simulation --> ValidationResult : concludes
+  }
+}
+
+' =============================================
+' INTER-AGGREGATE RELATIONS
+' =============================================
+EngineModel "*" --> "1" Manufacturer : manufacturedBy >
+AircraftModel "*" --> "1" Manufacturer : manufacturedBy >
+AircraftVariant "*" --> "1" EngineModel : certifies >
+
+Aircraft "*" --> "1" AircraftModel : ofModel >
+Aircraft "*" --> "1" AirTransportCompany : ownedBy >
+
+Airport "*" --> "1" AirControlArea : locatedIn >
+
+Collaborator "*" --> "0..1" AirTransportCompany : [ATC] employedBy >
+Collaborator "*" --> "0..1" AirControlArea : [FCO/WEATHER] worksFor >
+
+Pilot "*" --> "1" Collaborator : extends >
+Pilot "*" --> "1" AirTransportCompany : belongsTo >
+Pilot "*" --> "1..*" AircraftModel : certifiedFor >
+
+FlightRoute "*" --> "1" Airport : hasOrigin >
+FlightRoute "*" --> "1" Airport : hasDestination >
+FlightRoute "*" --> "1" AirTransportCompany : ownedBy >
+
+Flight "*" --> "1" FlightRoute : instantiates >
+Flight "*" --> "1" Aircraft : uses >
+Flight "*" --> "1" Pilot : assignedTo >
+Flight "*" --> "0..1" WeatherData : usesWeather >
+note on link : US082: weather\nadded to flight plan
+
+WeatherData "*" --> "1" AirControlArea : registeredFor >
+
+Simulation "*" --> "1" AirControlArea : covers >
+Simulation "*" --> "1..*" Flight : includes >
+Simulation "*" --> "*" WeatherData : uses >
+
+@enduml

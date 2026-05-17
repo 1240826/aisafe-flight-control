@@ -10,36 +10,32 @@ import eapli.framework.validations.Preconditions;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Inheritance;
-import jakarta.persistence.InheritanceType;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 /**
- * Abstract aggregate root: Collaborator.
- * JPA SINGLE_TABLE inheritance — concrete subtypes: ATCCollaborator, FlightControlOperator, WeatherPerson.
+ * Aggregate root: Collaborator.
+ * Single concrete class — no inheritance. Role variant identified by {@link CollaboratorType}.
+ * Use the static factory methods to create instances:
+ * {@link #ofATC}, {@link #ofFlightControlOperator}, {@link #ofWeatherPerson}.
  *
- * SystemUser linked via @OneToOne (cascade = NONE — SystemUser belongs to a separate framework aggregate).
- * Pattern follows eapli.base Utente.java.
- *
- * Cross-aggregate refs on ROOT (per US010 domain model):
- *  - companyId (employedBy 0..1): only ATCCollaborator; FCO/WeatherPerson leave null.
- *  - areaCode  (worksFor  0..1): only FCO/WeatherPerson; ATCCollaborator leaves null.
+ * Cross-aggregate refs (one or the other, never both):
+ *  - companyId: only for CollaboratorType.ATC
+ *  - areaCode:  only for CollaboratorType.FCO and CollaboratorType.WEATHER
  *
  * US061, US062, US063, US064.
  */
 @Entity
 @Table(name = "COLLABORATOR")
-@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(name = "COLLABORATOR_TYPE")
-public abstract class Collaborator implements AggregateRoot<Long> {
+public class Collaborator implements AggregateRoot<Long> {
 
     private static final long serialVersionUID = 1L;
 
@@ -50,11 +46,10 @@ public abstract class Collaborator implements AggregateRoot<Long> {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Link to the framework SystemUser aggregate.
-     * cascade = NONE: SystemUser lifecycle is managed by the framework, not by us.
-     * Pattern: same as Utente.java in eapli.base.
-     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "COLLABORATOR_TYPE", nullable = false)
+    private CollaboratorType collaboratorType;
+
     @OneToOne()
     private SystemUser systemUser;
 
@@ -73,31 +68,54 @@ public abstract class Collaborator implements AggregateRoot<Long> {
     @Column(name = "ACTIVE", nullable = false)
     private boolean active = true;
 
-    /** Contact phone number — optional, editable (US063). */
     @Column(name = "PHONE")
     private String phone;
 
-    /**
-     * Cross-aggregate ref: company (employedBy).
-     * Only ATCCollaborator; null for FCO and WeatherPerson.
-     */
     @Embedded
     @AttributeOverrides({@AttributeOverride(name = "iataCode", column = @Column(name = "COMPANY_IATA"))})
     private CompanyIATA companyId;
 
-    /**
-     * Cross-aggregate ref: air control area (worksFor).
-     * Only FCO and WeatherPerson; null for ATCCollaborator.
-     */
     @Embedded
     @AttributeOverrides({@AttributeOverride(name = "code", column = @Column(name = "AREA_CODE"))})
     private AreaCode areaCode;
 
-    protected Collaborator(final SystemUser systemUser, final String name,
-                           final String position, final SecurityClearance securityClearance,
-                           final SkillsAssessment skillsAssessment,
-                           final CompanyIATA companyId, final AreaCode areaCode) {
-        Preconditions.noneNull(systemUser, name, position, securityClearance, skillsAssessment);
+    // ── Factory methods ───────────────────────────────────────────────────────
+
+    public static Collaborator ofATC(final SystemUser systemUser, final String name,
+                                      final String position, final SecurityClearance securityClearance,
+                                      final SkillsAssessment skillsAssessment,
+                                      final CompanyIATA companyId) {
+        Preconditions.noneNull(companyId, "ATC Collaborator requires a company");
+        return new Collaborator(systemUser, name, position, securityClearance, skillsAssessment,
+                companyId, null, CollaboratorType.ATC);
+    }
+
+    public static Collaborator ofFlightControlOperator(final SystemUser systemUser, final String name,
+                                                        final String position, final SecurityClearance securityClearance,
+                                                        final SkillsAssessment skillsAssessment,
+                                                        final AreaCode areaCode) {
+        Preconditions.noneNull(areaCode, "Flight Control Operator requires an area code");
+        return new Collaborator(systemUser, name, position, securityClearance, skillsAssessment,
+                null, areaCode, CollaboratorType.FCO);
+    }
+
+    public static Collaborator ofWeatherPerson(final SystemUser systemUser, final String name,
+                                                final String position, final SecurityClearance securityClearance,
+                                                final SkillsAssessment skillsAssessment,
+                                                final AreaCode areaCode) {
+        Preconditions.noneNull(areaCode, "Weather Person requires an area code");
+        return new Collaborator(systemUser, name, position, securityClearance, skillsAssessment,
+                null, areaCode, CollaboratorType.WEATHER);
+    }
+
+    // ── Private constructor (used by factory methods only) ────────────────────
+
+    private Collaborator(final SystemUser systemUser, final String name,
+                         final String position, final SecurityClearance securityClearance,
+                         final SkillsAssessment skillsAssessment,
+                         final CompanyIATA companyId, final AreaCode areaCode,
+                         final CollaboratorType collaboratorType) {
+        Preconditions.noneNull(systemUser, name, position, securityClearance, skillsAssessment, collaboratorType);
         Invariants.ensure(!name.isBlank(), "Collaborator name must not be blank");
         Invariants.ensure(name.matches(".*\\p{L}.*"),
                 "Collaborator name must contain at least one letter");
@@ -109,8 +127,9 @@ public abstract class Collaborator implements AggregateRoot<Long> {
         this.position = position.trim();
         this.securityClearance = securityClearance;
         this.skillsAssessment = skillsAssessment;
-        this.companyId = companyId;   // nullable — ATCCollaborator only
-        this.areaCode = areaCode;     // nullable — FCO/WeatherPerson only
+        this.companyId = companyId;
+        this.areaCode = areaCode;
+        this.collaboratorType = collaboratorType;
         this.active = true;
     }
 
@@ -118,7 +137,8 @@ public abstract class Collaborator implements AggregateRoot<Long> {
         // for ORM
     }
 
-    /** US064: disable collaborator. Irreversible. */
+    // ── Domain behaviour ──────────────────────────────────────────────────────
+
     public void disable() {
         if (!active) {
             throw new IllegalStateException("Collaborator is already disabled");
@@ -130,7 +150,6 @@ public abstract class Collaborator implements AggregateRoot<Long> {
         return active;
     }
 
-    /** US063: update name. */
     public void updateName(final String newName) {
         Preconditions.noneNull(newName);
         Invariants.ensure(!newName.isBlank(), "Name must not be blank");
@@ -139,7 +158,6 @@ public abstract class Collaborator implements AggregateRoot<Long> {
         this.name = newName.trim();
     }
 
-    /** US063: update position. */
     public void updatePosition(final String newPosition) {
         Preconditions.noneNull(newPosition);
         Invariants.ensure(!newPosition.isBlank(), "Position must not be blank");
@@ -148,24 +166,24 @@ public abstract class Collaborator implements AggregateRoot<Long> {
         this.position = newPosition.trim();
     }
 
-    /** US063: renew security clearance — replaces VO (immutable). */
     public void renewSecurityClearance(final SecurityClearance newClearance) {
         Preconditions.noneNull(newClearance);
         this.securityClearance = newClearance;
     }
 
-    /** US063: update skills assessment — replaces VO (immutable). */
     public void updateSkillsAssessment(final SkillsAssessment newAssessment) {
         Preconditions.noneNull(newAssessment);
         this.skillsAssessment = newAssessment;
     }
 
-    /** US063: update phone number. Null or blank clears the phone. */
     public void updatePhone(final String newPhone) {
         this.phone = (newPhone == null || newPhone.isBlank()) ? null : newPhone.trim();
     }
 
+    // ── Accessors ─────────────────────────────────────────────────────────────
+
     public Long id() { return id; }
+    public CollaboratorType collaboratorType() { return collaboratorType; }
     public SystemUser systemUser() { return systemUser; }
     public String name() { return name; }
     public String position() { return position; }
@@ -189,6 +207,6 @@ public abstract class Collaborator implements AggregateRoot<Long> {
 
     @Override
     public String toString() {
-        return name + " (" + position + ") [" + (active ? "ACTIVE" : "DISABLED") + "]";
+        return name + " (" + position + ") [" + collaboratorType + " | " + (active ? "ACTIVE" : "DISABLED") + "]";
     }
 }

@@ -2,7 +2,6 @@ package eapli.aisafe.collaborator.application;
 
 import eapli.aisafe.aircontrolarea.domain.AirControlArea;
 import eapli.aisafe.aircontrolarea.repositories.AirControlAreaRepository;
-import eapli.aisafe.collaborator.domain.ATCCollaborator;
 import eapli.aisafe.collaborator.domain.Collaborator;
 import eapli.aisafe.collaborator.domain.SecurityClearance;
 import eapli.aisafe.collaborator.domain.SkillsAssessment;
@@ -62,8 +61,8 @@ class AddCollaboratorControllerTest {
                 .build();
     }
 
-    private ATCCollaborator makeATCCollaborator(final SystemUser su) {
-        return new ATCCollaborator(su, "Jane Doe", "ATC Officer",
+    private Collaborator makeATCCollaborator(final SystemUser su) {
+        return Collaborator.ofATC(su, "Jane Doe", "ATC Officer",
                 new SecurityClearance(LocalDate.now().plusYears(1)),
                 new SkillsAssessment(LocalDate.now().minusDays(1)),
                 CompanyIATA.valueOf("TP"));
@@ -77,7 +76,7 @@ class AddCollaboratorControllerTest {
         final SystemUser mockUser = mock(SystemUser.class);
         when(userSvc.registerNewUser(anyString(), anyString(), anyString(), anyString(), anyString(), any()))
                 .thenReturn(mockUser);
-        final ATCCollaborator expected = makeATCCollaborator(dummySystemUser());
+        final Collaborator expected = makeATCCollaborator(dummySystemUser());
         when(collaboratorRepo.save(any(Collaborator.class))).thenReturn(expected);
 
         // Act

@@ -1,6 +1,5 @@
 package eapli.aisafe.collaborator.application;
 
-import eapli.aisafe.collaborator.domain.ATCCollaborator;
 import eapli.aisafe.collaborator.domain.Collaborator;
 import eapli.aisafe.collaborator.domain.SecurityClearance;
 import eapli.aisafe.collaborator.domain.SkillsAssessment;
@@ -42,8 +41,8 @@ class DisableCollaboratorControllerTest {
                 .build();
     }
 
-    private ATCCollaborator makeCollaborator(final SystemUser su) {
-        return new ATCCollaborator(su, "John Doe", "Senior ATC",
+    private Collaborator makeCollaborator(final SystemUser su) {
+        return Collaborator.ofATC(su, "John Doe", "Senior ATC",
                 new SecurityClearance(LocalDate.now().plusYears(1)),
                 new SkillsAssessment(LocalDate.now().minusDays(1)),
                 CompanyIATA.valueOf("TP"));
@@ -54,7 +53,7 @@ class DisableCollaboratorControllerTest {
     @Test
     void ensureDisableCollaboratorCallsDisable() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator(dummySystemUser());
+        final Collaborator collab = makeCollaborator(dummySystemUser());
         when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
         when(repo.save(collab)).thenReturn(collab);
 
@@ -69,7 +68,7 @@ class DisableCollaboratorControllerTest {
     @Test
     void ensureDisableCollaboratorChecksAuthorization() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator(dummySystemUser());
+        final Collaborator collab = makeCollaborator(dummySystemUser());
         when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
         when(repo.save(collab)).thenReturn(collab);
 
@@ -98,7 +97,7 @@ class DisableCollaboratorControllerTest {
     @Test
     void ensureActiveCollaboratorsReturnsListFromRepo() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator(dummySystemUser());
+        final Collaborator collab = makeCollaborator(dummySystemUser());
         when(repo.findAllActive()).thenReturn(List.of(collab));
 
         // Act
@@ -112,7 +111,7 @@ class DisableCollaboratorControllerTest {
     @Test
     void ensureDisablingAlreadyDisabledThrows() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator(dummySystemUser());
+        final Collaborator collab = makeCollaborator(dummySystemUser());
         collab.disable(); // pre-disable
         when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
 
