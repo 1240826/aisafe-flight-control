@@ -1,0 +1,21 @@
+// INVALID — R9: altitude must be positive; zero altitude is not physically meaningful
+//
+// Expected: [SEMANTIC] line X - [R9] altitude must be positive, got: 0m
+
+flight TP109 : charter {
+
+    route {
+        origin      : LIS;
+        destination : LHR;
+    }
+
+    leg L1 {
+        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
+        arrival   { airport: LHR; time: 10:00; }
+        fuel      { quantity: 15000 kg; }
+        segment S1 {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [0 m]; wind: (270, 15 m/s);
+        }
+    }
+}

@@ -1,6 +1,12 @@
-// Valid flight plan — direct flight Lisbon to London
+// INVALID — tests that the departure block is mandatory inside a leg
+//
+// Error: the departure block is missing from leg L1.
+// The grammar enforces: leg { departureDecl arrivalDecl fuelDecl segmentDecl+ }
+//
+// Expected error (parser):
+//   [PARSER] line 12:8 - mismatched input 'arrival' expecting 'departure'
 
-flight TP1234 : regular {
+flight TP9003 : regular {
 
     route {
         origin      : LIS;
@@ -8,12 +14,6 @@ flight TP1234 : regular {
     }
 
     leg L1 {
-
-        departure {
-            airport : LIS;
-            day     : Monday;
-            time    : 08:30;
-        }
 
         arrival {
             airport : LHR;
@@ -27,7 +27,7 @@ flight TP1234 : regular {
         segment SEG1 {
             from      : (38.7813, -9.1359);
             to        : (51.4775, -0.4614);
-            altitudes : [10000 m WIDTH 50 m, 11000 m];
+            altitudes : [10000 m];
             wind      : (270, 15 m/s);
         }
     }

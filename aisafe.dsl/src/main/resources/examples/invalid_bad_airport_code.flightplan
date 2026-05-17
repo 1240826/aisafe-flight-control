@@ -1,0 +1,43 @@
+// INVALID — tests airport code format enforcement
+//
+// Error: 'LI' is only 2 letters; neither IATA (3 letters) nor ICAO (4 letters) match.
+// ANTLR tokenises 'LI' as a generic IDENTIFIER since no airport-code rule covers
+// sequences of exactly 2 uppercase letters.
+// The parser expects IATA_CODE or ICAO_CODE but receives IDENTIFIER.
+//
+// Expected error (parser):
+//   [PARSER] line 7:16 - mismatched input 'LI'
+//            expecting {IATA_CODE, ICAO_CODE}
+
+flight TP9010 : regular {
+
+    route {
+        origin      : LI;             // ERROR: only 2 letters, not a valid airport code
+        destination : LHR;
+    }
+
+    leg L1 {
+
+        departure {
+            airport : LIS;
+            date    : 2026-05-10;
+            time    : 08:30;
+        }
+
+        arrival {
+            airport : LHR;
+            time    : 10:45;
+        }
+
+        fuel {
+            quantity : 15000 kg;
+        }
+
+        segment SEG1 {
+            from      : (38.7813, -9.1359);
+            to        : (51.4775, -0.4614);
+            altitudes : [10000 m];
+            wind      : (270, 15 m/s);
+        }
+    }
+}

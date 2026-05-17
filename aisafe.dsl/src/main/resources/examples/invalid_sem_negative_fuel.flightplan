@@ -1,0 +1,21 @@
+// INVALID — R2: fuel quantity must be strictly positive; negative value is not allowed
+//
+// Expected: [SEMANTIC] line X - [R2] fuel quantity must be positive, got: -500kg
+
+flight TP102 : charter {
+
+    route {
+        origin      : LIS;
+        destination : LHR;
+    }
+
+    leg L1 {
+        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
+        arrival   { airport: LHR; time: 10:00; }
+        fuel      { quantity: -500 kg; }
+        segment S1 {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m]; wind: (270, 15 m/s);
+        }
+    }
+}

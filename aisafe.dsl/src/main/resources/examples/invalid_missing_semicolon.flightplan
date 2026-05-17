@@ -1,6 +1,12 @@
-// Valid flight plan — direct flight Lisbon to London
+// INVALID — tests that a missing semicolon is caught
+//
+// Error: the semicolon after the 'time' value in the departure block is absent.
+// Every field in the DSL ends with ';' — its absence causes a parser error.
+//
+// Expected error (parser):
+//   [PARSER] line 22:8 - missing ';' at '}'
 
-flight TP1234 : regular {
+flight TP9012 : regular {
 
     route {
         origin      : LIS;
@@ -11,8 +17,8 @@ flight TP1234 : regular {
 
         departure {
             airport : LIS;
-            day     : Monday;
-            time    : 08:30;
+            date    : 2026-05-10;
+            time    : 08:30        // ERROR: missing semicolon
         }
 
         arrival {
@@ -27,7 +33,7 @@ flight TP1234 : regular {
         segment SEG1 {
             from      : (38.7813, -9.1359);
             to        : (51.4775, -0.4614);
-            altitudes : [10000 m WIDTH 50 m, 11000 m];
+            altitudes : [10000 m];
             wind      : (270, 15 m/s);
         }
     }

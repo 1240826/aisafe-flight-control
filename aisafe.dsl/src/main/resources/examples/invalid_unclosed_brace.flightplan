@@ -1,6 +1,13 @@
-// Valid flight plan — direct flight Lisbon to London
+// INVALID — tests detection of unclosed/missing closing brace
+//
+// Error: the closing '}' of leg L1 is missing.
+// The parser reaches EOF before the leg block is closed.
+//
+// Expected error (parser):
+//   [PARSER] line 36:0 - mismatched input '<EOF>'
+//            expecting {'fuel', 'segment', '}'}
 
-flight TP1234 : regular {
+flight TP9007 : regular {
 
     route {
         origin      : LIS;
@@ -11,7 +18,7 @@ flight TP1234 : regular {
 
         departure {
             airport : LIS;
-            day     : Monday;
+            date    : 2026-05-10;
             time    : 08:30;
         }
 
@@ -27,8 +34,10 @@ flight TP1234 : regular {
         segment SEG1 {
             from      : (38.7813, -9.1359);
             to        : (51.4775, -0.4614);
-            altitudes : [10000 m WIDTH 50 m, 11000 m];
+            altitudes : [10000 m];
             wind      : (270, 15 m/s);
         }
-    }
+
+    // ERROR: missing closing brace for leg L1 — and for flight block
+
 }
