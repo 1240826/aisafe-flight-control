@@ -1,4 +1,4 @@
-﻿# US063 — Edit Customer's Collaborator (Extra)
+# US063 — Edit Customer's Collaborator (Extra)
 
 ## 1. Context
 
@@ -46,7 +46,7 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 - `Collaborator.updateSkillsAssessment(newDate)` creates a NEW `SkillsAssessment` VO and replaces the reference
 
 **Decisions made by the team:**
-- The collaborator type (ATCCollaborator / FCO / WeatherPerson) cannot be changed
+- The collaborator type (`CollaboratorType`: ATC / FCO / WEATHER) cannot be changed
 - The linked `SystemUser` cannot be changed via this use case
 - `position` = professional role string (client clarification confirmed)
 
