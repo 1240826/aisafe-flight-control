@@ -288,4 +288,41 @@ class CollaboratorTest {
         c.updatePhone(null);
         assertNull(c.phone(), "Null phone must clear the value");
     }
+    @Test
+    void ensureToStringContainsName() {
+        final var c = validATCCollaborator();
+        assertTrue(c.toString().contains("Alice Smith"));
+    }
+
+    @Test
+    void ensureHashCodeIsConsistent() {
+        final var c = validATCCollaborator();
+        assertEquals(c.hashCode(), c.hashCode());
+    }
+
+    @Test
+    void ensureEqualsReturnsTrueForSameInstance() {
+        final var c = validATCCollaborator();
+        assertEquals(c, c);
+    }
+
+    @Test
+    void ensureSameAsReturnsTrueForSameInstance() {
+        final var c = validATCCollaborator();
+        assertTrue(c.sameAs(c));
+    }
+
+    @Test
+    void ensureIdentityIsNullBeforePersistence() {
+        final var c = validATCCollaborator();
+        assertNull(c.identity());
+    }
+
+    @Test
+    void ensureSystemUserIsPreserved() {
+        final var user = dummySystemUser();
+        final var c = new ATCCollaborator(user, "Alice Smith", "ATC Officer",
+                validClearance(), validAssessment(), new CompanyIATA("TP"));
+        assertEquals(user, c.systemUser());
+    }
 }

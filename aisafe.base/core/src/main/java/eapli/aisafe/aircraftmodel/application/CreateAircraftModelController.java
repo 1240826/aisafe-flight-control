@@ -56,7 +56,10 @@ public class CreateAircraftModelController {
                                               final double maxRange,
                                               final double wingArea, final double drag, final double lift) {
         authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.BACKOFFICE_OPERATOR);
-
+        if (repo.findByNameAndManufacturer(name, manufacturerName).isPresent()) {
+            throw new IllegalArgumentException(
+                    "An aircraft model with name '" + name + "' and manufacturer '" + manufacturerName + "' already exists");
+        }
         final AircraftModel model = new AircraftModel(
                 AircraftModelCode.valueOf(code),
                 name,
