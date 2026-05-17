@@ -23,7 +23,7 @@ This task was assigned in Sprint 2. It is the first time this task is being deve
 
 - **US062.1** The system must require the `ADMIN` role.
 - **US062.2** The Admin must be able to filter collaborators by company.
-- **US062.3** The list must show at minimum: name, position, type (ATCCollaborator/FCO/WeatherPerson), security clearance expiry date.
+- **US062.3** The list must show at minimum: name, position, type (ATC / FCO / WEATHER), security clearance expiry date.
 - **US062.4** If the company has no collaborators, an appropriate message must be shown.
 
 ### Dependencies/References
