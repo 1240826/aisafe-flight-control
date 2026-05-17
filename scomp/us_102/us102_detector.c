@@ -1,20 +1,6 @@
 /*
- * AISafe Flight Control Simulation
  * us102_detector.c - US102: Detect aircraft safety violations in real time
  * SCOMP Sprint 2 - 2025/2026
- *
- * Safety cylinder (ICAO Doc 4444, Chapter 8 — Separation Minima):
- *   Horizontal: 5 NM = 9260 m  (ICAO radar en-route standard)
- *   Vertical:   305 m           (1000 ft, RVSM airspace)
- *
- * On violation:
- *   1. Log the event with positions and velocity vectors
- *   2. Send SIGUSR1 to both involved children (notification)
- *   3. Apply altitude adjustment to the lower aircraft (route change)
- *      to restore vertical separation > SAFETY_V_M
- *   4. Set safe[i]=0 for involved aircraft during adjustment period
- *
- * When total violations reach VIOL_THRESHOLD: send SIGTERM to all.
  */
 
 #define _POSIX_C_SOURCE 200809L
