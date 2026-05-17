@@ -8,10 +8,10 @@ This task was assigned in Sprint 2. It is the first time this task is being deve
 
 ### 1.1 List of Issues
 
-- Analysis: #(to be assigned)
-- Design: #(to be assigned)
-- Implement: #(to be assigned)
-- Test: #(to be assigned)
+- Analysis: #24
+- Design: #24
+- Implement: #24
+- Test: #24
 
 ---
 

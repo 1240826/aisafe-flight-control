@@ -8,10 +8,10 @@ This task was assigned in Sprint 2. The objective is to allow an Admin to decomm
 
 ### 1.1 List of Issues
 
-- Analysis: #(to be assigned)
-- Design: #(to be assigned)
-- Implement: #(to be assigned)
-- Test: #(to be assigned)
+- Analysis: #40
+- Design: #40
+- Implement: #40
+- Test: #40
 
 ---
 
@@ -38,6 +38,20 @@ This task was assigned in Sprint 2. The objective is to allow an Admin to decomm
 ## 3. Analysis
 
 ### 3.0 LLM Assistance
+
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions made
+independently or where we deviated from the AI output.
+
+---
+
+#### Prompt 1 — Domain design of the decommission operation
+
+> "We are developing the AISafe flight control system using DDD and the EAPLI framework. We need to
+> implement US071 — Decommission Aircraft. An Admin changes an aircraft's operational status from
+> ACTIVE to DECOMMISSIONED. The operation is irreversible and cannot be applied to an already-
+> decommissioned aircraft. Where should the state transition logic live, what invariant guards it,
+> and what repository method is needed to support listing only active aircraft for selection?"
 
 **LLM suggestions adopted:**
 - `Aircraft.decommission()` sets `operationalStatus = DECOMMISSIONED`; throws `IllegalStateException` if already decommissioned

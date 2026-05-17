@@ -8,10 +8,10 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 
 ### 1.1 List of Issues
 
-- Analysis: #(to be assigned)
-- Design: #(to be assigned)
-- Implement: #(to be assigned)
-- Test: #(to be assigned)
+- Analysis: #22
+- Design: #22
+- Implement: #22
+- Test: #22
 
 ---
 
