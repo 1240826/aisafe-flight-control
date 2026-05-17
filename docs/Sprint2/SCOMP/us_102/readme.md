@@ -4,6 +4,17 @@
 
 As a simulation system, I want to continuously monitor aircraft positions for overlaps so that I can identify and report safety violations.
 
+**Assigned to:** Dinis Silva
+
+### List of Issues
+
+- Analysis: #49
+- Design: #49
+- Implement: #49
+- Test: #49
+
+---
+
 ## 2. Requirements
 
 - Detect when two or more aircraft **may eventually** violate safety rules.
@@ -65,6 +76,33 @@ Follows the safe pattern from Signals Part II lectures:
 - Only sets `volatile sig_atomic_t got_violation = 1`
 - Uses `write()` not `printf()`
 
+### LLM Assistance
+
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
+
+---
+
+#### Prompt 1 — Safety cylinder and predictive detection
+
+> "We are implementing real-time collision detection in C for a flight simulation. Aircraft positions
+> are updated every second. We need to detect current breaches and predict future ones. What are the
+> standard ICAO separation values and how should predictive detection work?"
+
+**LLM suggestions adopted:**
+- ICAO standard values: 5 NM horizontal (9 260 m) and 305 m vertical, defined as `#define` in
+  `common.h`
+- Linear extrapolation `LOOKAHEAD_S = 30` seconds ahead using current velocity vectors for
+  predictive detection
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM suggested notifying all active aircraft on any violation — narrowed to only the two
+  involved aircraft (`kill(pid_i, SIGUSR1)`, `kill(pid_j, SIGUSR1)`)
+- Route adjustment applies only to the lower aircraft (`ALT_ADJUST_M = 400 m`), not both — the
+  LLM initially suggested adjusting both.
+
+  
 ## 4. Design
 
 ```

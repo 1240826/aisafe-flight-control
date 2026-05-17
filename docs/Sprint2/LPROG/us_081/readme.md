@@ -41,6 +41,33 @@ A pilot submits a `.flightplan` file. The system must:
 - Load (passengers/cargo) — handled by EAPLI domain.
 - Semantic validation — Phase 2, Sprint 3.
 
+  
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
+
+---
+
+### LLM Assistance
+
+#### Prompt 1 — Grammar structure for the Flight Plan DSL
+
+> "We are building a flight plan DSL using ANTLR4 in Java. The file format is `.flightplan`. We
+> need lexical and syntactic validation only (Phase 1). Invalid files must produce meaningful error
+> messages. Suggest a grammar structure and an error listener approach."
+
+**LLM suggestions adopted:**
+- Using a custom `FlightPlanErrorListener` extending ANTLR's `BaseErrorListener` to collect all
+  errors instead of stopping at the first one
+- `FlightPlanRunner.run(path, verbose)` as the single integration point called by the EAPLI layer
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM suggested including semantic validation in the same phase — kept strictly out of scope
+  for Sprint 2; semantic rules are Phase 2 (Sprint 3)
+- The LLM suggested throwing exceptions on invalid input — replaced with a boolean return and
+  error collection, so all errors are reported to the pilot at once
+
+
 ---
 
 ## Design

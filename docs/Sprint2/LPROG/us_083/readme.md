@@ -6,6 +6,13 @@ As a Project Manager, I want the team to specify and implement the Flight Descri
 
 This user story is the responsibility of the LPROG course unit and covers **Phase 1 (Sprint 2, 17th May 2026)**: lexical and syntactic specification, ANTLR4 grammar, and error reporting. Semantic validation is deferred to Phase 2 (Sprint 3, 14th June 2026).
 
+### List of Issues
+
+- Analysis: #41
+- Design: #41
+- Implement: #41
+- Test: N/A
+
 ---
 
 ## Requirements
@@ -115,6 +122,32 @@ airportCode       ::= IATA_CODE | ICAO_CODE
 ```
 
 ---
+
+### LLM Assistance
+
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
+
+---
+
+#### Prompt 1 — ANTLR4 grammar structure for the Flight Plan DSL
+
+> "We are specifying a DSL for flight plans using ANTLR4. A flight plan has an ID, type (regular
+> or charter), a route, and one or more legs. Each leg has departure, arrival, fuel, and segments.
+> Keywords must be case-insensitive. Suggest a grammar structure and the main lexer design decisions."
+
+**LLM suggestions adopted:**
+- Case-insensitive keywords via ANTLR fragment rules — consistent with the LPROG slides pattern
+- Placing ICAO before IATA in the lexer so the longer match wins
+- Alternative labels (`#Name`) on parser rule alternatives to generate specific visitor methods
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM placed `route` inside `legDecl` — moved to `flightDecl` to match section 3.4.1 of the
+  specification (route is shared by all legs)
+- Unit tokens renamed to `UNIT_L`, `UNIT_M` etc. to avoid conflict with fragment letters already
+  defined for keyword matching
+
 
 ## Design
 

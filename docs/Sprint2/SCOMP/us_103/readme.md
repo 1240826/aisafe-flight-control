@@ -4,6 +4,17 @@
 
 As a simulation engine, I want to synchronize aircraft movements based on time steps so that I can accurately simulate real-world execution.
 
+**Assigned to:** Fábio Costa
+
+### List of Issues
+
+- Analysis: #50
+- Design: #50
+- Implement: #50
+- Test: #50
+
+---
+
 ## 2. Requirements
 
 - The simulation must progress step by step.
@@ -89,6 +100,32 @@ When the simulation ends, `main()` closes `go_pipe[i][1]`. The child's `read(gfd
 n = read(gfd, &tok, sizeof(GoToken));
 if (n <= 0) break;   /* pipe closed = simulation over */
 ```
+
+### LLM Assistance
+
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
+
+---
+
+#### Prompt 1 — Barrier synchronisation using pipes in C
+
+> "We are implementing a step-by-step flight simulation in C with one child process per flight.
+> The parent must ensure all children report their position for step t before advancing to step t+1.
+> How can we implement a barrier using only blocking pipe I/O, without semaphores or mutexes?"
+
+**LLM suggestions adopted:**
+- Two-phase barrier: parent writes a `GoToken` to each child (phase 1), then blocks on `read()`
+  from each child before advancing (phase 2)
+- Termination via `close(go_pipe[i][1])` — child's `read()` returns 0 (EOF) and exits cleanly
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM initially suggested a shared memory counter as the barrier — replaced with the pipe
+  barrier since pipes are already in use and no additional IPC mechanism is needed
+- `GoToken` extended to carry `safe` and `alt_adjust` alongside `step`, combining synchronisation
+  and control in a single atomic write (below `PIPE_BUF`)
+
 
 ## 4. Implementation
 

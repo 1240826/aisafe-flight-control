@@ -4,6 +4,17 @@
 
 As a Flight Control Operator, I want a comprehensive report that details the simulation outcomes — including flight execution statuses, safety violation events (with timestamps, positions and velocity vectors), and overall validation results.
 
+**Assigned to:** André Barcelos
+
+### List of Issues
+
+- Analysis: #51
+- Design: #51
+- Implement: #51
+- Test: #51
+
+---
+
 ## 2. Requirements
 
 - The report generation **process** aggregates data once the simulation concludes.
@@ -45,6 +56,35 @@ int    adjusted_flt;   /* which flight received the order     */
 ```
 
 The report shows whether each violation was resolved by the controller or remained unresolved (threshold exceeded).
+
+### LLM Assistance
+
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
+
+---
+
+#### Prompt 1 — Report structure and flight status logic
+
+> "We are implementing a final simulation report in C. After all child processes are reaped with
+> waitpid(), the parent writes a report covering: simulation parameters, per-flight status, safety
+> events with positions and velocity vectors, and an overall pass/fail result. Suggest a report
+> structure and how to determine each flight's final status."
+
+**LLM suggestions adopted:**
+- Three-state status logic: `COMPLETED` (normal exit), `TERMINATED` (received SIGTERM),
+  `RUNNING` (still active at report time)
+- Recording `resolved`, `adj_m`, and `adjusted_flt` per violation to distinguish resolved from
+  unresolved events in the final result
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM suggested generating the report inside a separate thread — replaced with a plain function
+  call after `waitpid()` following professor clarification ("thread should be read as process in
+  Sprint 2"; no concurrent access means no synchronisation is needed)
+- Velocity vectors added to each safety event entry to allow post-simulation analysis of collision
+  geometry — not in the LLM's initial structure.
+
 
 ## 4. Implementation
 

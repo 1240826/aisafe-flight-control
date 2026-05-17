@@ -4,6 +4,17 @@
 
 As a Flight Control Operator, I want to simulate flights in a given area. Simulations have parameters such as time range, geographic area, included flights, safety thresholds, and performance settings. All required parameters should be validated.
 
+**Assigned to:** Jaime Simões
+
+### List of Issues
+
+- Analysis: #47
+- Design: #47
+- Implement: #47
+- Test: #47
+
+---
+
 ## 2. Requirements
 
 - Implemented in C using processes, pipes, and signals.
@@ -49,6 +60,32 @@ go_pipe[i]       parent  → child i  GoToken   (every step)
 ```
 
 All pipes are created **before** the first `fork()` so every child inherits all descriptors. After `fork()`, each child closes every pipe end it does not own.
+
+### LLM Assistance
+
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
+
+---
+
+#### Prompt 1 — Process and pipe layout for the simulation
+
+> "We are implementing a flight simulation in C using fork, pipes, and signals. One child process
+> per flight plan. The parent tracks aircraft positions over time. Suggest a pipe layout and the
+> correct order of operations (pipe creation, fork, descriptor cleanup)."
+
+**LLM suggestions adopted:**
+- Creating all pipes before any `fork()` so every child inherits all descriptors
+- Each child closes every pipe end it does not own after `fork()`
+- Two pipes per flight: one child→parent (`report_pipe`) and one parent→child (`go_pipe`)
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM suggested creating pipes inside the fork loop — moved before the loop to ensure all
+  descriptors exist before any child is spawned
+- `AREA_MAX_ALT_M` defined as a `#define` in `common.h` following professor clarification
+  (no hardcoded values)
+
 
 ## 4. Design
 

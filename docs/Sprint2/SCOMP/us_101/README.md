@@ -4,6 +4,17 @@
 
 As a simulation process, I want to receive movement commands from flight processes so that I can track aircraft positions over time.
 
+**Assigned to:** Cláudio Pinto
+
+### List of Issues
+
+- Analysis: #48
+- Design: #48
+- Implement: #48
+- Test: #48
+
+---
+
 ## 2. Requirements
 
 - Each flight process must send position updates to the main process via a pipe.
@@ -64,6 +75,33 @@ typedef struct {
 ```
 
 The child applies `alt_adjust` before computing the next position step.
+
+
+
+### LLM Assistance
+
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
+
+---
+
+#### Prompt 1 — Position integration and timestep choice
+
+> "We are implementing a flight simulation in C. Each child process advances an aircraft position
+> each second using a 3D velocity vector. How should position integration work at 1-second timestep
+> and what are the implications for collision detection?"
+
+**LLM suggestions adopted:**
+- 1-second timestep with spherical Earth integration (`Δlat`, `Δlon`, `Δalt` per step)
+- Circular history buffer (`MAX_HISTORY = 600`) to store past snapshots for predictive detection
+
+**Decisions made by the team / deviations from LLM output:**
+- The LLM initially suggested `dt = 30s` — rejected after calculating that two converging aircraft
+  at cruise speed can enter and leave the 5 NM safety cylinder in a single step without detection
+- `store_history()` placed in `us102_detector.c` rather than in `run_flight()`, since history
+  exists to serve the detector, not the flight process
+
 
 ## 4. Design
 
