@@ -58,27 +58,17 @@ class ListCompanyFleetControllerTest {
 
     @Test
     void ensureFleetOfCompanyDelegatesToRepo() {
-        // Arrange
         final List<Aircraft> fleet = List.of(makeAircraft("CS-TUI", "Portugal"));
         when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(fleet);
-
-        // Act
         final Iterable<Aircraft> result = controller.fleetOfCompany("TP");
-
-        // Assert
         verify(aircraftRepo).findByCompanyId(CompanyIATA.valueOf("TP"));
         assertNotNull(result);
     }
 
     @Test
     void ensureFleetOfCompanyChecksAuthorization() {
-        // Arrange
         when(aircraftRepo.findByCompanyId(any())).thenReturn(List.of());
-
-        // Act
         controller.fleetOfCompany("TP");
-
-        // Assert
         verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
     }
 
@@ -86,27 +76,17 @@ class ListCompanyFleetControllerTest {
 
     @Test
     void ensureAllActiveAircraftDelegatesToRepo() {
-        // Arrange
         final List<Aircraft> fleet = List.of(makeAircraft("CS-TUI", "Portugal"));
         when(aircraftRepo.findAllActive()).thenReturn(fleet);
-
-        // Act
         final Iterable<Aircraft> result = controller.allActiveAircraft();
-
-        // Assert
         verify(aircraftRepo).findAllActive();
         assertNotNull(result);
     }
 
     @Test
     void ensureAllActiveAircraftChecksAuthorization() {
-        // Arrange
         when(aircraftRepo.findAllActive()).thenReturn(List.of());
-
-        // Act
         controller.allActiveAircraft();
-
-        // Assert
         verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
     }
 
@@ -114,26 +94,16 @@ class ListCompanyFleetControllerTest {
 
     @Test
     void ensureAllCompaniesDelegatesToRepo() {
-        // Arrange
         when(companyRepo.findAll()).thenReturn(List.of(makeCompany()));
-
-        // Act
         final Iterable<AirTransportCompany> result = controller.allCompanies();
-
-        // Assert
         verify(companyRepo).findAll();
         assertNotNull(result);
     }
 
     @Test
     void ensureAllCompaniesChecksAuthorization() {
-        // Arrange
         when(companyRepo.findAll()).thenReturn(List.of());
-
-        // Act
         controller.allCompanies();
-
-        // Assert
         verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
     }
 
@@ -141,15 +111,10 @@ class ListCompanyFleetControllerTest {
 
     @Test
     void ensureFleetByModelDelegatesToRepo() {
-        // Arrange
         final List<Aircraft> fleet = List.of(makeAircraft("CS-TUI", "Portugal"));
         when(aircraftRepo.findByCompanyIdAndModel(CompanyIATA.valueOf("TP"),
                 AircraftModelCode.valueOf("A320"))).thenReturn(fleet);
-
-        // Act
         final Iterable<Aircraft> result = controller.fleetByModel("TP", "A320");
-
-        // Assert
         verify(aircraftRepo).findByCompanyIdAndModel(CompanyIATA.valueOf("TP"),
                 AircraftModelCode.valueOf("A320"));
         assertNotNull(result);
@@ -157,13 +122,8 @@ class ListCompanyFleetControllerTest {
 
     @Test
     void ensureFleetByModelChecksAuthorization() {
-        // Arrange
         when(aircraftRepo.findByCompanyIdAndModel(any(), any())).thenReturn(List.of());
-
-        // Act
         controller.fleetByModel("TP", "A320");
-
-        // Assert
         verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
     }
 
@@ -171,64 +131,74 @@ class ListCompanyFleetControllerTest {
 
     @Test
     void ensureFleetByMakerFiltersCorrectly() {
-        // Arrange
         final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal");
         when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
         final AircraftModel model = mock(AircraftModel.class);
         when(model.manufacturerName()).thenReturn("Airbus");
         when(aircraftModelRepo.ofIdentity(AircraftModelCode.valueOf("A320")))
                 .thenReturn(Optional.of(model));
-
-        // Act
         final Iterable<Aircraft> result = controller.fleetByMaker("TP", "Airbus");
-
-        // Assert
-        assertNotNull(result);
         assertTrue(result.iterator().hasNext(), "Should return aircraft matching maker");
     }
 
     @Test
     void ensureFleetByMakerExcludesNonMatchingMaker() {
-        // Arrange
         final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal");
         when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
         final AircraftModel model = mock(AircraftModel.class);
         when(model.manufacturerName()).thenReturn("Airbus");
         when(aircraftModelRepo.ofIdentity(AircraftModelCode.valueOf("A320")))
                 .thenReturn(Optional.of(model));
-
-        // Act
         final Iterable<Aircraft> result = controller.fleetByMaker("TP", "Boeing");
-
-        // Assert
         assertFalse(result.iterator().hasNext(), "Should not return aircraft of different maker");
     }
 
-    // ── US072c: filter by capacity ────────────────────────────────────────────
+    // ── US072c: filter by exact capacity ─────────────────────────────────────
 
     @Test
     void ensureFleetByCapacityFiltersCorrectly() {
-        // Arrange
-        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal"); // capacity = 180
+        // Arrange — aircraft has capacity = 180
+        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal");
         when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
-
         // Act
-        final Iterable<Aircraft> result = controller.fleetByCapacity("TP", 150);
-
+        final Iterable<Aircraft> result = controller.fleetByCapacity("TP", 180);
         // Assert
-        assertTrue(result.iterator().hasNext(), "Should return aircraft with capacity >= 150");
+        assertTrue(result.iterator().hasNext(), "Should return aircraft with exact capacity 180");
     }
 
     @Test
-    void ensureFleetByCapacityExcludesBelowMinimum() {
-        // Arrange
-        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal"); // capacity = 180
+    void ensureFleetByCapacityExcludesNonMatchingCapacity() {
+        // Arrange — aircraft has capacity = 180, filter for 150 should return nothing
+        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal");
         when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
-
         // Act
-        final Iterable<Aircraft> result = controller.fleetByCapacity("TP", 200);
-
+        final Iterable<Aircraft> result = controller.fleetByCapacity("TP", 150);
         // Assert
-        assertFalse(result.iterator().hasNext(), "Should not return aircraft with capacity < 200");
+        assertFalse(result.iterator().hasNext(), "Should not return aircraft with different capacity");
+    }
+
+    // ── US072d: filter by exact age ───────────────────────────────────────────
+
+    @Test
+    void ensureFleetByAgeFiltersCorrectly() {
+        // Arrange — aircraft registered in 2018
+        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal");
+        when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
+        final int expectedAge = aircraft.ageInYears();
+        // Act
+        final Iterable<Aircraft> result = controller.fleetByAge("TP", expectedAge);
+        // Assert
+        assertTrue(result.iterator().hasNext(), "Should return aircraft with matching age");
+    }
+
+    @Test
+    void ensureFleetByAgeExcludesNonMatchingAge() {
+        // Arrange
+        final Aircraft aircraft = makeAircraft("CS-TUI", "Portugal");
+        when(aircraftRepo.findByCompanyId(CompanyIATA.valueOf("TP"))).thenReturn(List.of(aircraft));
+        // Act
+        final Iterable<Aircraft> result = controller.fleetByAge("TP", 999);
+        // Assert
+        assertFalse(result.iterator().hasNext(), "Should not return aircraft with different age");
     }
 }
