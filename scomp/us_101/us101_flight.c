@@ -4,8 +4,6 @@
  * SCOMP Sprint 2 
  */
 
-#define _POSIX_C_SOURCE 200809L
-
 #include "common.h"
 #include "physics.h"
 

@@ -3,8 +3,6 @@
  * SCOMP Sprint 2 - 2025/2026
  */
 
-#define _POSIX_C_SOURCE 200809L
-
 #include "common.h"
 #include "physics.h"
 

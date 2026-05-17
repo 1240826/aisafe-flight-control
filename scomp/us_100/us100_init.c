@@ -3,8 +3,6 @@
  * SCOMP Sprint 2
  */
 
-#define _POSIX_C_SOURCE 200809L
-
 #include "common.h"
 #include "physics.h"
 
@@ -46,6 +44,9 @@ int init_simulation(FlightPlan *plans, int n,
         flights[i].hist_count = 0;
 
         flights[i].in_area = in_area(plans[i].seg[0].start);
+
+        flights[i].ever_in_area = flights[i].in_area; /* 1 if starts inside */
+
         if (!flights[i].in_area)
             printf("[CTRL]   %s starts OUTSIDE the area\n", plans[i].id);
 
