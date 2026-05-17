@@ -4,14 +4,14 @@
 
 This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow an Admin or Backoffice Operator to list all active registered system users. This is a read-only query use case that relies entirely on the EAPLI framework's `UserManagementService`.
 
-**Assigned to:** Fábio Costa
+**Assigned to:** André Barcelos
 
 ### 1.1 List of Issues
 
-- Analysis: #(to be assigned)
-- Design: #(to be assigned)
-- Implement: #(to be assigned)
-- Test: #(to be assigned)
+- Analysis: #25
+- Design: #25
+- Implement: #25
+- Test: #25
 
 ---
 

@@ -8,10 +8,10 @@ This task was assigned in Sprint 2 as an extra user story. The objective is to a
 
 ### 1.1 List of Issues
 
-- Analysis: #(to be assigned)
-- Design: #(to be assigned)
-- Implement: #(to be assigned)
-- Test: #(to be assigned)
+- Analysis: #37
+- Design: #37
+- Implement: #37
+- Test: #37
 
 ---
 

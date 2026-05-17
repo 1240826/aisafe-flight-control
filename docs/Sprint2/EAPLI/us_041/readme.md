@@ -4,14 +4,14 @@
 
 This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow a Weather Person to register meteorological data (wind, temperature, observation point) for an Air Control Area (ACA). Weather data is consumed by Flight Control Operators when assessing flight safety.
 
-**Assigned to:** Fábio Costa
+**Assigned to:** André Barcelos
 
 ### 1.1 List of Issues
 
-- Analysis: #(to be assigned)
-- Design: #(to be assigned)
-- Implement: #(to be assigned)
-- Test: #(to be assigned)
+- Analysis: #26
+- Design: #26
+- Implement: #26
+- Test: #26
 
 ---
 

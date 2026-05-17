@@ -2,16 +2,16 @@
 
 ## 1. Context
 
-This task was assigned in Sprint 2. The objective is to allow an ATC Collaborator or Flight Control Operator to list all aircraft belonging to an air transport company's fleet, with optional filters by model, maker, or capacity.
+This task was assigned in Sprint 2. The objective is to allow an ATC Collaborator or Flight Control Operator to list all aircraft belonging to an air transport company's fleet, with optional filters by model, maker, capacity, or age.
 
 **Assigned to:** André Barcelos
 
 ### 1.1 List of Issues
 
-- Analysis: #(to be assigned)
-- Design: #(to be assigned)
-- Implement: #(to be assigned)
-- Test: #(to be assigned)
+- Analysis: #42
+- Design: #42 #43 #44 #45 #46
+- Implement: #43 #44 #45 #46
+- Test: #43 #44 #45 #46
 
 ---
 
@@ -28,7 +28,8 @@ This task was assigned in Sprint 2. The objective is to allow an ATC Collaborato
 - **US072.5** Both `ACTIVE` and `DECOMMISSIONED` aircraft must be shown (full fleet history).
 - **US072a** The user must be able to filter the fleet by aircraft model code.
 - **US072b** The user must be able to filter the fleet by aircraft maker/manufacturer name.
-- **US072c** The user must be able to filter the fleet by minimum passenger capacity.
+- **US072c** The user must be able to filter the fleet by **exact** passenger capacity (number of seats equal to the given value).
+- **US072d** The user must be able to filter the fleet by aircraft age in years (aircraft whose age equals the given number of years).
 
 ### Dependencies/References
 
@@ -49,21 +50,33 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 - Inline `Visitor<Aircraft>` lambda formats each row
 - US072b filter done in memory in the controller (maker is stored on `AircraftModel`, not on `Aircraft`)
 - US072c filter done in memory in the controller (capacity is computed from `CabinConfiguration`, not a stored column)
+- US072d filter done in memory in the controller using `Aircraft.ageInYears()` computed from `registrationDate`
 
 **Decisions made by the team:**
 - Both ACTIVE and DECOMMISSIONED aircraft shown (full fleet history, US072.5)
-- US072b and US072c filters applied in memory after fetching fleet from repository
+- US072b, US072c, and US072d filters applied in memory after fetching fleet from repository
 - US072a filter delegated to repository (`findByCompanyIdAndModel`)
+- **US072c uses exact match** (not minimum/range): filter returns only aircraft whose `totalCapacity()` equals the given number. This was corrected from an initial minimum-capacity implementation to match the requirement precisely.
+- **US072d uses exact age match**: `Aircraft.ageInYears()` is computed as `Period.between(registrationDate, LocalDate.now()).getYears()` and compared for equality to the given value. Filtering by age range is out of scope.
 
 ### 3.1 Domain Model
 
 | Concept | Type | Description |
 |---------|------|-------------|
-| `Aircraft` | Aggregate Root | Registration, model code, company, cabin config, status |
-| `CabinConfiguration` | Value Object | List of `SeatClass` VOs; `totalCapacity()` = sum of seats |
+| `Aircraft` | Aggregate Root | Registration, model code, company, cabin config, status, registrationDate |
+| `CabinConfiguration` | Value Object | List of `SeatClass` VOs; `totalCapacity()` = sum of all seats |
 | `RegistrationNumber` | Value Object | Unique worldwide; number + country |
 | `AircraftModelCode` | Value Object | Cross-aggregate ref to `AircraftModel` |
 | `CompanyIATA` | Value Object | Cross-aggregate ref to `AirTransportCompany` |
+
+**Domain methods used by this use case:**
+
+| Method | Class | Used by |
+|--------|-------|---------|
+| `totalCapacity()` | `CabinConfiguration` | US072c — exact capacity filter |
+| `ageInYears()` | `Aircraft` | US072d — exact age filter |
+
+`Aircraft.ageInYears()` is a pure computed method: `Period.between(registrationDate, LocalDate.now()).getYears()`. It requires no stored column — `registrationDate` is stored and age is derived at runtime.
 
 ---
 
@@ -73,9 +86,9 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `ListCompanyFleetUI` | `aisafe.app` | Selects company and filter; extends `AbstractListUI<Aircraft>` |
-| `ListCompanyFleetController` | `aisafe.core` | Auth; lists companies; queries and filters fleet |
-| `AircraftRepository` | `aisafe.core` | `findByCompanyId`, `findByCompanyIdAndModel`, `findAllActive` |
+| `ListCompanyFleetUI` | `aisafe.app` | Selects company and filter (none/model/maker/capacity/age); formats list with age column |
+| `ListCompanyFleetController` | `aisafe.core` | Auth; lists companies; queries fleet; applies in-memory filters |
+| `AircraftRepository` | `aisafe.core` | `findByCompanyId`, `findByCompanyIdAndModel`, `findAll` |
 | `AircraftModelRepository` | `aisafe.core` | Used by US072b to resolve manufacturer name |
 
 **Sequence Diagram:**
@@ -114,11 +127,19 @@ Given a company fleet with aircraft from different manufacturers,
 When the user filters by maker "Airbus",
 Then only aircraft whose model is manufactured by Airbus are returned.
 
-**AT6 — Filter by capacity excludes aircraft below minimum (US072c)**
+**AT6 — Filter by capacity returns only aircraft with exact matching capacity (US072c)**
 
-Given a company fleet with aircraft of different capacities,
-When the user filters by minimum capacity 200,
-Then only aircraft with total capacity >= 200 are returned.
+Given a company fleet with aircraft of different capacities (150, 200, 300 seats),
+When the user filters by capacity 200,
+Then only aircraft with `totalCapacity() == 200` are returned.
+
+> **Note:** This was corrected from an initial minimum-capacity implementation. The filter uses exact match (`==`), not minimum (`>=`).
+
+**AT7 — Filter by age returns only aircraft of matching age in years (US072d)**
+
+Given a company fleet with aircraft registered in different years,
+When the user filters by age 5 years,
+Then only aircraft whose `ageInYears()` equals 5 are returned.
 
 ---
 
@@ -141,11 +162,20 @@ Then only aircraft with total capacity >= 200 are returned.
 1. Log in as ATC Collaborator or Flight Control Operator
 2. Select "Aircraft" → "List Company Fleet"
 3. Select a company (or 0 for all)
-4. Select a filter: none, by model (US072a), by maker (US072b), or by minimum capacity (US072c)
-5. System displays matching aircraft with registration, model, status, capacity and crew
+4. Select a filter: none / by model (US072a) / by maker (US072b) / by exact capacity (US072c) / by age in years (US072d)
+5. If filtering by capacity, enter exact number of seats
+6. If filtering by age, enter age in years (integer)
+7. System displays matching aircraft with: registration number, model code, status, total capacity, crew members, and age in years
 
 ---
 
 ## 7. Observations
 
-US072b and US072c filters are applied in memory in the controller because the manufacturer name is stored on `AircraftModel` (not on `Aircraft`), and capacity is computed from `CabinConfiguration` rather than stored as a column. US072a is delegated to the repository via a JPQL query on `aircraftModelCode.code`.
+US072b, US072c, and US072d filters are all applied in memory in the controller:
+- **US072b (maker):** `AircraftModel.manufacturerName` is not on `Aircraft`, so the controller fetches all fleet aircraft, then resolves each model via `AircraftModelRepository`, and filters by manufacturer name.
+- **US072c (capacity):** `totalCapacity()` is computed from `CabinConfiguration` at runtime — not a stored column. Filter uses **exact match**.
+- **US072d (age):** `ageInYears()` is computed from `registrationDate` at runtime using `Period.between(registrationDate, LocalDate.now()).getYears()` — not a stored column. Filter uses **exact match**.
+
+US072a (model) is delegated to the repository via JPQL on `aircraftModelCode.code` — this is a stored field, so a DB-level query is efficient.
+
+The list header displayed by the UI was updated to include an "Age" column (years) when results are shown, regardless of which filter was applied.

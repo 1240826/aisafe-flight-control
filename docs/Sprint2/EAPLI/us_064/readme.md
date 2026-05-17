@@ -4,14 +4,14 @@
 
 This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow an Admin or Backoffice Operator to disable (deactivate) a collaborator, preventing them from operating within the system. This operation acts on the `Collaborator` aggregate and is irreversible.
 
-**Assigned to:** Fábio Costa
+**Assigned to:** André Barcelos
 
 ### 1.1 List of Issues
 
-- Analysis: #(to be assigned)
-- Design: #(to be assigned)
-- Implement: #(to be assigned)
-- Test: #(to be assigned)
+- Analysis: #38
+- Design: #38
+- Implement: #38
+- Test: #38
 
 ---
 
