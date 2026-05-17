@@ -107,4 +107,40 @@ class WeatherDataTest {
         assertThrows(Exception.class, () -> new WeatherData(
                 new AreaCode("LPPC"), validWind(), 18.5, "IPMA", null));
     }
+    @Test
+    void ensureToStringContainsAreaCode() {
+        final var wd = validWeatherData();
+        assertTrue(wd.toString().contains("LPPC"));
+    }
+
+    @Test
+    void ensureIdentityIsNullBeforePersistence() {
+        // id is auto-generated — before persistence it's null
+        final var wd = validWeatherData();
+        assertNull(wd.identity());
+    }
+
+    @Test
+    void ensureHashCodeIsConsistent() {
+        final var wd = validWeatherData();
+        assertEquals(wd.hashCode(), wd.hashCode());
+    }
+
+    @Test
+    void ensureSameAsReturnsTrueForSameInstance() {
+        final var wd = validWeatherData();
+        assertTrue(wd.sameAs(wd));
+    }
+
+    @Test
+    void ensureEqualsReturnsTrueForSameInstance() {
+        final var wd = validWeatherData();
+        assertEquals(wd, wd);
+    }
+
+    @Test
+    void ensureEqualsReturnsFalseForNull() {
+        final var wd = validWeatherData();
+        assertNotEquals(wd, null);
+    }
 }
