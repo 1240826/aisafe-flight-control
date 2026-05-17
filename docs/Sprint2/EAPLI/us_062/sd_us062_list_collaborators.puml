@@ -8,7 +8,7 @@ skinparam ParticipantPadding 20
 
 autonumber
 
-actor "Admin" as actor
+actor "Backoffice Operator\n/ ATC Collaborator" as actor
 participant ":ListCollaboratorsUI" as ui <<presentation>>
 participant ":ListCollaboratorsController" as ctrl <<application>>
 participant ":AuthorizationService" as authz <<framework>>
@@ -20,7 +20,7 @@ activate ui
 
 ui -> ctrl : allCompanies()
 activate ctrl
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR,\n  ATC_COLLABORATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  BACKOFFICE_OPERATOR,\n  ATC_COLLABORATOR)
 activate authz
 authz --> ctrl
 deactivate authz
@@ -38,7 +38,7 @@ activate ui
 
 ui -> ctrl : collaboratorsOfCompany(companyIata)
 activate ctrl
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR,\n  ATC_COLLABORATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  BACKOFFICE_OPERATOR,\n  ATC_COLLABORATOR)
 activate authz
 authz --> ctrl
 deactivate authz
@@ -49,7 +49,7 @@ deactivate collabRepo
 ctrl --> ui : collaborators
 deactivate ctrl
 
-ui --> actor : displays collaborator list
+ui --> actor : displays collaborator list\n(name, position, type, clearance expiry)
 deactivate ui
 
 @enduml

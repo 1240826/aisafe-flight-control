@@ -8,7 +8,7 @@ skinparam ParticipantPadding 20
 
 autonumber
 
-actor "Admin" as actor
+actor "Backoffice Operator" as actor
 participant ":EditCollaboratorUI" as ui <<presentation>>
 participant ":EditCollaboratorController" as ctrl <<application>>
 participant ":AuthorizationService" as authz <<framework>>
@@ -20,7 +20,7 @@ activate ui
 
 ui -> ctrl : activeCollaborators()
 activate ctrl
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  BACKOFFICE_OPERATOR)
 activate authz
 authz --> ctrl
 deactivate authz
@@ -33,13 +33,13 @@ deactivate ctrl
 
 ui --> actor : displays active collaborators for selection
 
-actor -> ui : selects collaborator + enters new values
+actor -> ui : selects collaborator + enters new values\n(blank = keep current; phone blank = clear)
 activate ui
 
-ui -> ctrl : editCollaborator(\n  collaboratorId,\n  newName, newPosition,\n  newClearanceExpiry,\n  newAssessmentDate)
+ui -> ctrl : editCollaborator(\n  collaboratorId,\n  newName, newPosition,\n  newPhone,\n  newClearanceExpiry,\n  newAssessmentDate)
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  BACKOFFICE_OPERATOR)
 activate authz
 authz --> ctrl
 deactivate authz
@@ -49,25 +49,39 @@ activate repo
 repo --> ctrl : collab
 deactivate repo
 
-ctrl -> collab : updateName(newName)
+opt newName not null/blank
+  ctrl -> collab : updateName(newName)
+  activate collab
+  collab --> ctrl
+  deactivate collab
+end
+
+opt newPosition not null/blank
+  ctrl -> collab : updatePosition(newPosition)
+  activate collab
+  collab --> ctrl
+  deactivate collab
+end
+
+ctrl -> collab : updatePhone(newPhone)
 activate collab
+note right : null or blank clears the phone field
 collab --> ctrl
 deactivate collab
 
-ctrl -> collab : updatePosition(newPosition)
-activate collab
-collab --> ctrl
-deactivate collab
+opt newClearanceExpiry not null
+  ctrl -> collab : renewSecurityClearance(\n  new SecurityClearance(newClearanceExpiry))
+  activate collab
+  collab --> ctrl
+  deactivate collab
+end
 
-ctrl -> collab : renewSecurityClearance(\n  new SecurityClearance(newClearanceExpiry))
-activate collab
-collab --> ctrl
-deactivate collab
-
-ctrl -> collab : updateSkillsAssessment(\n  new SkillsAssessment(newAssessmentDate))
-activate collab
-collab --> ctrl
-deactivate collab
+opt newAssessmentDate not null
+  ctrl -> collab : updateSkillsAssessment(\n  new SkillsAssessment(newAssessmentDate))
+  activate collab
+  collab --> ctrl
+  deactivate collab
+end
 
 ctrl -> repo : save(collab)
 activate repo

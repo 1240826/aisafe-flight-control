@@ -8,23 +8,24 @@ skinparam ParticipantPadding 20
 
 autonumber
 
-actor "Admin" as actor
+actor "Backoffice Operator" as actor
 participant ":AddCollaboratorUI" as ui <<presentation>>
 participant ":AddCollaboratorController" as ctrl <<application>>
 participant ":AuthorizationService" as authz <<framework>>
 participant ":UserManagementService" as userSvc <<framework>>
+participant ":UserSecurityProfileRepository" as profileRepo <<repository>>
 participant ":CollaboratorRepository" as repo <<repository>>
 participant "su:SystemUser" as su <<framework>>
 participant "c:Collaborator" as collab <<domain>>
 
 actor -> ui : add collaborator
 activate ui
-note right of ui : user selects type:\nATCCollaborator, FlightControlOperator\nor WeatherPerson\ncompany/area selected from list
+note right of ui : user selects type:\nATC, FCO (Flight Control Operator)\nor WEATHER\ncompany/area selected from list
 
 ui -> ctrl : addATCCollaborator(\n  username, password,\n  firstName, lastName, email,\n  name, position,\n  clearanceExpiry, assessmentDate,\n  companyIata)\nor addFlightControlOperator(\n  ..., areaCode)\nor addWeatherPerson(\n  ..., areaCode)
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, BACKOFFICE_OPERATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  BACKOFFICE_OPERATOR)
 activate authz
 authz --> ctrl
 deactivate authz
@@ -34,9 +35,15 @@ activate userSvc
 userSvc --> ctrl : su
 deactivate userSvc
 
+ctrl -> profileRepo : save(\n  new UserSecurityProfile(\n    username, clearanceExpiry))
+activate profileRepo
+note right : AC 031.7: security clearance\nprofile persisted for SystemUser
+profileRepo --> ctrl
+deactivate profileRepo
+
 create collab
-ctrl -> collab ** : new ATCCollaborator(su, name, position,\n  new SecurityClearance(clearanceExpiry),\n  new SkillsAssessment(assessmentDate),\n  CompanyIATA.valueOf(companyIata))\n— or FlightControlOperator / WeatherPerson\n  with AreaCode.valueOf(areaCode)
-note right : SecurityClearance: validates expiry not null\nSkillsAssessment: validates date not null\ninitialStatus = ACTIVE
+ctrl -> collab ** : Collaborator.ofATC(\n  su, name, position,\n  new SecurityClearance(clearanceExpiry),\n  new SkillsAssessment(assessmentDate),\n  CompanyIATA.valueOf(companyIata))\n— or ofFlightControlOperator(\n  ..., AreaCode.valueOf(areaCode))\n— or ofWeatherPerson(\n  ..., AreaCode.valueOf(areaCode))
+note right : factory method sets CollaboratorType\nvalidates companyId / areaCode not null\ninitialises active = true
 
 ctrl -> repo : save(collab)
 activate repo
