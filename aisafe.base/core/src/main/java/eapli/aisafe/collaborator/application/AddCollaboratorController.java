@@ -2,12 +2,9 @@ package eapli.aisafe.collaborator.application;
 
 import eapli.aisafe.aircontrolarea.domain.AreaCode;
 import eapli.aisafe.aircontrolarea.repositories.AirControlAreaRepository;
-import eapli.aisafe.collaborator.domain.ATCCollaborator;
 import eapli.aisafe.collaborator.domain.Collaborator;
-import eapli.aisafe.collaborator.domain.FlightControlOperator;
 import eapli.aisafe.collaborator.domain.SecurityClearance;
 import eapli.aisafe.collaborator.domain.SkillsAssessment;
-import eapli.aisafe.collaborator.domain.WeatherPerson;
 import eapli.aisafe.collaborator.repositories.CollaboratorRepository;
 import eapli.aisafe.company.domain.CompanyIATA;
 import eapli.aisafe.company.repositories.AirTransportCompanyRepository;
@@ -71,7 +68,7 @@ public class AddCollaboratorController {
 
     /**
      * US061: Add an ATC Collaborator.
-     * Creates a SystemUser with role ATC_COLLABORATOR, then an ATCCollaborator entity,
+     * Creates a SystemUser with role ATC_COLLABORATOR, then a Collaborator entity (ATC type),
      * and a UserSecurityProfile so the clearance check passes.
      */
     public Collaborator addATCCollaborator(final String username, final String password,
@@ -90,7 +87,7 @@ public class AddCollaboratorController {
         // AC 031.7-equivalent: persist security clearance profile for collaborator's SystemUser
         profileRepo.save(new UserSecurityProfile(username, clearanceExpiry));
 
-        final ATCCollaborator collab = new ATCCollaborator(
+        final Collaborator collab = Collaborator.ofATC(
                 su, name, position,
                 new SecurityClearance(clearanceExpiry),
                 new SkillsAssessment(assessmentDate),
@@ -101,7 +98,7 @@ public class AddCollaboratorController {
 
     /**
      * US061: Add a Flight Control Operator.
-     * Creates a SystemUser with role FLIGHT_CONTROL_OPERATOR, then a FlightControlOperator entity,
+     * Creates a SystemUser with role FLIGHT_CONTROL_OPERATOR, then a Collaborator entity (FCO type),
      * and a UserSecurityProfile so the clearance check passes.
      */
     public Collaborator addFlightControlOperator(final String username, final String password,
@@ -120,7 +117,7 @@ public class AddCollaboratorController {
         // AC 031.7-equivalent: persist security clearance profile for collaborator's SystemUser
         profileRepo.save(new UserSecurityProfile(username, clearanceExpiry));
 
-        final FlightControlOperator fco = new FlightControlOperator(
+        final Collaborator fco = Collaborator.ofFlightControlOperator(
                 su, name, position,
                 new SecurityClearance(clearanceExpiry),
                 new SkillsAssessment(assessmentDate),
@@ -131,7 +128,7 @@ public class AddCollaboratorController {
 
     /**
      * US061: Add a Weather Person.
-     * Creates a SystemUser with role WEATHER_PERSON, then a WeatherPerson entity,
+     * Creates a SystemUser with role WEATHER_PERSON, then a Collaborator entity (WEATHER type),
      * and a UserSecurityProfile so the clearance check passes.
      */
     public Collaborator addWeatherPerson(final String username, final String password,
@@ -150,7 +147,7 @@ public class AddCollaboratorController {
         // AC 031.7-equivalent: persist security clearance profile for collaborator's SystemUser
         profileRepo.save(new UserSecurityProfile(username, clearanceExpiry));
 
-        final WeatherPerson wp = new WeatherPerson(
+        final Collaborator wp = Collaborator.ofWeatherPerson(
                 su, name, position,
                 new SecurityClearance(clearanceExpiry),
                 new SkillsAssessment(assessmentDate),

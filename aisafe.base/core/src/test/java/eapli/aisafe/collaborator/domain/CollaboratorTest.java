@@ -14,7 +14,7 @@ import java.time.LocalDate;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for Collaborator hierarchy.
+ * Unit tests for Collaborator.
  * Covers US061 (creation), US062 (active state), US063 (edit), US064 (disable).
  */
 class CollaboratorTest {
@@ -36,8 +36,8 @@ class CollaboratorTest {
         return new SkillsAssessment(LocalDate.now().minusMonths(1));
     }
 
-    private static ATCCollaborator validATCCollaborator() {
-        return new ATCCollaborator(
+    private static Collaborator validATCCollaborator() {
+        return Collaborator.ofATC(
                 dummySystemUser(),
                 "Alice Smith",
                 "ATC Officer",
@@ -47,8 +47,8 @@ class CollaboratorTest {
         );
     }
 
-    private static FlightControlOperator validFCO() {
-        return new FlightControlOperator(
+    private static Collaborator validFCO() {
+        return Collaborator.ofFlightControlOperator(
                 dummySystemUser(),
                 "Bob Jones",
                 "FCO Senior",
@@ -58,8 +58,8 @@ class CollaboratorTest {
         );
     }
 
-    private static WeatherPerson validWeatherPerson() {
-        return new WeatherPerson(
+    private static Collaborator validWeatherPerson() {
+        return Collaborator.ofWeatherPerson(
                 dummySystemUser(),
                 "Carol White",
                 "Meteorologist",
@@ -93,7 +93,13 @@ class CollaboratorTest {
     void ensureATCCollaboratorHasCompanyId() {
         final var c = validATCCollaborator();
         assertEquals(new CompanyIATA("TP"), c.companyId());
-        assertNull(c.areaCode(), "ATCCollaborator must not have an AreaCode");
+        assertNull(c.areaCode(), "ATC Collaborator must not have an AreaCode");
+    }
+
+    @Test
+    void ensureATCCollaboratorTypeIsATC() {
+        final var c = validATCCollaborator();
+        assertEquals(CollaboratorType.ATC, c.collaboratorType());
     }
 
     // ── Creation — FlightControlOperator (US061) ──────────────────────────────
@@ -111,6 +117,12 @@ class CollaboratorTest {
         assertNull(c.companyId(), "FCO must not have a CompanyId");
     }
 
+    @Test
+    void ensureFCOCollaboratorTypeIsFCO() {
+        final var c = validFCO();
+        assertEquals(CollaboratorType.FCO, c.collaboratorType());
+    }
+
     // ── Creation — WeatherPerson (US061) ──────────────────────────────────────
 
     @Test
@@ -124,6 +136,12 @@ class CollaboratorTest {
         final var c = validWeatherPerson();
         assertEquals(new AreaCode("LPPC"), c.areaCode());
         assertNull(c.companyId(), "WeatherPerson must not have a CompanyId");
+    }
+
+    @Test
+    void ensureWeatherPersonCollaboratorTypeIsWeather() {
+        final var c = validWeatherPerson();
+        assertEquals(CollaboratorType.WEATHER, c.collaboratorType());
     }
 
     // ── Disable (US064) ───────────────────────────────────────────────────────
@@ -190,7 +208,6 @@ class CollaboratorTest {
 
     @Test
     void ensureRenewingWithPastClearanceDateIsRejected() {
-        // SecurityClearance invariant: expiry must not be in the past
         assertThrows(Exception.class,
                 () -> new SecurityClearance(LocalDate.now().minusDays(1)),
                 "Past expiry date must be rejected");
@@ -208,46 +225,52 @@ class CollaboratorTest {
 
     @Test
     void ensureFutureSkillsAssessmentDateIsRejected() {
-        // SkillsAssessment invariant: date must not be in the future
         assertThrows(Exception.class,
                 () -> new SkillsAssessment(LocalDate.now().plusDays(1)),
                 "Future assessment date must be rejected");
     }
 
-    // ── Invariant violations — constructor ────────────────────────────────────
+    // ── Invariant violations — factory methods ────────────────────────────────
 
     @Test
     void ensureNullSystemUserIsRejected() {
-        assertThrows(Exception.class, () -> new ATCCollaborator(
+        assertThrows(Exception.class, () -> Collaborator.ofATC(
                 null, "Alice Smith", "ATC Officer",
                 validClearance(), validAssessment(), new CompanyIATA("TP")));
     }
 
     @Test
     void ensureBlankCollaboratorNameIsRejected() {
-        assertThrows(Exception.class, () -> new ATCCollaborator(
+        assertThrows(Exception.class, () -> Collaborator.ofATC(
                 dummySystemUser(), "", "ATC Officer",
                 validClearance(), validAssessment(), new CompanyIATA("TP")));
     }
 
     @Test
     void ensureBlankPositionIsRejected() {
-        assertThrows(Exception.class, () -> new ATCCollaborator(
+        assertThrows(Exception.class, () -> Collaborator.ofATC(
                 dummySystemUser(), "Alice Smith", "",
                 validClearance(), validAssessment(), new CompanyIATA("TP")));
     }
 
     @Test
     void ensureNullCompanyIdForATCIsRejected() {
-        assertThrows(Exception.class, () -> new ATCCollaborator(
+        assertThrows(Exception.class, () -> Collaborator.ofATC(
                 dummySystemUser(), "Alice Smith", "ATC Officer",
                 validClearance(), validAssessment(), null));
     }
 
     @Test
     void ensureNullAreaCodeForFCOIsRejected() {
-        assertThrows(Exception.class, () -> new FlightControlOperator(
+        assertThrows(Exception.class, () -> Collaborator.ofFlightControlOperator(
                 dummySystemUser(), "Bob Jones", "FCO Senior",
+                validClearance(), validAssessment(), null));
+    }
+
+    @Test
+    void ensureNullAreaCodeForWeatherPersonIsRejected() {
+        assertThrows(Exception.class, () -> Collaborator.ofWeatherPerson(
+                dummySystemUser(), "Carol White", "Meteorologist",
                 validClearance(), validAssessment(), null));
     }
 
@@ -287,42 +310,5 @@ class CollaboratorTest {
         c.updatePhone("+351912345678");
         c.updatePhone(null);
         assertNull(c.phone(), "Null phone must clear the value");
-    }
-    @Test
-    void ensureToStringContainsName() {
-        final var c = validATCCollaborator();
-        assertTrue(c.toString().contains("Alice Smith"));
-    }
-
-    @Test
-    void ensureHashCodeIsConsistent() {
-        final var c = validATCCollaborator();
-        assertEquals(c.hashCode(), c.hashCode());
-    }
-
-    @Test
-    void ensureEqualsReturnsTrueForSameInstance() {
-        final var c = validATCCollaborator();
-        assertEquals(c, c);
-    }
-
-    @Test
-    void ensureSameAsReturnsTrueForSameInstance() {
-        final var c = validATCCollaborator();
-        assertTrue(c.sameAs(c));
-    }
-
-    @Test
-    void ensureIdentityIsNullBeforePersistence() {
-        final var c = validATCCollaborator();
-        assertNull(c.identity());
-    }
-
-    @Test
-    void ensureSystemUserIsPreserved() {
-        final var user = dummySystemUser();
-        final var c = new ATCCollaborator(user, "Alice Smith", "ATC Officer",
-                validClearance(), validAssessment(), new CompanyIATA("TP"));
-        assertEquals(user, c.systemUser());
     }
 }

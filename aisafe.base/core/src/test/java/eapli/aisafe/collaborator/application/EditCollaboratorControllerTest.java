@@ -1,6 +1,5 @@
 package eapli.aisafe.collaborator.application;
 
-import eapli.aisafe.collaborator.domain.ATCCollaborator;
 import eapli.aisafe.collaborator.domain.Collaborator;
 import eapli.aisafe.collaborator.domain.SecurityClearance;
 import eapli.aisafe.collaborator.domain.SkillsAssessment;
@@ -42,8 +41,8 @@ class EditCollaboratorControllerTest {
                 .build();
     }
 
-    private ATCCollaborator makeCollaborator() {
-        return new ATCCollaborator(dummySystemUser(), "Alice Smith", "ATC Officer",
+    private Collaborator makeCollaborator() {
+        return Collaborator.ofATC(dummySystemUser(), "Alice Smith", "ATC Officer",
                 new SecurityClearance(LocalDate.now().plusYears(1)),
                 new SkillsAssessment(LocalDate.now().minusDays(1)),
                 CompanyIATA.valueOf("TP"));
@@ -54,7 +53,7 @@ class EditCollaboratorControllerTest {
     @Test
     void ensureEditCollaboratorUpdatesNameAndSaves() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator();
+        final Collaborator collab = makeCollaborator();
         when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
         when(repo.save(collab)).thenReturn(collab);
 
@@ -69,7 +68,7 @@ class EditCollaboratorControllerTest {
     @Test
     void ensureEditCollaboratorUpdatesPositionAndSaves() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator();
+        final Collaborator collab = makeCollaborator();
         when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
         when(repo.save(collab)).thenReturn(collab);
 
@@ -84,7 +83,7 @@ class EditCollaboratorControllerTest {
     @Test
     void ensureEditCollaboratorUpdatesPhoneAndSaves() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator();
+        final Collaborator collab = makeCollaborator();
         when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
         when(repo.save(collab)).thenReturn(collab);
 
@@ -99,7 +98,7 @@ class EditCollaboratorControllerTest {
     @Test
     void ensureEditCollaboratorUpdatesClearanceAndSaves() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator();
+        final Collaborator collab = makeCollaborator();
         when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
         when(repo.save(collab)).thenReturn(collab);
         final LocalDate newExpiry = LocalDate.now().plusYears(3);
@@ -130,7 +129,7 @@ class EditCollaboratorControllerTest {
     @Test
     void ensureEditCollaboratorChecksAuthorization() {
         // Arrange
-        final ATCCollaborator collab = makeCollaborator();
+        final Collaborator collab = makeCollaborator();
         when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
         when(repo.save(collab)).thenReturn(collab);
 

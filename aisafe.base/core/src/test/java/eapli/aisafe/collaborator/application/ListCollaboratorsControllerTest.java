@@ -1,6 +1,5 @@
 package eapli.aisafe.collaborator.application;
 
-import eapli.aisafe.collaborator.domain.ATCCollaborator;
 import eapli.aisafe.collaborator.domain.Collaborator;
 import eapli.aisafe.collaborator.domain.SecurityClearance;
 import eapli.aisafe.collaborator.domain.SkillsAssessment;
@@ -46,8 +45,8 @@ class ListCollaboratorsControllerTest {
                 .build();
     }
 
-    private ATCCollaborator makeCollaborator() {
-        return new ATCCollaborator(dummySystemUser(), "Bob Smith", "ATC Junior",
+    private Collaborator makeCollaborator() {
+        return Collaborator.ofATC(dummySystemUser(), "Bob Smith", "ATC Junior",
                 new SecurityClearance(LocalDate.now().plusYears(1)),
                 new SkillsAssessment(LocalDate.now().minusDays(1)),
                 CompanyIATA.valueOf("TP"));

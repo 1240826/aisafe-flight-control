@@ -14,11 +14,9 @@ import eapli.aisafe.airport.domain.Airport;
 import eapli.aisafe.airport.domain.AirportIATA;
 import eapli.aisafe.airport.domain.AirportICAO;
 import eapli.aisafe.airport.domain.Elevation;
-import eapli.aisafe.collaborator.domain.ATCCollaborator;
-import eapli.aisafe.collaborator.domain.FlightControlOperator;
+import eapli.aisafe.collaborator.domain.Collaborator;
 import eapli.aisafe.collaborator.domain.SecurityClearance;
 import eapli.aisafe.collaborator.domain.SkillsAssessment;
-import eapli.aisafe.collaborator.domain.WeatherPerson;
 import eapli.aisafe.company.domain.AirTransportCompany;
 import eapli.aisafe.company.domain.CompanyIATA;
 import eapli.aisafe.company.domain.CompanyICAO;
@@ -551,7 +549,7 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         }
         try {
             PersistenceContext.repositories().collaborators().save(
-                    new ATCCollaborator(user, name, position,
+                    Collaborator.ofATC(user, name, position,
                             new SecurityClearance(CLEARANCE_EXPIRY),
                             new SkillsAssessment(ASSESSMENT_DATE),
                             companyIATA));
@@ -585,7 +583,7 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         }
         try {
             PersistenceContext.repositories().collaborators().save(
-                    new FlightControlOperator(user, name, position,
+                    Collaborator.ofFlightControlOperator(user, name, position,
                             new SecurityClearance(CLEARANCE_EXPIRY),
                             new SkillsAssessment(ASSESSMENT_DATE),
                             areaCode));
@@ -619,7 +617,7 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         }
         try {
             PersistenceContext.repositories().collaborators().save(
-                    new WeatherPerson(user, name, position,
+                    Collaborator.ofWeatherPerson(user, name, position,
                             new SecurityClearance(CLEARANCE_EXPIRY),
                             new SkillsAssessment(ASSESSMENT_DATE),
                             areaCode));
