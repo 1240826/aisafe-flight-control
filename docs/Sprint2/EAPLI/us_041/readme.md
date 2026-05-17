@@ -2,7 +2,7 @@
 
 ## 1. Context
 
-This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow a Weather Person to register meteorological data (wind, temperature, validity period) for a sub-area within an Air Control Area (ACA). Weather data is consumed by Flight Control Operators when assessing flight safety.
+This task was assigned in Sprint 2. It is the first time this task is being developed. The objective is to allow a Weather Person to register meteorological data (wind, temperature, observation point) for an Air Control Area (ACA). Weather data is consumed by Flight Control Operators when assessing flight safety.
 
 **Assigned to:** Fábio Costa
 
@@ -17,17 +17,18 @@ This task was assigned in Sprint 2. It is the first time this task is being deve
 
 ## 2. Requirements
 
-**US041** As Weather Person (or Backoffice Operator), I want to register weather data for an air control area so that flight control operators can assess meteorological conditions.
+**US041** As Weather Person, I want to register weather data for an air control area so that flight control operators can assess meteorological conditions.
 
 ### Acceptance Criteria
 
-- **AC 041.1** The system must require the `WEATHER_PERSON` or `BACKOFFICE_OPERATOR` role.
-- **AC 041.2** Weather data must be linked to an existing ACA by its `AreaCode`.
-- **AC 041.3** A `WeatherSubArea` must be defined by `minLat`, `maxLat`, `minLon`, `maxLon`, `minAlt`, `maxAlt`; where `minLat < maxLat`, `minLon < maxLon`, `minAlt ≥ 0`, `minAlt < maxAlt`.
+- **AC 041.1** The system must require the `WEATHER_PERSON` role.
+- **AC 041.2** Weather data must be linked to an existing ACA by its `AreaCode`. The ACA must exist in the system.
+- **AC 041.3** A `WindCondition` must be defined by a single observation point: `latitude ∈ [-90, 90]`, `longitude ∈ [-180, 180]`, `altitudeMetres ≥ 0`, `windSpeedKnots > 0`, `windDirectionDeg ∈ [0, 360)`.
 - **AC 041.4** Wind data must include `windSpeedKnots > 0` and `windDirectionDeg ∈ [0, 360)`.
-- **AC 041.5** `temperatureCelsius` must be provided (no range restriction).
-- **AC 041.6** `validFrom` and `validTo` must be provided; `validTo > validFrom`.
-- **AC 041.7** Registered data must be persisted and retrievable by `AreaCode`.
+- **AC 041.5** `temperatureCelsius` must be provided (no range restriction — can be negative).
+- **AC 041.6** `recordedDateTime` must be provided — represents the instant the observation was recorded.
+- **AC 041.7** `sourceProvider` must be provided and not blank (e.g. "IPMA", "METAR LPPC", "EUROCONTROL").
+- **AC 041.8** Registered data must be persisted and retrievable by `AreaCode`.
 
 ### Dependencies/References
 
@@ -46,29 +47,26 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 **LLM suggestions adopted:**
 - `WeatherData` as the aggregate root — linked to an `AreaCode`
-- `WeatherSubArea` as a value object — encapsulates the geographic bounding box and altitude range
-- `WindCondition` as a value object — encapsulates speed and direction
+- `WindCondition` as a value object — encapsulates speed, direction and observation coordinates
 - All invariants enforced in constructors
 
 **Decisions made by the team:**
-- `WeatherSubArea` holds coordinates as `double` and altitudes as `int` (metres)
+- `WindCondition` holds a single observation point (latitude, longitude, altitudeMetres) rather than a bounding box
 - `WindCondition` direction is `int` degrees; speed is `double` knots
-- `validFrom`/`validTo` are `LocalDateTime`
+- `recordedDateTime` is `LocalDateTime` — represents the instant of the observation
 
 ### 3.1 Domain Model
 
 | Concept | Type | Description |
 |---------|------|-------------|
-| `WeatherData` | Aggregate Root | Links ACA code, sub-area, wind, temperature, validity |
-| `WeatherSubArea` | Value Object | Geographic bounding box + altitude range |
-| `WindCondition` | Value Object | Speed (knots) + direction (degrees) |
+| `WeatherData` | Aggregate Root | Links ACA code, wind condition, temperature, source provider and recorded time |
+| `WindCondition` | Value Object | Speed (knots) + direction (degrees) + observation coordinates (lat, lon, alt) |
 | `AreaCode` | Value Object | Identifies the Air Control Area |
 
 ### 3.2 Invariants
 
-- `WeatherSubArea`: `minLat < maxLat`, `minLon < maxLon`, `minAlt >= 0`, `minAlt < maxAlt`
-- `WindCondition`: `speed > 0`, `direction ∈ [0, 360)`
-- `WeatherData`: `validTo > validFrom`
+- `WindCondition`: `speed > 0`, `direction ∈ [0, 360)`, `latitude ∈ [-90, 90]`, `longitude ∈ [-180, 180]`, `altitudeMetres ≥ 0`
+- `WeatherData`: `recordedDateTime` must not be null; `sourceProvider` must not be blank; ACA identified by `areaCode` must exist in the system
 
 ---
 
@@ -78,12 +76,12 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `RegisterWeatherDataUI` | `aisafe.app.backoffice.console` | Collects all inputs; calls controller |
-| `RegisterWeatherDataController` | `aisafe.core` | Auth; creates VOs; delegates to repository |
+| `RegisterWeatherDataUI` | `aisafe.app` | Collects all inputs; calls controller |
+| `RegisterWeatherDataController` | `aisafe.core` | Auth; validates ACA existence; creates VOs; delegates to repository |
 | `WeatherData` | `aisafe.core` | Aggregate root holding all weather info |
-| `WeatherSubArea` | `aisafe.core` | Value object — bounding box + altitudes |
-| `WindCondition` | `aisafe.core` | Value object — speed + direction |
+| `WindCondition` | `aisafe.core` | Value object — speed, direction and observation point |
 | `WeatherDataRepository` | `aisafe.core` | Repository interface |
+| `AirControlAreaRepository` | `aisafe.core` | Used to validate ACA existence |
 
 **Sequence Diagram:**
 
@@ -91,23 +89,23 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Acceptance Tests
 
-**AT1 — WeatherSubArea rejects invalid latitude bounds (AC 041.3)**
-
-Given a `WeatherSubArea` where `minLatitude` is greater than `maxLatitude` (e.g., minLat=10, maxLat=5),
-When the system attempts to create the `WeatherSubArea` value object,
-Then the system rejects the creation with an error indicating `minLatitude` must be strictly less than `maxLatitude`.
-
-**AT2 — WindCondition rejects direction out of [0, 360) range (AC 041.4)**
+**AT1 — WindCondition rejects direction out of [0, 360) range (AC 041.4)**
 
 Given a `WindCondition` with a direction of 360 degrees (outside the valid range),
 When the system attempts to create the `WindCondition` value object,
 Then the system rejects the creation with an error indicating direction must be within [0, 360).
 
-**AT3 — WeatherData rejects validTo before validFrom (AC 041.6)**
+**AT2 — WeatherData rejects blank source provider (AC 041.7)**
 
-Given weather data where `validTo` is one hour before `validFrom`,
+Given weather data with a blank source provider,
 When the system attempts to create the `WeatherData` aggregate,
-Then the system rejects the creation with an error indicating `validTo` must be strictly after `validFrom`.
+Then the system rejects the creation with an error indicating source provider must not be blank.
+
+**AT3 — WeatherData rejects non-existent ACA (AC 041.2)**
+
+Given an area code that does not correspond to any registered ACA,
+When the controller attempts to register weather data for that area,
+Then the system rejects the operation with an error indicating the ACA was not found.
 
 ---
 
@@ -117,10 +115,9 @@ Then the system rejects the creation with an error indicating `validTo` must be 
 
 - `eapli.aisafe.weatherdata.application.RegisterWeatherDataController`
 - `eapli.aisafe.weatherdata.domain.WeatherData`
-- `eapli.aisafe.weatherdata.domain.WeatherSubArea`
 - `eapli.aisafe.weatherdata.domain.WindCondition`
 - `eapli.aisafe.weatherdata.repositories.WeatherDataRepository`
-- `eapli.aisafe.app.backoffice.console.presentation.weatherdata.RegisterWeatherDataUI`
+- `eapli.aisafe.ui.weatherdata.RegisterWeatherDataUI`
 
 *Major commits: (to be filled after implementation)*
 
@@ -128,14 +125,15 @@ Then the system rejects the creation with an error indicating `validTo` must be 
 
 ## 6. Integration/Demonstration
 
-1. Log in as Weather Person or Backoffice Operator
+1. Log in as Weather Person
 2. Select "Register Weather Data" from menu
-3. Enter ACA code, sub-area bounds, wind data, temperature, validity period
-4. System validates and persists — confirms success
-5. Flight Control Operator can then query weather data for that ACA
+3. Select an existing Air Control Area from the list
+4. Enter observation coordinates (lat, lon, alt), wind data, temperature, source provider and recorded date/time
+5. System validates and persists — confirms success
+6. Flight Control Operator can then query weather data for that ACA
 
 ---
 
 ## 7. Observations
 
-`WeatherSubArea` and `WindCondition` are pure value objects — all their validation logic is in their constructors. `WeatherData` delegates geographic scoping to `WeatherSubArea` and wind data to `WindCondition`, keeping the aggregate root thin. The `AreaCode` links to an ACA but does not reference the full `AirControlArea` aggregate — it holds only the code string, avoiding cross-aggregate references.
+`WindCondition` is a pure value object — all validation logic is in its constructor. `WeatherData` delegates wind data to `WindCondition`, keeping the aggregate root thin. The `AreaCode` links to an ACA; the controller validates that the ACA exists before persisting the observation. The `AreaCode` holds only the code string, avoiding cross-aggregate object references.
