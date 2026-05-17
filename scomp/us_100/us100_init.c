@@ -1,7 +1,6 @@
 /*
- * AISafe Flight Control Simulation
  * us100_init.c - US100: Simulate flights in a given area
- * SCOMP Sprint 2 - 2025/2026
+ * SCOMP Sprint 2
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -33,6 +32,7 @@ int init_simulation(FlightPlan *plans, int n,
     int i, j;
     pid_t pid;
 
+    /* Pipe pre-allocation, before any fork() */
     for (i = 0; i < n; i++) {
         if (pipe(report_pipe[i]) == -1) { perror("pipe report"); return -1; }
         if (pipe(go_pipe[i])     == -1) { perror("pipe go");     return -1; }
@@ -52,19 +52,27 @@ int init_simulation(FlightPlan *plans, int n,
         fflush(stdout);
 
         pid = fork();
+
+        /* Error Handling */
         if (pid == -1) { perror("fork"); return -1; }
 
         if (pid == 0) {
-            /* Child: close all pipe ends except its own */
+
+            /* Child: close all pipe ends except its own to prevent descriptor leaks */
             for (j = 0; j < n; j++) {
                 if (j == i) {
+
+                    /* Close the ends this child will not use */
                     close(report_pipe[i][0]);
                     close(go_pipe[i][1]);
                 } else {
+
+                    /* Close all file descriptors belonging to other flights */
                     close(report_pipe[j][0]); close(report_pipe[j][1]);
                     close(go_pipe[j][0]);     close(go_pipe[j][1]);
                 }
             }
+
             run_flight(&plans[i], i, report_pipe[i][1], go_pipe[i][0], timestep);
             exit(1); /* unreachable */
         }
