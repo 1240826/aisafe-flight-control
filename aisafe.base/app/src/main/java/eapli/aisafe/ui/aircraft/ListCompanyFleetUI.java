@@ -11,17 +11,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * UI for US072 — List Company Fleet (and sub-filters US072a, US072b, US072c).
+ * UI for US072 — List Company Fleet (and sub-filters US072a, US072b, US072c, US072d).
  */
 @SuppressWarnings("squid:S106")
 public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
 
     private final ListCompanyFleetController controller = new ListCompanyFleetController();
     private String selectedCompanyIata = null;
-    private int filterMode = 0; // 0=none, 1=model, 2=maker, 3=capacity
+    private int filterMode = 0; // 0=none, 1=model, 2=maker, 3=capacity, 4=age
     private String filterModel = null;
     private String filterMaker = null;
-    private int filterMinCapacity = 0;
+    private int filterNumber = 0; // used for capacity (US072c) and age (US072d)
 
     @Override
     protected boolean doShow() {
@@ -60,15 +60,16 @@ public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
             System.out.println("  0. No filter (show all)");
             System.out.println("  1. Model (US072a)");
             System.out.println("  2. Maker (US072b)");
-            System.out.println("  3. Minimum capacity (US072c)");
+            System.out.println("  3. Exact capacity (US072c)");
+            System.out.println("  4. Age in years (US072d)");
 
             int filter;
             do {
-                filter = Console.readInteger("Select filter (0-3)");
-                if (filter < 0 || filter > 3) {
-                    System.out.println("  [!] Please enter a number between 0 and 3.");
+                filter = Console.readInteger("Select filter (0-4)");
+                if (filter < 0 || filter > 4) {
+                    System.out.println("  [!] Please enter a number between 0 and 4.");
                 }
-            } while (filter < 0 || filter > 3);
+            } while (filter < 0 || filter > 4);
 
             filterMode = filter;
 
@@ -77,7 +78,9 @@ public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
             } else if (filterMode == 2) {
                 filterMaker = Console.readLine("Enter maker name (e.g. Boeing, Airbus)").trim();
             } else if (filterMode == 3) {
-                filterMinCapacity = Console.readInteger("Enter minimum capacity (number of passengers)");
+                filterNumber = Console.readInteger("Enter exact capacity (number of passengers)");
+            } else if (filterMode == 4) {
+                filterNumber = Console.readInteger("Enter age of the aircraft (in years)");
             }
         }
 
@@ -98,16 +101,17 @@ public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
         switch (filterMode) {
             case 1: return controller.fleetByModel(selectedCompanyIata, filterModel);
             case 2: return controller.fleetByMaker(selectedCompanyIata, filterMaker);
-            case 3: return controller.fleetByCapacity(selectedCompanyIata, filterMinCapacity);
+            case 3: return controller.fleetByCapacity(selectedCompanyIata, filterNumber);
+            case 4: return controller.fleetByAge(selectedCompanyIata, filterNumber);
             default: return controller.fleetOfCompany(selectedCompanyIata);
         }
     }
 
     @Override
     protected Visitor<Aircraft> elementPrinter() {
-        return a -> System.out.printf("  %-15s %-12s %-10s capacity=%-5d crew=%d%n",
+        return a -> System.out.printf("  %-15s %-12s %-10s capacity=%-5d age=%-3d crew=%d%n",
                 a.registrationNumber(), a.aircraftModelCode(),
-                a.operationalStatus(), a.totalCapacity(), a.numberOfFlightCrewMembers());
+                a.operationalStatus(), a.totalCapacity(), a.ageInYears(), a.numberOfFlightCrewMembers());
     }
 
     @Override
@@ -115,7 +119,7 @@ public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
 
     @Override
     protected String listHeader() {
-        return String.format("  %-15s %-12s %-10s %-11s %s",
-                "REGISTRATION", "MODEL CODE", "STATUS", "CAPACITY", "CREW");
+        return String.format("  %-15s %-12s %-10s %-11s %-6s %s",
+                "REGISTRATION", "MODEL CODE", "STATUS", "CAPACITY", "AGE", "CREW");
     }
 }
