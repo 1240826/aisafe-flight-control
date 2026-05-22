@@ -1,36 +1,35 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US043 — Consult Weather Data
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task was assigned in Sprint 3 within the Applications Engineering (EAPLI) scope. The objective is to allow authorized users to query and view weather data for a specific area and time, which is critical for flight planning and simulation.
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Jaime Simões
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #67
+- Design: #67
+- Implement: #67
+- Test: #67
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US043** As a Weather Person, a Pilot, or a Flight Control operator, I want to consult weather data in the system in a given day and in a specific air control area.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US043.1** The system must allow querying weather data by providing a specific date and a specific air control area.
+- **US043.2** Access must be restricted to users with the `WEATHER_PERSON`, `PILOT`, or `FLIGHT_CONTROL_OPERATOR` roles.
+- **US043.3** The returned data must accurately reflect the information previously registered or imported for that specific area and day.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US041 — Register weather data
+- US042 — Import bulk weather data
+- US050 — Register an air control area
 
 ---
 
@@ -38,35 +37,19 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 
 ### 3.0 LLM Assistance
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+**Prompt 1:** "[Insert LLM Prompt used for querying strategies or UI design]"
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- [Insert adopted suggestion, e.g., how to structure the date/area query in the repository]
 
 **Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+- [Insert specific team decisions, e.g., formatting of the output or handling days with no recorded data]
 
-### 3.1 Framework Roles
+### 3.1 Domain Connections
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
-
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
-```
+The query requires traversing or filtering the `WeatherData` entity (or aggregate) using the `AirControlArea` identifier and a standard `Date` object.
 
 ---
 
@@ -74,73 +57,59 @@ public class AISafeRoles {
 
 ### 4.1 Realization
 
-**Classes to create:**
+**Classes to create/modify:**
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+| `ConsultWeatherUI` | `aisafe.app.common.console` | Prompts user for area and date, displays results |
+| `ConsultWeatherController` | `aisafe.core` | Orchestrates the query, enforces authorization |
+| `WeatherService` | `aisafe.core` | Contains business logic for retrieving weather |
+| `WeatherDataRepository` | `aisafe.core` | Declares the query method (e.g., `findByAreaAndDate`) |
+| `JpaWeatherDataRepository` | `aisafe.persistence.impl` | Implements the database query |
 
-**Sequence Diagram — Login with Security Clearance Check:**
+**Sequence Diagram — Consult Weather Data:**
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
-
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
-
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+![Sequence Diagram — Consult Weather Data]([Insert Sequence Diagram File Name])
 
 ### 4.2 Acceptance Tests
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+**AT1 — Authorized user successfully queries weather data**
+Given an authenticated user with the `PILOT` role,
+And weather data exists for Area "A1" on "2026-10-12",
+When the user queries weather for Area "A1" on "2026-10-12",
+Then the system displays the correct weather parameters for that day and area.
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
-
-**AT2 — Valid security clearance allows login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
-
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
-
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
+**AT2 — Unauthorized access is blocked**
+Given an authenticated user with the `BACKOFFICE_OPERATOR` role,
+When the user attempts to access the Consult Weather Data feature,
 Then the system rejects the operation with an authorization error.
+
+**AT3 — Querying a day with no data**
+Given an authenticated user with the `WEATHER_PERSON` role,
+When the user queries weather for an area and date that has no recorded data,
+Then the system displays a clear message indicating no data is available.
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
+**Key new/modified files:**
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+- `[List relevant files created or altered]`
 
-*Major commits: (to be filled after implementation)*
+*Major commits: [Insert links or hashes]*
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+1. Log in as a Pilot, Weather Person, or Flight Control Operator.
+2. Navigate to the Weather menu and select "Consult Weather Data".
+3. Input an existing Air Control Area code and a valid Date.
+4. Verify the output matches the expected registered data.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+[Insert any technical debt, difficulties encountered, or architectural notes here]

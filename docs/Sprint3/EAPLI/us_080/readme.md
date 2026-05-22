@@ -1,36 +1,36 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US080 — Create a Flight Plan
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task was assigned in Sprint 3 within the Applications Engineering (EAPLI) scope. This is a core operational feature that transitions an abstract route into a scheduled flight event.
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Jaime Simões
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #69
+- Design: #69
+- Implement: #69
+- Test: #69
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US080** As Pilot, I want to register a flight plan for a route.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US080.1** The user must select a route and add the aircraft, departure date/time, fuel quantity, and pilot.
+- **US080.2** The assigned pilot must be of the route's company.
+- **US080.3** Flight plan status is set to "draft" when created.
+- **US080.4** The flight plan must undergo a multi-step validation process.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US070 — Add an aircraft to an air transport company
+- US073 — Create a flight route
+- US075 — Add a pilot
 
 ---
 
@@ -38,35 +38,19 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 
 ### 3.0 LLM Assistance
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+**Prompt 1:** "[Insert LLM Prompt used for state machine design for flight status or domain modeling]"
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- [Insert adopted suggestion, e.g., Enum for FlightPlanStatus]
 
 **Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+- [Insert specific team decisions, e.g., how to verify the pilot belongs to the correct company]
 
-### 3.1 Framework Roles
+### 3.1 Domain Connections
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
-
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
-```
+The `FlightPlan` aggregate will act as the operational instantiation of a `FlightRoute`. It must maintain references to the `Aircraft`, the `Pilot`, and include specific departure timing and fuel load data.
 
 ---
 
@@ -78,41 +62,28 @@ public class AISafeRoles {
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+| `CreateFlightPlanUI` | `aisafe.app.pilot.console` | Captures flight plan inputs from the Pilot |
+| `CreateFlightPlanController` | `aisafe.core` | Validates inputs, company rules, and creates the plan |
+| `FlightPlan` | `aisafe.core` | Aggregate root |
+| `FlightPlanStatus` | `aisafe.core` | Enum containing `DRAFT` (and future states like `VALIDATED`) |
+| `FlightPlanRepository` | `aisafe.core` | Interface for persistence |
+| `JpaFlightPlanRepository` | `aisafe.persistence.impl`| JPA implementation |
 
-**Sequence Diagram — Login with Security Clearance Check:**
+**Sequence Diagram — Create Flight Plan:**
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
-
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
-
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+![Sequence Diagram — Create Flight Plan]([Insert Sequence Diagram File Name])
 
 ### 4.2 Acceptance Tests
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+**AT1 — Pilot company validation**
+Given a Pilot belonging to company "RY",
+When the user attempts to assign this pilot to a flight plan on a route owned by company "TP",
+Then the system rejects the creation due to a company mismatch.
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
-
-**AT2 — Valid security clearance allows login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
-
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
-
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
-Then the system rejects the operation with an authorization error.
+**AT2 — Default draft status**
+Given all valid inputs for a flight plan,
+When the flight plan is successfully saved,
+Then its internal status is automatically initialized as "DRAFT".
 
 ---
 
@@ -120,27 +91,22 @@ Then the system rejects the operation with an authorization error.
 
 **Key new files:**
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+- `[List relevant files created or altered]`
 
-*Major commits: (to be filled after implementation)*
+*Major commits: [Insert links or hashes]*
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+1. Log in as a Pilot.
+2. Select "Register Flight Plan".
+3. Choose an existing Route and Aircraft from the company's fleet.
+4. Enter departure date/time and fuel quantity.
+5. Confirm creation and verify the new plan appears in the system with a "DRAFT" status.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+[Insert any technical debt, difficulties encountered, or architectural notes here]
