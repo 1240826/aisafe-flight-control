@@ -1,0 +1,26 @@
+@startuml
+
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Weather Person" as WP
+actor "Air Transport\nCollaborator" as ATC
+actor "Pilot" as P
+actor "Client\n(web browser)" as CLIENT
+actor "«system»\nTCP Server" as SYS
+
+rectangle "Network Application System" {
+    usecase "US44 - Access weather data\nremotely" as US44
+    usecase "US78 - Access air transport\ndata remotely" as US78
+    usecase "US86 - Access flight\ndata remotely" as US86
+    usecase "US90 - Log remote\naccess events" as US90
+    usecase "US91 - View remote\naccess logs" as US91
+}
+
+WP --> US44
+ATC --> US78
+P --> US86
+CLIENT --> US91
+SYS --> US90
+
+@enduml
