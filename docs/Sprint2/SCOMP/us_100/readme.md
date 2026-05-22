@@ -1,135 +1,89 @@
-# US100 – Simulate Flights in a Given Area
+# US105 – Initialize hybrid simulation environment with shared memory
 
 ## 1. Context
 
-As a Flight Control Operator, I want to simulate flights in a given area. Simulations have parameters such as time range, geographic area, included flights, safety thresholds, and performance settings. All required parameters should be validated.
+As a Flight Control Operator, I want to start the simulation with a multi-threaded parent process and multiple child flight processes communicating through a shared memory area, so that the system efficiently coordinates simulation data across processes.
 
 **Assigned to:** Jaime Simões
 
 ### List of Issues
 
-- Analysis: #47
-- Design: #47
-- Implement: #47
-- Test: #47
+- Analysis: #70
+- Design: #70
+- Implement: #70
+- Test: #70
 
 ---
 
 ## 2. Requirements
 
-- Implemented in C using processes, pipes, and signals.
-- Fork one child process per flight plan.
-- Each child executes its designated flight plan.
-- Pipes facilitate communication between the main process and each flight process.
-- Main process tracks aircraft positions over time using an appropriate data structure.
+- The parent process spawns dedicated threads for its functionalities.
+- Each flight is launched as an independent process.
+- A shared memory segment is allocated and properly initialized for inter-process communication.
+- Flight processes are configured to use semaphores for synchronization.
+- This component must be implemented in C and must utilize threads, mutexes, condition variables, and signals.
 
 ## 3. Analysis
 
 ### Input
 
-The JSON file provided by the professor describes one flight with one leg: segments for climb, cruise, and descent with speed/rate profiles per altitude. The SCOMP simulation reads this file directly — the LPROG DSL is processed separately and produces equivalent JSON input.
+The simulation reads flight plan data (JSON) directly or receives processed DSL input. The key difference from Sprint 2 (US100) is the architectural shift from pipe-based communication to a hybrid model: processes for flights and threads for parent functionalities, all coordinated via POSIX Shared Memory (`shm_open`, `mmap`) and POSIX Semaphores (`sem_open`).
 
-Professor simplification (Angelo Martins): *"Flights depart and land in airports of the same air control area. A flight has exactly one climb phase, one cruise phase, and one descent phase."*
+### Shared Memory Layout
 
-### Simulation area
+Instead of sending updates via pipes, all flight data is written to a shared memory block accessible by the parent threads and all child processes.
 
-Rectangular bounding box with configurable altitude ceiling:
-
-| Boundary | Value |
+| Data Structure | Responsibility |
 |---|---|
-| Latitude | [38°N, 44°N] |
-| Longitude | [10°W, 2°W] |
-| Altitude | [0, `AREA_MAX_ALT_M`] |
+| `SimulationState` | Contains global simulation time step and status flags. |
+| `FlightData[N]` | Array storing the current position, altitude, and status of each flight. |
+| `Mutex/CondVars`| Pthread mutexes and condition variables (stored in shared memory using `PTHREAD_PROCESS_SHARED` attribute if accessed across processes, or just used internally by parent threads). |
 
-`AREA_MAX_ALT_M = 14000.0 m` — defined in `common.h` as a `#define`, not hardcoded. Professor clarification: *"do not put 14000 m directly in the code, use configuration"*.
+### Synchronization (Semaphores)
 
-### Four area scenarios
-
-| Scenario | Detected by |
-|---|---|
-| Starts inside, stays inside | `in_area=1` at init, no transitions |
-| Starts inside, leaves | `LEAVING` message in `collect()` |
-| Starts outside, enters | `ENTERING` message in `collect()` |
-| Never in the area | `in_area=0` always, no violation checks |
-
-### Pipe layout (created before any `fork()`)
-
-```
-report_pipe[i]   child i → parent   PosUpdate (every step)
-go_pipe[i]       parent  → child i  GoToken   (every step)
-```
-
-All pipes are created **before** the first `fork()` so every child inherits all descriptors. After `fork()`, each child closes every pipe end it does not own.
+To enforce step-by-step synchronization (US108), the system requires named or unnamed semaphores:
+- `sem_step_start`: Signals children to compute the next step.
+- `sem_step_done`: Signals the parent that a child has finished its calculation and written to shared memory.
 
 ### LLM Assistance
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
-Below are the main prompts used, the suggestions adopted, and the decisions the team made
-independently or where we deviated from the AI output.
+Generative AI was used to support the analysis and design of this user story. Below are the main prompts used, the suggestions adopted, and the decisions the team made independently or where we deviated from the AI output.
 
 ---
 
-#### Prompt 1 — Process and pipe layout for the simulation
+#### Prompt 1 — Hybrid architecture using fork, pthreads, and shared memory
 
-> "We are implementing a flight simulation in C using fork, pipes, and signals. One child process
-> per flight plan. The parent tracks aircraft positions over time. Suggest a pipe layout and the
-> correct order of operations (pipe creation, fork, descriptor cleanup)."
+> "We are implementing a C simulation where a parent process spawns multiple threads for monitoring, and forks multiple child processes for flight simulation. They need to communicate via shared memory and synchronize via semaphores. How should we structure the initialization of the shared memory and semaphores before the forks?"
 
 **LLM suggestions adopted:**
-- Creating all pipes before any `fork()` so every child inherits all descriptors
-- Each child closes every pipe end it does not own after `fork()`
-- Two pipes per flight: one child→parent (`report_pipe`) and one parent→child (`go_pipe`)
+- Use `shm_open`, `ftruncate`, and `mmap` to allocate the shared memory block **before** calling `fork()` or `pthread_create()`, ensuring all entities inherit the mapped memory.
+- Use POSIX unnamed semaphores (`sem_init` with the `pshared` flag set to 1) placed directly inside the mapped shared memory struct for easy access by all processes.
 
 **Decisions made by the team / deviations from LLM output:**
-- The LLM suggested creating pipes inside the fork loop — moved before the loop to ensure all
-  descriptors exist before any child is spawned
-- `AREA_MAX_ALT_M` defined as a `#define` in `common.h` following professor clarification
-  (no hardcoded values)
-
+- The LLM suggested using named semaphores (`sem_open`), but we decided to use unnamed semaphores (`sem_init` with `pshared = 1`) embedded directly in the shared memory struct to simplify cleanup and avoid leftover semaphore files in the OS (`/dev/shm`).
 
 ## 4. Design
 
-```
-init_simulation()
+```c
+init_hybrid_simulation()
+  // 1. Initialize Shared Memory
+  shm_fd = shm_open("/sim_shm", O_CREAT | O_RDWR, 0666)
+  ftruncate(shm_fd, sizeof(SharedData))
+  shared_data = mmap(0, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)
+
+  // 2. Initialize Semaphores and Mutexes in Shared Memory
+  sem_init(&shared_data->sem_step_start, 1, 0)
+  sem_init(&shared_data->sem_step_done, 1, 0)
+  
+  // 3. Spawn Parent Threads (Monitoring, Reporting, Environment)
+  pthread_create(&safety_thread, NULL, safety_monitor_func, shared_data)
+  pthread_create(&report_thread, NULL, report_gen_func, shared_data)
+
+  // 4. Fork Child Processes (Flights)
   for i in 0..n:
-    pipe(report_pipe[i])
-    pipe(go_pipe[i])
-  for i in 0..n:
-    flights[i].in_area = in_area(plans[i].seg[0].start)
     fork()
-    if child:  close others, run_flight()
-    if parent: record pid/fds, close child ends
-```
-
-## 5. Implementation
-
-**File:** `us100_init.c` — `init_simulation()`
-
-**Compile:**
-```bash
-gcc -Wall -Wextra -D_GNU_SOURCE \
-    main.c us100_init.c us101_flight.c us102_detector.c \
-    us103_sync.c us109_report.c -o simulation -lm
-```
-
-## 6. Integration / Demonstration
-
-```bash
-# Area transitions: TP101 leaves, IB202 enters, LH303 never appears
-./simulation ../test/scenario1_area_cases.json
-```
-
-Expected:
-```
-[CTRL]   IB202 starts OUTSIDE the area
-[CTRL]   LH303 starts OUTSIDE the area
-...
-[AREA]   IB202 ENTERING area at step 2009
-[AREA]   TP101 LEAVING area at step 2353
-```
-
-## 7. Observations
-
-- `fflush(stdout)` before each `fork()` prevents buffered output from appearing in children.
-- LH303 (Frankfurt→Rome) is entirely north and east of the area — it never triggers `ENTERING`.
-- The simulation has no mandatory `max_steps`. It runs until all flights complete segments or leave the area. A safety cap (`SAFETY_CAP_S = 10800`) prevents infinite loops.
+    if child:
+      run_flight_process(i, shared_data)
+      exit(0)
+      
+  // Parent continues as the simulation controller
