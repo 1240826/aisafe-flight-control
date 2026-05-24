@@ -1,11 +1,6 @@
 // INVALID — tests flight type validation
-//
-// Error: 'cargo' is not an accepted flight type.
-// Only 'regular' and 'charter' are valid (case-insensitive).
-//
-// Expected error (parser):
-//   [PARSER] line 3:15 - mismatched input 'cargo'
-//            expecting {REGULAR, CHARTER}
+// Error: 'cargo' is not an accepted flight type. Only 'regular' and 'charter' are valid.
+// Expected error (parser): mismatched input 'cargo' expecting {REGULAR, CHARTER}
 
 flight TP9001 : cargo {
 
@@ -14,28 +9,16 @@ flight TP9001 : cargo {
         destination : LHR;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-
-        departure {
-            airport : LIS;
-            date    : 2026-05-10;
-            time    : 08:30;
-        }
-
-        arrival {
-            airport : LHR;
-            time    : 10:45;
-        }
-
-        fuel {
-            quantity : 15000 kg;
-        }
-
+        departure { airport: LIS; day: Monday; datetime: 2026-05-18T08:30+01:00; }
+        arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
+        fuel      { quantity: 15000 kg; }
         segment SEG1 {
-            from      : (38.7813, -9.1359);
-            to        : (51.4775, -0.4614);
-            altitudes : [10000 m];
-            wind      : (270, 15 m/s);
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m]; wind: (270, 15 m/s);
         }
     }
 }

@@ -1,35 +1,19 @@
 // INVALID — tests that the route block is mandatory
-//
-// Error: the route block is missing at flight level.
-// The grammar enforces: flight { routeDecl legDecl+ }
-//
-// Expected error (parser):
-//   [PARSER] line 5:4 - mismatched input 'leg' expecting 'route'
+// Error: the route block is missing. Parser expects ROUTE before AIRCRAFT.
+// Expected error (parser): mismatched input 'aircraft' expecting 'route'
 
 flight TP9002 : regular {
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-
-        departure {
-            airport : LIS;
-            date    : 2026-05-10;
-            time    : 08:30;
-        }
-
-        arrival {
-            airport : LHR;
-            time    : 10:45;
-        }
-
-        fuel {
-            quantity : 15000 kg;
-        }
-
+        departure { airport: LIS; day: Monday; datetime: 2026-05-18T08:30+01:00; }
+        arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
+        fuel      { quantity: 15000 kg; }
         segment SEG1 {
-            from      : (38.7813, -9.1359);
-            to        : (51.4775, -0.4614);
-            altitudes : [10000 m];
-            wind      : (270, 15 m/s);
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m]; wind: (270, 15 m/s);
         }
     }
 }

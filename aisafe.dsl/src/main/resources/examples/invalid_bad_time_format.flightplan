@@ -1,42 +1,27 @@
-// INVALID — tests that time format must be HH:MM (two digits before the colon)
+// INVALID — tests that regular departure must use datetime: (not time:) after day:
 //
-// Error: time uses single-digit hour '8:30' instead of '08:30'.
-// The TIME_LITERAL token requires exactly: DD':'DD (2 digits, colon, 2 digits).
-// '8' alone is tokenised as NUMBER, not TIME_LITERAL.
+// Error: using the old 'time:' keyword instead of 'datetime:' in a regular departure.
+// After 'day: Monday;' the grammar expects 'datetime: TIMESTAMP;' but finds 'time'.
 //
-// Expected error (parser):
-//   [PARSER] line 20:16 - mismatched input '8'
-//            expecting TIME_LITERAL
+// Expected error (parser): mismatched input 'time' expecting 'datetime'
 
 flight TP9009 : regular {
 
-    route {
-        origin      : LIS;
-        destination : LHR;
-    }
+    route { origin: LIS; destination: LHR; }
+    aircraft : CS-TUB;
+    pilot    : P12345;
 
     leg L1 {
-
         departure {
             airport : LIS;
-            date    : 2026-05-10;
-            time    : 8:30;          // ERROR: must be 08:30
+            day     : Monday;
+            time    : 08:30;       // ERROR: 'time:' not accepted here — use 'datetime:'
         }
-
-        arrival {
-            airport : LHR;
-            time    : 10:45;
-        }
-
-        fuel {
-            quantity : 15000 kg;
-        }
-
+        arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
+        fuel      { quantity: 15000 kg; }
         segment SEG1 {
-            from      : (38.7813, -9.1359);
-            to        : (51.4775, -0.4614);
-            altitudes : [10000 m];
-            wind      : (270, 15 m/s);
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m]; wind: (270, 15 m/s);
         }
     }
 }

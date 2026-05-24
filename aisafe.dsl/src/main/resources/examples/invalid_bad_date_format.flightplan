@@ -1,31 +1,31 @@
-// INVALID — tests that date format must be YYYY-MM-DD
+// INVALID — tests that datetime format must be ISO 8601 YYYY-MM-DDTHH:MM+TZ
 //
-// Error: date uses European DD-MM-YYYY format instead of ISO YYYY-MM-DD.
-// The DATE_LITERAL token requires exactly: DDDD'-'DD'-'DD (4 then 2 then 2 digits).
-// '10' is only 2 digits, so it is tokenised as NUMBER, not DATE_LITERAL.
+// Error: datetime uses DD-MM-YYYY order instead of YYYY-MM-DD.
+// TIMESTAMP_LITERAL requires 4-digit year first: '10' (2 digits) is tokenised as NUMBER,
+// not the start of a TIMESTAMP_LITERAL. The parser then fails to match the scheduleField.
 //
-// Expected error (parser):
-//   [PARSER] line 20:16 - mismatched input '10'
-//            expecting DATE_LITERAL
+// Expected error (parser): mismatched input '10' expecting TIMESTAMP_LITERAL
 
-flight TP9008 : regular {
+flight TP9008 : charter {
 
     route {
         origin      : LIS;
         destination : LHR;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
 
         departure {
-            airport : LIS;
-            date    : 10-05-2026;    // ERROR: should be 2026-05-10
-            time    : 08:30;
+            airport  : LIS;
+            datetime : 10-05-2026T08:00+01:00;    // ERROR: DD-MM-YYYY, should be YYYY-MM-DD
         }
 
         arrival {
-            airport : LHR;
-            time    : 10:45;
+            airport  : LHR;
+            datetime : 10-05-2026T10:00+01:00;
         }
 
         fuel {

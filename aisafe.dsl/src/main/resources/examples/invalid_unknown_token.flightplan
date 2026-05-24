@@ -1,40 +1,24 @@
 // INVALID — tests detection of an unknown/illegal character
-//
 // Error: '#' is not part of the Flight DSL alphabet.
-// No lexer rule matches '#', so the lexer reports a token recognition error.
-//
-// Expected error (lexer):
-//   [LEXER] line 14:16 - token recognition error at: '#'
+// Expected error (lexer): token recognition error at: '#'
 
 flight TP9011 : regular {
 
-    route {
-        origin      : LIS;
-        destination : LHR;
-    }
+    route { origin: LIS; destination: LHR; }
+    aircraft : CS-TUB;
+    pilot    : P12345;
 
     leg L1 {
-
         departure {
             airport : #LIS;           // ERROR: '#' is not a valid token
-            date    : 2026-05-10;
-            time    : 08:30;
+            day     : Monday;
+            datetime : 2026-05-18T08:30+01:00;
         }
-
-        arrival {
-            airport : LHR;
-            time    : 10:45;
-        }
-
-        fuel {
-            quantity : 15000 kg;
-        }
-
+        arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
+        fuel      { quantity: 15000 kg; }
         segment SEG1 {
-            from      : (38.7813, -9.1359);
-            to        : (51.4775, -0.4614);
-            altitudes : [10000 m];
-            wind      : (270, 15 m/s);
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m]; wind: (270, 15 m/s);
         }
     }
 }

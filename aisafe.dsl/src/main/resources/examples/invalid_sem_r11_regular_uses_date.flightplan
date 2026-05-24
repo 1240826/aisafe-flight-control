@@ -1,5 +1,6 @@
-// Invalid: regular flight using date: instead of day:
-// Expected error: [R11] regular flights must specify a day of week (day:), not a specific date (date:)
+// INVALID — R11: regular departure must use day: + datetime:, not datetime: alone.
+// Using 'datetime:' without 'day:' is the charter format.
+// Expected error: [SEMANTIC] [R11] regular flights must specify departure as day: + datetime:
 
 flight TP4001 : regular {
 
@@ -8,9 +9,12 @@ flight TP4001 : regular {
         destination : LHR;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
-        arrival   { airport: LHR; time: 10:00; }
+        departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
+        arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
         fuel      { quantity: 15000 kg; }
         segment S1 {
             from      : (38.7813, -9.1359);

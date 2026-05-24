@@ -1,5 +1,5 @@
 // Valid regular multi-leg flight: Lisbon -> Madrid -> Paris (Mondays)
-// Regular flights use day-of-week in departure — this is the weekly schedule
+// Regular flights: day-of-week (weekly pattern) + full datetime with timezone
 
 flight TP3000 : regular {
 
@@ -8,9 +8,12 @@ flight TP3000 : regular {
         destination : CDG;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-        departure { airport: LIS; day: Monday; time: 07:00; }
-        arrival   { airport: MAD; time: 08:30; }
+        departure { airport: LIS; day: Monday; datetime: 2026-05-18T07:00+01:00; }
+        arrival   { airport: MAD; datetime: 2026-05-18T09:30+02:00; }
         fuel      { quantity: 8000 kg; }
         segment SEG1 {
             from      : (38.7813, -9.1359);
@@ -21,8 +24,8 @@ flight TP3000 : regular {
     }
 
     leg L2 {
-        departure { airport: MAD; day: Monday; time: 10:00; }
-        arrival   { airport: CDG; time: 12:30; }
+        departure { airport: MAD; day: Monday; datetime: 2026-05-18T11:00+02:00; }
+        arrival   { airport: CDG; datetime: 2026-05-18T13:30+02:00; }
         fuel      { quantity: 9000 kg; }
         segment SEG2 {
             from      : (40.4983, -3.5676);

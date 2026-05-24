@@ -1,7 +1,4 @@
 // INVALID — R3: leg1 arrives at EDDF but leg2 departs from LHR (airport mismatch)
-//
-// Expected: [SEMANTIC] line X - [R3] leg 1 arrival airport 'EDDF' must match
-//           leg 2 departure airport 'LHR'
 
 flight TP103 : charter {
 
@@ -10,9 +7,12 @@ flight TP103 : charter {
         destination : WAW;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-        departure { airport: LIS;  date: 2026-05-20; time: 07:00; }
-        arrival   { airport: EDDF; time: 09:30; }
+        departure { airport: LIS;  datetime: 2026-05-20T07:00+01:00; }
+        arrival   { airport: EDDF; datetime: 2026-05-20T09:30+02:00; }
         fuel      { quantity: 18000 kg; }
         segment S1 {
             from: (38.7813, -9.1359); to: (50.0333, 8.5706);
@@ -21,8 +21,8 @@ flight TP103 : charter {
     }
 
     leg L2 {
-        departure { airport: LHR;  date: 2026-05-20; time: 11:00; }
-        arrival   { airport: WAW;  time: 13:30; }
+        departure { airport: LHR;  datetime: 2026-05-20T11:00+01:00; }
+        arrival   { airport: WAW;  datetime: 2026-05-20T13:30+02:00; }
         fuel      { quantity: 14000 kg; }
         segment S2 {
             from: (51.4775, -0.4614); to: (52.1657, 20.9671);

@@ -14,13 +14,16 @@ import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Semantic validation tests — one test per semantic rule (R1–R10).
+ * Semantic validation tests — one test per semantic rule (R2–R11).
  *
  * Each test loads a .flightplan file that is syntactically valid
  * but violates exactly one semantic rule, and verifies that
  * FlightPlanRunner.run() returns false.
  *
  * The valid file tests verify that semantically correct plans still pass.
+ *
+ * All charter flights use: datetime: YYYY-MM-DDTHH:MM+TZ (ISO 8601 with timezone).
+ * All regular flights use: day: DayOfWeek; time: HH:MM; (departure) / time: HH:MM; (arrival).
  */
 class SemanticValidationTest {
 
@@ -55,10 +58,10 @@ class SemanticValidationTest {
     }
 
 
-    // R1 — flight identifier uniqueness
+    // R1 — one flight per file (enforced by grammar: flightFile : flightDecl EOF)
 
     @Test
-    @DisplayName("[R1] Duplicate flight identifier in file should fail")
+    @DisplayName("[R1] Two flight declarations in same file should fail (parser error at second 'flight')")
     void r1DuplicateFlightId() throws IOException, URISyntaxException {
         assertFalse(FlightPlanRunner.run(resource("invalid_sem_duplicate_id.flightplan"), false));
     }
@@ -66,13 +69,15 @@ class SemanticValidationTest {
     @Test
     @DisplayName("[R1] Same identifier in different runs is allowed (listener is per-instance)")
     void r1SameIdInDifferentRunsIsAllowed() throws IOException {
-        // Two separate runs — each creates a new listener with an empty symbol table
+        // Two separate runs — each creates a new listener; no shared state between runs
         String content = """
                 flight TP200 : charter {
                     route { origin: LIS; destination: LHR; }
+                    aircraft : CS-TUB;
+                    pilot    : P12345;
                     leg L1 {
-                        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
-                        arrival   { airport: LHR; time: 10:00; }
+                        departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
+                        arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
                         segment S1 {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
@@ -82,7 +87,7 @@ class SemanticValidationTest {
                 }
                 """;
         assertTrue(parse(content));
-        assertTrue(parse(content)); // second run — same id is OK in a new file
+        assertTrue(parse(content)); // second run — same id is OK in a separate file
     }
 
 
@@ -108,10 +113,10 @@ class SemanticValidationTest {
         assertFalse(FlightPlanRunner.run(resource("invalid_sem_leg_airport_gap.flightplan"), false));
     }
 
-    // R4 — leg time ordering
+    // R4 — leg time ordering (timezone-aware for charter)
 
     @Test
-    @DisplayName("[R4] Leg arrival after next leg departure should fail")
+    @DisplayName("[R4] Leg arrival after next leg departure (UTC comparison) should fail")
     void r4LegTimeOrder() throws IOException, URISyntaxException {
         assertFalse(FlightPlanRunner.run(resource("invalid_sem_leg_time_order.flightplan"), false));
     }
@@ -155,9 +160,11 @@ class SemanticValidationTest {
         String content = """
                 flight TP201 : charter {
                     route { origin: LIS; destination: LHR; }
+                    aircraft : CS-TUB;
+                    pilot    : P12345;
                     leg L1 {
-                        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
-                        arrival   { airport: LHR; time: 10:00; }
+                        departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
+                        arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
                         segment S1 {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
@@ -169,7 +176,7 @@ class SemanticValidationTest {
         assertTrue(parse(content));
     }
 
-    // R9 — altitude must be positive
+    // R9 — altitude must be positive; width must be positive
 
     @Test
     @DisplayName("[R9] Zero altitude should fail")
@@ -183,9 +190,11 @@ class SemanticValidationTest {
         String content = """
                 flight TP202 : charter {
                     route { origin: LIS; destination: LHR; }
+                    aircraft : CS-TUB;
+                    pilot    : P12345;
                     leg L1 {
-                        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
-                        arrival   { airport: LHR; time: 10:00; }
+                        departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
+                        arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
                         segment S1 {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
@@ -197,17 +206,43 @@ class SemanticValidationTest {
         assertFalse(parse(content));
     }
 
-    // R10 — valid calendar date
+    // R10 — valid ISO 8601 datetime with timezone; valid time values
 
     @Test
-    @DisplayName("[R10] Invalid calendar date Feb 30 should fail")
+    @DisplayName("[R10] Invalid calendar date Feb 30 in timestamp should fail")
     void r10InvalidCalendarDate() throws IOException {
+        // OffsetDateTime.parse("2026-02-30T08:00+01:00") throws DateTimeParseException
         String content = """
                 flight TP203 : charter {
                     route { origin: LIS; destination: LHR; }
+                    aircraft : CS-TUB;
+                    pilot    : P12345;
                     leg L1 {
-                        departure { airport: LIS; date: 2026-02-30; time: 08:00; }
-                        arrival   { airport: LHR; time: 10:00; }
+                        departure { airport: LIS; datetime: 2026-02-30T08:00+01:00; }
+                        arrival   { airport: LHR; datetime: 2026-02-30T10:00+01:00; }
+                        fuel      { quantity: 15000 kg; }
+                        segment S1 {
+                            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                        }
+                    }
+                }
+                """;
+        assertFalse(parse(content));
+    }
+
+    @Test
+    @DisplayName("[R10] Invalid hour 25 in timestamp should fail")
+    void r10InvalidTime() throws IOException {
+        // TIMESTAMP_LITERAL pattern matches '25' (2 digits) but OffsetDateTime.parse rejects hour > 23
+        String content = """
+                flight TP204 : charter {
+                    route { origin: LIS; destination: LHR; }
+                    aircraft : CS-TUB;
+                    pilot    : P12345;
+                    leg L1 {
+                        departure { airport: LIS; datetime: 2026-05-20T25:00+01:00; }
+                        arrival   { airport: LHR; datetime: 2026-05-20T27:00+01:00; }
                         fuel      { quantity: 15000 kg; }
                         segment S1 {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
@@ -222,13 +257,13 @@ class SemanticValidationTest {
     // R11 — schedule type must match flight type
 
     @Test
-    @DisplayName("[R11] Regular flight using date: instead of day: should fail")
-    void r11RegularUsesDated() throws IOException, URISyntaxException {
+    @DisplayName("[R11] Regular flight using datetime: instead of day: should fail")
+    void r11RegularUsesDatetime() throws IOException, URISyntaxException {
         assertFalse(FlightPlanRunner.run(resource("invalid_sem_r11_regular_uses_date.flightplan"), false));
     }
 
     @Test
-    @DisplayName("[R11] Charter flight using day: instead of date: should fail")
+    @DisplayName("[R11] Charter flight using day: instead of datetime: should fail")
     void r11CharterUsesDay() throws IOException, URISyntaxException {
         assertFalse(FlightPlanRunner.run(resource("invalid_sem_r11_charter_uses_day.flightplan"), false));
     }
@@ -237,25 +272,5 @@ class SemanticValidationTest {
     @DisplayName("[R11] Regular flight with day: passes semantic check")
     void r11RegularWithDayPasses() throws IOException, URISyntaxException {
         assertTrue(FlightPlanRunner.run(resource("valid_regular_multi_leg.flightplan"), false));
-    }
-
-    @Test
-    @DisplayName("[R10] Invalid time 25:00 should fail")
-    void r10InvalidTime() throws IOException {
-        String content = """
-                flight TP204 : charter {
-                    route { origin: LIS; destination: LHR; }
-                    leg L1 {
-                        departure { airport: LIS; date: 2026-05-20; time: 25:00; }
-                        arrival   { airport: LHR; time: 10:00; }
-                        fuel      { quantity: 15000 kg; }
-                        segment S1 {
-                            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
-                        }
-                    }
-                }
-                """;
-        assertFalse(parse(content));
     }
 }

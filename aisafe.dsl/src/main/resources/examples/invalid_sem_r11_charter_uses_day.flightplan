@@ -1,5 +1,6 @@
-// Invalid: charter flight using day: instead of date:
-// Expected error: [R11] charter flights must specify a specific date (date:), not a day of week (day:)
+// INVALID — R11: charter departure must use datetime: only, not day: + datetime:.
+// Using 'day:' is the regular flight format.
+// Expected error: [SEMANTIC] [R11] charter flights must specify departure as datetime: only
 
 flight TP4002 : charter {
 
@@ -8,9 +9,12 @@ flight TP4002 : charter {
         destination : WAW;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-        departure { airport: OPO; day: Friday; time: 06:00; }
-        arrival   { airport: WAW; time: 10:00; }
+        departure { airport: OPO; day: Friday; datetime: 2026-06-15T06:00+01:00; }
+        arrival   { airport: WAW; datetime: 2026-06-15T10:00+02:00; }
         fuel      { quantity: 18000 kg; }
         segment S1 {
             from      : (41.2481, -8.6814);

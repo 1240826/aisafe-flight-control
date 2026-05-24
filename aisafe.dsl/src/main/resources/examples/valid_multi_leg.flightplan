@@ -7,17 +7,19 @@ flight TP5678 : charter {
         destination : WAW;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
 
         departure {
-            airport : OPO;
-            date    : 2026-06-15;
-            time    : 06:00;
+            airport  : OPO;
+            datetime : 2026-06-15T06:00+01:00;
         }
 
         arrival {
-            airport : EDDF;
-            time    : 09:30;
+            airport  : EDDF;
+            datetime : 2026-06-15T09:30+02:00;
         }
 
         fuel {
@@ -28,21 +30,20 @@ flight TP5678 : charter {
             from      : (41.2481, -8.6814);
             to        : (50.0333, 8.5706);
             altitudes : [11000 m WIDTH 80 m];
-            wind      : (90, 20 m/s);
+            wind      : (90 degrees, 20 m/s);
         }
     }
 
     leg L2 {
 
         departure {
-            airport : EDDF;
-            date    : 2026-06-15;
-            time    : 11:00;
+            airport  : EDDF;
+            datetime : 2026-06-15T11:00+02:00;
         }
 
         arrival {
-            airport : WAW;
-            time    : 13:15;
+            airport  : WAW;
+            datetime : 2026-06-15T13:15+02:00;
         }
 
         fuel {

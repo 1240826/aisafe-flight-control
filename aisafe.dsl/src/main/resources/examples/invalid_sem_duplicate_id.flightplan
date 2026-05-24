@@ -1,6 +1,8 @@
-// INVALID — R1: flight identifier 'TP100' declared twice in the same file
+// INVALID — R1 (grammar): two flight declarations in the same file are not allowed.
+// The grammar enforces flightFile : flightDecl EOF — a second 'flight' keyword after
+// the first complete declaration causes a parser error before EOF.
 //
-// Expected: [SEMANTIC] line X - [R1] flight identifier 'TP100' already declared in this file
+// Expected error (parser): mismatched input 'flight' expecting <EOF>
 
 flight TP100 : charter {
 
@@ -9,9 +11,12 @@ flight TP100 : charter {
         destination : LHR;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
-        arrival   { airport: LHR; time: 10:00; }
+        departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
+        arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
         fuel      { quantity: 15000 kg; }
         segment S1 {
             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
@@ -27,9 +32,12 @@ flight TP100 : charter {
         destination : CDG;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-        departure { airport: OPO; date: 2026-05-20; time: 09:00; }
-        arrival   { airport: CDG; time: 11:30; }
+        departure { airport: OPO; datetime: 2026-05-20T09:00+01:00; }
+        arrival   { airport: CDG; datetime: 2026-05-20T11:30+02:00; }
         fuel      { quantity: 14000 kg; }
         segment S1 {
             from: (41.2481, -8.6814); to: (49.0097, 2.5479);

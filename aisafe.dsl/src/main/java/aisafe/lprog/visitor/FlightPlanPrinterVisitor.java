@@ -13,16 +13,15 @@ public class FlightPlanPrinterVisitor extends FlightPlanBaseVisitor<String> {
 
     @Override
     public String visitFlightFile(FlightPlanParser.FlightFileContext ctx) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("=== Flight Plan Summary ===\n");
-        for (var f : ctx.flightDecl()) sb.append(visit(f)).append("\n");
-        return sb.toString();
+        return "=== Flight Plan Summary ===\n" + visit(ctx.flightDecl()) + "\n";
     }
 
     @Override
     public String visitFlightDecl(FlightPlanParser.FlightDeclContext ctx) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("Flight %-10s [%s]\n", visit(ctx.flightId()), visit(ctx.flightType())));
+        sb.append(String.format("  Aircraft : %s\n", ctx.IDENTIFIER(0).getText()));
+        sb.append(String.format("  Pilot    : %s\n", ctx.IDENTIFIER(1).getText()));
         sb.append(visit(ctx.routeDecl()));
         for (var leg : ctx.legDecl()) sb.append(visit(leg));
         return sb.toString();
@@ -62,24 +61,32 @@ public class FlightPlanPrinterVisitor extends FlightPlanBaseVisitor<String> {
 
     @Override
     public String visitDepartureDecl(FlightPlanParser.DepartureDeclContext ctx) {
-        return String.format("    Departure : %s  %s  %s\n",
+        return String.format("    Departure : %s  %s\n",
                 visit(ctx.airportCode()),
-                visit(ctx.scheduleField()),
-                ctx.TIME_LITERAL().getText());
+                visit(ctx.scheduleField()));
     }
 
     @Override
     public String visitScheduleField(FlightPlanParser.ScheduleFieldContext ctx) {
-        return ctx.DATE_LITERAL() != null
-                ? ctx.DATE_LITERAL().getText()
-                : ctx.DAY_LITERAL().getText();
+        if (ctx.DAY_LITERAL() != null) {
+            // regular: day-of-week + full datetime with timezone
+            return ctx.DAY_LITERAL().getText() + "  " + ctx.TIMESTAMP_LITERAL().getText();
+        } else {
+            // charter: exact datetime with timezone only
+            return ctx.TIMESTAMP_LITERAL().getText();
+        }
     }
 
     @Override
     public String visitArrivalDecl(FlightPlanParser.ArrivalDeclContext ctx) {
         return String.format("    Arrival   : %s  %s\n",
                 visit(ctx.airportCode()),
-                ctx.TIME_LITERAL().getText());
+                visit(ctx.arrivalSchedule()));
+    }
+
+    @Override
+    public String visitArrivalSchedule(FlightPlanParser.ArrivalScheduleContext ctx) {
+        return ctx.TIMESTAMP_LITERAL().getText();
     }
 
     @Override
@@ -104,6 +111,13 @@ public class FlightPlanPrinterVisitor extends FlightPlanBaseVisitor<String> {
     }
 
     @Override
+    public String visitWindDecl(FlightPlanParser.WindDeclContext ctx) {
+        String dir = ctx.windDir().NUMBER().getText();
+        if (ctx.windDir().DEGREES() != null) dir += "°";
+        return String.format("(%s, %s)", dir, ctx.numericValue().getText());
+    }
+
+    @Override
     public String visitAltitudeSlotList(FlightPlanParser.AltitudeSlotListContext ctx) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < ctx.altitudeSlot().size(); i++) {
@@ -117,11 +131,5 @@ public class FlightPlanPrinterVisitor extends FlightPlanBaseVisitor<String> {
     public String visitAltitudeSlot(FlightPlanParser.AltitudeSlotContext ctx) {
         String alt = ctx.numericValue(0).getText();
         return ctx.WIDTH() != null ? alt + " width " + ctx.numericValue(1).getText() : alt;
-    }
-
-    @Override
-    public String visitWindDecl(FlightPlanParser.WindDeclContext ctx) {
-        return String.format("(%s,%s)",
-                ctx.numericValue(0).getText(), ctx.numericValue(1).getText());
     }
 }

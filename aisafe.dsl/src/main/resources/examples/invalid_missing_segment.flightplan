@@ -1,34 +1,16 @@
 // INVALID — tests that at least one segment is required per leg
-//
-// Error: no segment block inside leg L1.
-// The grammar enforces: segmentDecl+ (one or more)
-//
-// Expected error (parser):
-//   [PARSER] line 26:4 - mismatched input '}' expecting 'segment'
+// Error: no segment block inside leg L1. Grammar enforces segmentDecl+ (one or more).
+// Expected error (parser): mismatched input '}' expecting 'segment'
 
 flight TP9006 : regular {
 
-    route {
-        origin      : LIS;
-        destination : LHR;
-    }
+    route { origin: LIS; destination: LHR; }
+    aircraft : CS-TUB;
+    pilot    : P12345;
 
     leg L1 {
-
-        departure {
-            airport : LIS;
-            date    : 2026-05-10;
-            time    : 08:30;
-        }
-
-        arrival {
-            airport : LHR;
-            time    : 10:45;
-        }
-
-        fuel {
-            quantity : 15000 kg;
-        }
-
+        departure { airport: LIS; day: Monday; datetime: 2026-05-18T08:30+01:00; }
+        arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
+        fuel      { quantity: 15000 kg; }
     }
 }

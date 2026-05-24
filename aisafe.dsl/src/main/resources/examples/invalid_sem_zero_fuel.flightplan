@@ -1,6 +1,4 @@
 // INVALID — R2: fuel quantity must be strictly positive; zero is not allowed
-//
-// Expected: [SEMANTIC] line X - [R2] fuel quantity must be positive, got: 0kg
 
 flight TP101 : charter {
 
@@ -9,9 +7,12 @@ flight TP101 : charter {
         destination : LHR;
     }
 
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
     leg L1 {
-        departure { airport: LIS; date: 2026-05-20; time: 08:00; }
-        arrival   { airport: LHR; time: 10:00; }
+        departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
+        arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
         fuel      { quantity: 0 kg; }
         segment S1 {
             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
