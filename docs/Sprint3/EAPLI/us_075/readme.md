@@ -1,36 +1,38 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US075 — Add a Pilot
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task was assigned in Sprint 3 within the Applications Engineering (EAPLI) scope. The objective is to allow an Air Transport Company Collaborator (ATCC) to add a pilot to their company's roster, associating the pilot — who must already be a system user — with one or more certified aircraft models.
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Dinis Silva
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #77
+- Design: #77
+- Implement: #77
+- Test: #77
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US075** As an Air Transport Company Collaborator, I want to add a pilot to my company.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US075.1** The pilot must already be a registered system user (created via US061).
+- **US075.2** The pilot must be certified to pilot at least one aircraft model registered in the system.
+- **US075.3** The pilot is added to the company of the authenticated ATCC — the collaborator cannot add a pilot to a different company.
+- **US075.4** A pilot already active in the same company cannot be added again.
+- **US075.5** Access must be restricted to users with the `ATC_COLLABORATOR` role.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US030 — Authentication and authorization infrastructure
+- US055 — Create an aircraft model (pilot must be certified for at least one model)
+- US060 — Register an air transport company
+- US061 — Add a customer's collaborator (the pilot must already exist as a system user)
 
 ---
 
@@ -38,35 +40,22 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 
 ### 3.0 LLM Assistance
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+**Prompt 1:** "In a DDD Java application, when adding a pilot to a company, should the Pilot aggregate hold a reference to the AirTransportCompany aggregate root, or should the company hold a collection of pilots? What are the trade-offs?"
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- The `Pilot` aggregate holds a reference to the `AirTransportCompany` by its ID (not a direct object reference), keeping aggregates properly decoupled and avoiding large collection loading on the company side
+- Certified aircraft models are stored as a collection of `AircraftModelId` value objects inside the `Pilot` aggregate, avoiding a hard dependency on the `AircraftModel` aggregate
 
 **Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+- A pilot is scoped to one company at a time; adding the same user as a pilot to a second company is out of scope for this user story
+- The controller resolves the ATCC's company from the session's authenticated user, so the collaborator never manually selects which company to assign the pilot to
+- If the selected user already has an active `Pilot` record in this company, the operation is rejected with a clear error message
 
-### 3.1 Framework Roles
+### 3.1 Domain Connections
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
-
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
-```
+The operation creates a new `Pilot` entity within the ATCC's `AirTransportCompany`. It cross-references the `SystemUser` aggregate (to confirm the user exists) and the `AircraftModel` aggregate (to validate that the certified models exist in the system). All lookups go through their respective repositories; no direct aggregate-to-aggregate object reference is created.
 
 ---
 
@@ -74,73 +63,87 @@ public class AISafeRoles {
 
 ### 4.1 Realization
 
-**Classes to create:**
+**Classes to create/modify:**
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+| `AddPilotUI` | `aisafe.app.atcc.console` | Prompts ATCC for user and certified models, displays outcome |
+| `AddPilotController` | `aisafe.core` | Resolves the ATCC's company, validates inputs, delegates to service |
+| `PilotService` | `aisafe.core` | Contains business logic for creating and persisting a new Pilot |
+| `PilotRepository` | `aisafe.core` | Declares query methods (e.g., `findByUserAndCompany`, `save`) |
+| `JpaPilotRepository` | `aisafe.persistence.impl` | Implements the database queries |
+| `Pilot` | `aisafe.domain` | Aggregate root representing a pilot in a company |
+| `AircraftModelRepository` | `aisafe.core` | Used to validate that each certified model exists |
 
-**Sequence Diagram — Login with Security Clearance Check:**
+**Sequence Diagram — Add Pilot:**
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
-
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
-
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+![Sequence Diagram — Add Pilot](diagrams/SD_US075_AddPilot.png)
 
 ### 4.2 Acceptance Tests
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+**AT1 — Pilot successfully added**
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
+Given an authenticated ATCC,
+And a system user with username "jpilot@airline.com" exists and is not yet a pilot in the ATCC's company,
+And aircraft model "B737" exists in the system,
+When the ATCC adds the user as a pilot certified for "B737",
+Then the system creates the pilot record and confirms the operation with a success message.
 
-**AT2 — Valid security clearance allows login (US030.4)**
+**AT2 — Pilot already active in the company**
 
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
+Given an authenticated ATCC,
+And "jpilot@airline.com" is already an active pilot in the ATCC's company,
+When the ATCC attempts to add the same user again,
+Then the system rejects the operation with a clear error indicating the pilot is already registered.
 
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
+**AT3 — Selected user does not exist in the system**
 
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
+Given an authenticated ATCC,
+When the ATCC provides a username that does not correspond to any system user,
+Then the system rejects the operation with a user-not-found error and no pilot record is created.
+
+**AT4 — No certified aircraft model provided**
+
+Given an authenticated ATCC,
+And a valid system user is selected,
+When the ATCC submits the form without selecting any aircraft model,
+Then the system rejects the operation, as at least one certified model is required.
+
+**AT5 — Certified model does not exist**
+
+Given an authenticated ATCC,
+And a valid system user is selected,
+When the ATCC provides an aircraft model ID that does not exist in the system,
+Then the system rejects the operation with a model-not-found error.
+
+**AT6 — Unauthorized role is blocked**
+
+Given an authenticated user with the `BACKOFFICE_OPERATOR` role,
+When the user attempts to access the Add Pilot feature,
 Then the system rejects the operation with an authorization error.
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
+**Key new/modified files:**
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+- `[List relevant files created or altered]`
 
-*Major commits: (to be filled after implementation)*
+*Major commits: [Insert links or hashes]*
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+1. Log in as an Air Transport Company Collaborator.
+2. Navigate to the Pilots menu and select "Add Pilot".
+3. Select an existing system user to register as a pilot.
+4. Select one or more aircraft models the pilot is certified for.
+5. Confirm the operation and verify the pilot appears in the company's roster (US076).
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+[Insert any technical debt, difficulties encountered, or architectural notes here]
