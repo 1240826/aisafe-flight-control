@@ -1,0 +1,103 @@
+@startuml sd_us121_import_flightplan
+title US121 — Create a Valid Flight Plan from a File
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Pilot" as actor
+participant ":ImportFlightPlanFromFileUI" as ui <<presentation>>
+participant ":ImportFlightPlanFromFileController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":FlightPlanRunner" as runner <<dsl>>
+participant ":FlightPlanAssembler" as assembler <<service>>
+participant ":AirportRepository" as aptRepo <<persistence>>
+participant ":AircraftRepository" as acRepo <<persistence>>
+participant ":PilotRepository" as pilotRepo <<persistence>>
+participant ":FlightRouteRepository" as routeRepo <<persistence>>
+participant ":FlightPlanRepository" as fpRepo <<persistence>>
+participant "fp:FlightPlan" as fp <<domain>>
+
+actor -> ui : import flight plan from file
+activate ui
+
+ui -> ctrl : importFromFile(filePath)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  FLIGHT_CONTROL_OPERATOR,\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+note right of ctrl : Phase 1-3: DSL lexer,\nparser, semantic validation
+
+ctrl -> runner : parse(filePath)
+activate runner
+
+note right of runner : returns ParseTree\nor prints errors\nand returns null
+
+runner --> ctrl : parseTree
+deactivate runner
+
+alt parseTree == null
+  ctrl --> ui : dslErrors
+  deactivate ctrl
+  ui --> actor : "DSL validation failed"
+  deactivate ui
+else parseTree != null
+  note right of ctrl : Phase 4: Build domain\nentities from ParseTree
+
+  ctrl -> assembler : assemble(parseTree)
+  activate assembler
+
+  note right of assembler : Cross-reference validation\nagainst existing entities
+
+  assembler -> aptRepo : ofIdentity(depAirportIATA)
+  activate aptRepo
+  aptRepo --> assembler : depAirport
+  deactivate aptRepo
+
+  assembler -> aptRepo : ofIdentity(arrAirportIATA)
+  activate aptRepo
+  aptRepo --> assembler : arrAirport
+  deactivate aptRepo
+
+  assembler -> acRepo : ofIdentity(aircraftReg)
+  activate acRepo
+  acRepo --> assembler : aircraft
+  deactivate acRepo
+
+  assembler -> pilotRepo : ofIdentity(pilotId)
+  activate pilotRepo
+  pilotRepo --> assembler : pilot
+  deactivate pilotRepo
+
+  note right of assembler : throws exception if entity\nnot found or pilot company\nmismatches aircraft company
+
+  assembler -> routeRepo : ofIdentity(routeName)
+  activate routeRepo
+  routeRepo --> assembler : route
+  deactivate routeRepo
+
+  create fp
+  assembler -> fp ** : new FlightPlan(\n  flightId,\n  type,\n  route,\n  aircraft,\n  pilot,\n  legs)
+
+  assembler --> ctrl : flightPlan
+  deactivate assembler
+
+  ctrl -> fpRepo : save(fp)
+  activate fpRepo
+  fpRepo --> ctrl : savedFlightPlan
+  deactivate fpRepo
+
+  ctrl --> ui : savedFlightPlan
+  deactivate ctrl
+
+  ui --> actor : "Flight plan imported\nsuccessfully (DRAFT)"
+  deactivate ui
+end
+
+@enduml
