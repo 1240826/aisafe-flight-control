@@ -1,0 +1,92 @@
+@startuml sd_us074_deactivate_flight_route
+title US074 — Deactivate Flight Route
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "ATCC" as actor
+participant ":DeactivateFlightRouteUI" as ui <<presentation>>
+participant ":DeactivateFlightRouteController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":FlightRouteRepository" as routeRepo <<repository>>
+participant ":FlightPlanRepository" as planRepo <<repository>>
+participant ":FlightRoute" as route <<domain>>
+
+== List available routes ==
+
+actor -> ui : deactivate flight route
+activate ui
+
+ui -> ctrl : getActiveRoutesForCompany()
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl : atccUser
+deactivate authz
+
+ctrl -> routeRepo : findActiveRoutesByCompany(\n  atccUser.company())
+activate routeRepo
+routeRepo --> ctrl : activeRoutes
+deactivate routeRepo
+
+ctrl --> ui : activeRoutes
+deactivate ctrl
+
+note right of ui : displays list of active routes;\nuser selects a route and\nenters the deactivation date
+
+== Deactivate selected route ==
+
+actor -> ui : selects route + enters deactivationDate
+
+ui -> ctrl : deactivateRoute(\n  routeId, deactivationDate)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl : atccUser
+deactivate authz
+
+ctrl -> routeRepo : findById(routeId)
+activate routeRepo
+routeRepo --> ctrl : flightRoute
+deactivate routeRepo
+
+ctrl -> ctrl : ensureRouteBelongsToCompany(\n  flightRoute, atccUser.company())
+
+ctrl -> planRepo : existsPlannedFlightAfterDate(\n  routeId, deactivationDate)
+activate planRepo
+planRepo --> ctrl : false
+deactivate planRepo
+
+ctrl -> route : deactivate(deactivationDate)
+activate route
+route --> ctrl
+deactivate route
+
+ctrl -> routeRepo : save(flightRoute)
+activate routeRepo
+routeRepo --> ctrl
+deactivate routeRepo
+
+ctrl --> ui : success
+deactivate ctrl
+
+ui --> actor : "Route deactivated successfully."
+deactivate ui
+
+@enduml

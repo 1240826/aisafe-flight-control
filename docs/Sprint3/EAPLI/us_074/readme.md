@@ -1,4 +1,4 @@
-﻿# US074 — Delete (Deactivate) a Flight Route
+﻿# US074 — Delete a Flight Route
 
 ## 1. Context
 
