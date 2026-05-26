@@ -1,36 +1,39 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US077 — Remove a Pilot
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task was assigned in Sprint 3 within the Applications Engineering (EAPLI) scope. The objective is to allow an Air Transport Company Collaborator (ATCC) to make a pilot inactive in their company's roster, preventing the pilot from being assigned to future flights while preserving historical data integrity.
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Dinis Silva
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #79
+- Design: #79
+- Implement: #79
+- Test: #79
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US077** As an Air Transport Company Collaborator, I want to make a pilot inactive in my company's roster.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US077.1** The ATCC can only deactivate pilots belonging to their own company.
+- **US077.2** A pilot with flight plans currently assigned cannot be deactivated — the operation must be rejected with a clear error message.
+- **US077.3** The pilot record is not deleted from the system — it is marked as inactive, preserving historical data.
+- **US077.4** Once deactivated, the pilot must no longer appear in the active roster (US076).
+- **US077.5** Access must be restricted to users with the `ATC_COLLABORATOR` role.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US030 — Authentication and authorization infrastructure
+- US060 — Register an air transport company
+- US075 — Add a pilot (pilot must exist to be removed)
+- US076 — List pilot roster (deactivated pilots must be excluded)
+- US080 — Create a flight plan (pilots with assigned flight plans cannot be deactivated)
 
 ---
 
@@ -38,35 +41,22 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 
 ### 3.0 LLM Assistance
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+**Prompt 1:** "In a DDD Java application, when deactivating a pilot, should the check for assigned flight plans be performed in the domain, the application service, or the repository layer? What are the trade-offs?"
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- The check for assigned flight plans is performed in the application service layer, querying the `FlightPlanRepository` before invoking the state change on the `Pilot` aggregate — this keeps the domain focused on invariants it owns, while cross-aggregate coordination stays in the service
+- The deactivation is modelled as a state transition on the `Pilot` aggregate (`pilot.deactivate()`), rather than a delete, so that historical records remain intact
 
 **Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+- "Assigned flight plans" means flight plans in a non-terminal state (e.g., `DRAFT`, `VALIDATED`) — cancelled or completed flight plans do not block deactivation
+- The ATCC selects the pilot from the active roster, so the UI reuses the listing logic from US076 to present only deactivatable candidates
+- The pilot's username is shown in the confirmation prompt to avoid accidental deactivation
 
-### 3.1 Framework Roles
+### 3.1 Domain Connections
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
-
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
-```
+The operation performs a state transition on the `Pilot` aggregate, setting its status to `INACTIVE`. Before doing so, the application service cross-checks the `FlightPlanRepository` to ensure no active flight plans reference this pilot. The `AirTransportCompany` identifier from the authenticated ATCC's session is used to scope the lookup, ensuring the collaborator cannot deactivate pilots from other companies.
 
 ---
 
@@ -74,73 +64,78 @@ public class AISafeRoles {
 
 ### 4.1 Realization
 
-**Classes to create:**
+**Classes to create/modify:**
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+| `RemovePilotUI` | `aisafe.app.atcc.console` | Lists active pilots, prompts ATCC for selection and confirmation, displays outcome |
+| `RemovePilotController` | `aisafe.core` | Resolves the ATCC's company, validates the pilot exists and is active, delegates to service |
+| `PilotService` | `aisafe.core` | Checks for assigned flight plans and performs the deactivation |
+| `PilotRepository` | `aisafe.core` | Declares query methods (e.g., `findActiveByCompany`, `save`) |
+| `FlightPlanRepository` | `aisafe.core` | Declares the query method (e.g., `existsActiveByPilot`) |
+| `JpaPilotRepository` | `aisafe.persistence.impl` | Implements the filtered database queries |
+| `Pilot` | `aisafe.domain` | Aggregate root; exposes `deactivate()` method that enforces the status transition |
 
-**Sequence Diagram — Login with Security Clearance Check:**
+**Sequence Diagram — Remove Pilot:**
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
-
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
-
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+![Sequence Diagram — Remove Pilot](sd_us077_remove_pilot.png)
 
 ### 4.2 Acceptance Tests
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+**AT1 — Pilot successfully deactivated**
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
+Given an authenticated ATCC whose company has an active pilot with no assigned flight plans,
+When the ATCC selects that pilot and confirms deactivation,
+Then the system marks the pilot as inactive and displays a success message.
 
-**AT2 — Valid security clearance allows login (US030.4)**
+**AT2 — Deactivated pilot no longer appears in the active roster**
 
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
+Given an authenticated ATCC who has successfully deactivated a pilot,
+When the ATCC requests the pilot roster (US076),
+Then the deactivated pilot does not appear in the list.
 
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
+**AT3 — Pilot with assigned flight plans cannot be deactivated**
 
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
+Given an authenticated ATCC whose company has an active pilot with at least one flight plan in a non-terminal state,
+When the ATCC attempts to deactivate that pilot,
+Then the system rejects the operation with a clear error indicating the pilot has active flight plans assigned.
+
+**AT4 — ATCC cannot deactivate a pilot from another company**
+
+Given an authenticated ATCC from company "AirAlpha",
+And an active pilot belonging to company "AirBeta",
+When the ATCC from "AirAlpha" attempts to deactivate the pilot from "AirBeta",
+Then the system rejects the operation with a not-found or authorization error.
+
+**AT5 — Unauthorized role is blocked**
+
+Given an authenticated user with the `BACKOFFICE_OPERATOR` role,
+When the user attempts to access the Remove Pilot feature,
 Then the system rejects the operation with an authorization error.
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
+**Key new/modified files:**
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+- `[List relevant files created or altered]`
 
-*Major commits: (to be filled after implementation)*
+*Major commits: [Insert links or hashes]*
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+1. Log in as an Air Transport Company Collaborator.
+2. Navigate to the Pilots menu and select "Remove Pilot".
+3. Select an active pilot with no assigned flight plans.
+4. Confirm the deactivation and verify the success message.
+5. Navigate to "List Pilot Roster" (US076) and confirm the pilot no longer appears.
+6. Attempt to deactivate a pilot with an active flight plan and verify the rejection.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+[Insert any technical debt, difficulties encountered, or architectural notes here]

@@ -1,0 +1,89 @@
+@startuml sd_us077_remove_pilot
+title US077 — Remove a Pilot
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "ATCC" as actor
+participant ":RemovePilotUI" as ui <<presentation>>
+participant ":RemovePilotController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":PilotRepository" as pilotRepo <<repository>>
+participant ":FlightPlanRepository" as flightRepo <<repository>>
+participant "p:Pilot" as pilot <<domain>>
+
+actor -> ui : remove pilot
+activate ui
+
+ui -> ctrl : getActivePilots()
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl : atccUser
+deactivate authz
+
+ctrl -> pilotRepo : findActiveByCompany(\n  atccUser.company())
+activate pilotRepo
+pilotRepo --> ctrl : activePilots
+deactivate pilotRepo
+
+ctrl --> ui : activePilots
+deactivate ctrl
+
+note right of ui : ATCC selects pilot\nfrom the active roster\nand confirms deactivation
+
+ui -> ctrl : deactivatePilot(pilotId)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl : atccUser
+deactivate authz
+
+ctrl -> pilotRepo : findActiveByIdAndCompany(\n  pilotId, atccUser.company())
+activate pilotRepo
+pilotRepo --> ctrl : pilot
+deactivate pilotRepo
+
+note right of ctrl : throws exception if pilot\nnot found or does not\nbelong to ATCC's company
+
+ctrl -> flightRepo : existsActiveByPilot(pilot)
+activate flightRepo
+flightRepo --> ctrl : hasActiveFlightPlans
+deactivate flightRepo
+
+note right of ctrl : throws exception if pilot\nhas flight plans in a\nnon-terminal state
+
+ctrl -> pilot : deactivate()
+activate pilot
+note right of pilot : sets status to INACTIVE;\nenforces valid transition\nfrom ACTIVE only
+pilot --> ctrl
+deactivate pilot
+
+ctrl -> pilotRepo : save(pilot)
+activate pilotRepo
+pilotRepo --> ctrl : savedPilot
+deactivate pilotRepo
+
+ctrl --> ui : savedPilot
+deactivate ctrl
+
+ui --> actor : "Pilot removed successfully"
+deactivate ui
+
+@enduml

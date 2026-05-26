@@ -75,7 +75,7 @@ The operation queries the `Pilot` aggregate filtered by the `AirTransportCompany
 
 **Sequence Diagram — List Pilot Roster:**
 
-![Sequence Diagram — List Pilot Roster](diagrams/SD_US076_ListPilotRoster.png)
+![Sequence Diagram — List Pilot Roster](SD_US076_ListPilotRoster.png)
 
 ### 4.2 Acceptance Tests
 
