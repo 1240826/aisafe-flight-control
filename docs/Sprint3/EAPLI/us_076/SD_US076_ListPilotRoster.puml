@@ -1,0 +1,46 @@
+@startuml sd_us076_list_pilot_roster
+title US076 — List Pilot Roster
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "ATCC" as actor
+participant ":ListPilotRosterUI" as ui <<presentation>>
+participant ":ListPilotRosterController" as ctrl <<application>>
+participant ":AuthorizationService" as authz <<framework>>
+participant ":PilotRepository" as pilotRepo <<repository>>
+
+actor -> ui : list pilot roster
+activate ui
+
+ui -> ctrl : getActivePilots()
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
+activate authz
+authz --> ctrl : atccUser
+deactivate authz
+
+ctrl -> pilotRepo : findActiveByCompany(\n  atccUser.company())
+activate pilotRepo
+pilotRepo --> ctrl : activePilots
+deactivate pilotRepo
+
+ctrl --> ui : activePilots
+deactivate ctrl
+
+note right of ui : displays tabular list with\npilot name, username and\ncertified aircraft models;\nshows empty message if list is empty
+
+ui --> actor : pilot roster
+deactivate ui
+
+@enduml
