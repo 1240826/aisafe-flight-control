@@ -1,36 +1,43 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US112 — Monthly Report Generation
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task was assigned in Sprint 3. The objective is to allow a Flight Control Operator to generate
+a monthly statistics report. This implementation must be foundational — the report structure,
+branding, and generation pipeline must support future report types (compliance, incident, etc.)
+without requiring redesign.
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Cláudio Pinto
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #74 (Monthly Report Generation)
+- Design: #74 (Monthly Report Generation)
+- Implement: #74 (Monthly Report Generation)
+- Test: #74 (Monthly Report Generation)
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US112** As a Flight Control Operator, I want to generate a monthly statistics report.
+This will be one of a number of reports the system will have to generate in the future and this
+work should be foundational to guarantee all follow a consistent branding and structure. Each
+report type has a specific way of collecting data, specific sections and graphics.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US112.1** The system must require the FLIGHT_CONTROL_OPERATOR role.
+- **US112.2** The operator must select the target month and year.
+- **US112.3** The report must include monthly flight statistics.
+- **US112.4** The report must follow a consistent branding and structure reusable by future report
+  types.
+- **US112.5** The report must be saved to a file.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US030 — auth infrastructure.
+- US100/US111 — simulation and flight data that feeds the statistics.
 
 ---
 
@@ -39,34 +46,45 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 ### 3.0 LLM Assistance
 
 Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+---
+
+#### Prompt 1 — Extensible report generation design
+
+> "We are implementing a monthly statistics report in Java. The design must be foundational for
+> future report types (compliance, incident, etc.), each with specific data collection, sections,
+> and graphics, but all sharing consistent branding and structure. Suggest a design pattern that
+> enforces the shared structure while allowing each report type to define its own content."
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- Template Method pattern: abstract `ReportGenerator` defines the fixed skeleton (`generate()`)
+  — header, sections, footer with branding — and declares abstract methods for the parts that
+  vary per report type (`collectData()`, `buildSections()`)
+- `MonthlyStatisticsReportGenerator` is the first concrete implementation, extending
+  `ReportGenerator` and providing monthly flight statistics as its content
+- Report output written to a file via a shared `ReportWriter` so all report types use the same
+  output mechanism
 
-**Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+**Decisions made by the team / deviations from LLM output:**
+- The LLM suggested Strategy for the data collection step — kept inside the concrete subclass
+  instead, since data collection is tightly coupled to the report type and does not need to vary
+  independently
+- The LLM proposed generating HTML output — the team opted for PDF to better support the
+  "consistent branding" requirement (layout, fonts, and graphics are fixed in PDF)
 
-### 3.1 Framework Roles
+---
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+### 3.1 Key Design Decisions
 
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
-```
+**Template Method for report structure** — `ReportGenerator` enforces consistent branding and
+section ordering across all future report types. Adding a new report type only requires extending
+`ReportGenerator` and implementing the abstract methods — no changes to the generation pipeline.
+
+**Separation of data collection from rendering** — `collectData()` is a separate step within the
+template, so each report type queries only the data it needs without affecting the shared
+rendering logic.
 
 ---
 
@@ -74,73 +92,70 @@ public class AISafeRoles {
 
 ### 4.1 Realization
 
-**Classes to create:**
-
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+| `GenerateMonthlyReportUI` | `aisafe.app.backoffice.console` | Prompts for month/year; calls controller |
+| `GenerateMonthlyReportController` | `aisafe.core` | Auth; instantiates generator; triggers generation |
+| `ReportGenerator` | `aisafe.core` | Abstract class — defines report skeleton (Template Method) |
+| `MonthlyStatisticsReportGenerator` | `aisafe.core` | Concrete report — monthly flight statistics |
+| `ReportWriter` | `aisafe.core` | Writes the final report to a file |
 
-**Sequence Diagram — Login with Security Clearance Check:**
+**Sequence Diagram:**
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
-
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
-
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+![Sequence Diagram](sd_us112_monthly_report_generation.svg)
 
 ### 4.2 Acceptance Tests
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+**AT1 — Report generated for a valid month/year (US112.2, US112.3)**
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
+Given a valid month and year with flight data in the system,
+When the Flight Control Operator requests the monthly report,
+Then the system generates the report file containing the flight statistics for that period.
 
-**AT2 — Valid security clearance allows login (US030.4)**
+**AT2 — Report follows consistent structure (US112.4)**
 
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
+Given any generated report,
+When the file is opened,
+Then it contains the standard header, branding, sections, and footer defined in `ReportGenerator`.
 
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
+**AT3 — Unauthorised user rejected (US112.1)**
 
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
-Then the system rejects the operation with an authorization error.
+Given a user without the FLIGHT_CONTROL_OPERATOR role,
+When they attempt to generate the report,
+Then the system rejects the operation.
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
-
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
-
-*Major commits: (to be filled after implementation)*
+- `eapli.aisafe.report.application.GenerateMonthlyReportController`
+- `eapli.aisafe.report.application.ReportGenerator`
+- `eapli.aisafe.report.application.MonthlyStatisticsReportGenerator`
+- `eapli.aisafe.report.application.ReportWriter`
+- `eapli.aisafe.app.backoffice.console.presentation.report.GenerateMonthlyReportUI`
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+To demonstrate this user story:
+
+1. Ensure flight and simulation data exists in the system for a given month (run US100/US111).
+2. Log in as a Flight Control Operator.
+3. Select "Generate Monthly Report" and provide a month and year with existing data.
+4. Verify the report file is created and contains the expected statistics, branding, and structure.
+
+To demonstrate extensibility (US112.4):
+
+1. Create a new class extending `ReportGenerator` (e.g. `ComplianceReportGenerator`).
+2. Implement `collectData()` and `buildSections()` for the new report type.
+3. Verify that no existing class was modified and the new report shares the same branding and
+   structure.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+`ReportGenerator` is the extension point for all future report types. Any new report (compliance,
+incident, etc.) must extend it and implement the abstract methods — the branding, structure, and
+output mechanism are inherited automatically.
