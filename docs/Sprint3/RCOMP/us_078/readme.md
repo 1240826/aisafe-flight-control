@@ -1,36 +1,36 @@
-﻿# US078 — Air Transport Company Collaborator Remote Access
+﻿# US030 — Authentication and Authorization Infrastructure
 
 ## 1. Context
 
-This task was assigned in Sprint 3 within the Computer Networks (RCOMP) scope. The objective is to develop a standalone client application that allows an Air Transport Company Collaborator to securely interact with the core system remotely over a network, without directly accessing the database.
+This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
 
-**Assigned to:** Jaime Simões
+**Assigned to:** Shared (all team members)
 
 ### 1.1 List of Issues
 
-- Analysis: #61
-- Design: #61
-- Implement: #61
-- Test: #61
+- Analysis: #22
+- Design: #22
+- Implement: #22
+- Test: #22
 
 ---
 
 ## 2. Requirements
 
-**US078** As an Air Transport Company Collaborator, I want to remotely access the system using the Air Transport Company App.
+**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
 
 ### Acceptance Criteria
 
-- **US078.1** A specific TCP-based network client application must be created to communicate with the server application embedded in the main system.
-- **US078.2** The client application's interaction with the system must be strictly limited to the TCP connection. Any direct interaction with the database from the client is unacceptable.
-- **US078.3** All Air Transport Company Collaborator user stories (e.g., US070, US073, US076) must be accessible remotely via this client application.
-- **US078.4** Authentication and authorization must be enforced over the remote connection.
+- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
+- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
+- **US030.3** An unauthenticated access attempt must be rejected.
+- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
+- **US030.5** Skills assessment expiry does **not** block login.
 
 ### Dependencies/References
 
-- US030 — Authentication and authorization (must be applied to remote logins).
-- All ATC Collaborator User Stories (US070-US077) — The functionality that must be exposed.
-- NFR08 — Remote RDBMS configuration must be respected.
+- NFR09 — authentication and authorization.
+- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
 
 ---
 
@@ -38,22 +38,35 @@ This task was assigned in Sprint 3 within the Computer Networks (RCOMP) scope. T
 
 ### 3.0 LLM Assistance
 
-Generative AI was used to support the analysis and design of this user story.
+Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
 
-**Prompt 1:** "[Insert LLM Prompt used for defining the custom TCP application protocol or handling concurrent client connections]"
+**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
 
 **LLM suggestions adopted:**
-- [Insert adopted suggestion, e.g., using a specific Message Format with fields for Version, Code, Data Length, and Payload]
+- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
+- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
+- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
 
 **Decisions made by the team:**
-- [Insert specific team decisions, e.g., how the server delegates requests to the existing EAPLI controllers (e.g., `CreateFlightRouteController`) rather than rewriting business logic]
+- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
+- Skills assessment has no login effect (confirmed by client)
 
-### 3.1 Network Architecture & Protocol
+### 3.1 Framework Roles
 
-The system requires a **Client-Server Architecture**.
-1.  **Server:** A concurrent TCP server running within the main AISafe application. It listens on a specific port, accepts incoming connections, and spawns a thread (or uses asynchronous I/O) for each client.
-2.  **Client:** A lightweight console/UI application that connects to the server IP and port.
-3.  **Protocol:** A custom application-layer protocol must be defined to serialize requests (e.g., "Login", "Create Route") and deserialize responses.
+```java
+public class AISafeRoles {
+    public static final Role ADMIN = Role.valueOf("ADMIN");
+    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
+    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
+    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
+    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+
+    public static Role[] nonUserValues() {
+        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
+                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
+    }
+}
+```
 
 ---
 
@@ -61,61 +74,73 @@ The system requires a **Client-Server Architecture**.
 
 ### 4.1 Realization
 
-**Classes to create/modify:**
+**Classes to create:**
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `ATCClientApp` | `aisafe.app.atc.client` | Entry point for the client application; manages UI |
-| `TcpNetworkClient` | `aisafe.app.atc.client` | Handles TCP socket creation and stream I/O on the client |
-| `ATCServerDaemon` | `aisafe.app.server` | Background service in the main app listening for TCP connections |
-| `ATCClientHandler` | `aisafe.app.server` | Thread/Runnable that processes requests for a specific connected client |
-| `NetworkMessage` | `aisafe.network.common` | Represents the structured protocol message (Request/Response) |
-| `MessageParser` | `aisafe.network.common` | Serializes and deserializes objects to/from byte streams |
+| `AISafeRoles` | `aisafe.core` | Defines all role constants |
+| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
+| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
+| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
+| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
+| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
+| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
 
-**Sequence Diagram — Remote Login and Request Execution:**
+**Sequence Diagram — Login with Security Clearance Check:**
 
-![Sequence Diagram — Remote ATCC Access]([Insert Sequence Diagram File Name])
+![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
+
+**Sequence Diagram — Controller Authorization Check (template for all USs):**
+
+![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
 
 ### 4.2 Acceptance Tests
 
-**AT1 — No Direct Database Access**
-Given the client application is running on a machine without database credentials or drivers,
-When the user requests to list the company fleet (US072),
-Then the client successfully retrieves and displays the fleet by communicating solely over the TCP socket.
+**AT1 — Expired security clearance blocks login (US030.4)**
 
-**AT2 — Enforced Authentication**
-Given an unauthenticated TCP connection,
-When the client attempts to send a "Create Flight Route" protocol message,
-Then the server rejects the request with an unauthorized error code and drops or maintains the connection awaiting login.
+Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
+When the user attempts to log in with valid credentials,
+Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
 
-**AT3 — Successful Remote Execution**
-Given an authenticated connection for user "ATC_COLLAB",
-When the client sends a formatted request to add an aircraft (US070),
-Then the server processes it using the core domain logic and replies with a success message, updating the central system.
+**AT2 — Valid security clearance allows login (US030.4)**
+
+Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
+When the user logs in with valid credentials,
+Then the system grants access and the user is directed to the main menu.
+
+**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
+
+Given a session where no user is authenticated,
+When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
+Then the system rejects the operation with an authorization error.
 
 ---
 
 ## 5. Implementation
 
-**Key new/modified files:**
+**Key new files:**
 
-- `[List relevant files created or altered]`
+- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
+- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
+- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
+- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
+- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
 
-*Major commits: [Insert links or hashes]*
+*Major commits: (to be filled after implementation)*
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start the main AISafe server application (which initializes the remote database connection and starts the TCP listening thread).
-2. On a separate terminal or machine, launch the `ATCClientApp`.
-3. Provide the server's IP address and port.
-4. Authenticate using valid Air Transport Company Collaborator credentials.
-5. Execute a domain action (e.g., List Pilots) and verify the data matches the central system.
-6. Verify via network monitoring (e.g., Wireshark) that communication is restricted strictly to the defined TCP port and protocol.
+1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
+2. Log in with valid credentials and valid clearance → access granted
+3. Log in with expired clearance → denied with message
+4. Access any feature without login → rejected
 
 ---
 
 ## 7. Observations
 
-[Insert any technical debt, difficulties encountered, or architectural notes here, such as handling socket timeouts or thread pooling limits]
+`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
+
+The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
