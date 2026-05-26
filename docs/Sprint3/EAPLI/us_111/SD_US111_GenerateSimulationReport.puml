@@ -1,0 +1,75 @@
+@startuml sd_us111_generate_simulation_report
+title US111 — Generate a Simulation Report
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Flight Control Operator" as actor
+participant ":GenerateSimulationReportUI"        as ui       <<presentation>>
+participant ":GenerateSimulationReportController" as ctrl    <<application>>
+participant ":AuthorizationService"              as authz    <<framework>>
+participant ":SimulationRepository"              as simRepo  <<persistence>>
+participant ":SimulationReportFileWriter"        as writer   <<application>>
+
+actor -> ui : selects "Generate Simulation Report"
+activate ui
+
+ui -> ctrl : getConcludedSimulations()
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  FLIGHT_CONTROL_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> simRepo : findConcluded()
+activate simRepo
+simRepo --> ctrl : concludedSimulations
+deactivate simRepo
+
+ctrl --> ui : concludedSimulations
+deactivate ctrl
+
+ui -> actor : displays list of concluded simulations
+actor -> ui : selects simulation
+
+ui -> ctrl : generateReport(simulationId)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  FLIGHT_CONTROL_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> simRepo : findById(simulationId)
+activate simRepo
+simRepo --> ctrl : simulation
+deactivate simRepo
+
+ctrl -> ctrl : buildReport(simulation)
+
+note right of ctrl
+  aggregates:
+  - total number of flights
+  - individual execution statuses
+  - safety violation events
+    (timestamp + positions)
+  - overall PASS/FAIL result
+end note
+
+ctrl -> writer : writeToFile(simulationReport)
+activate writer
+writer --> ctrl : filePath
+deactivate writer
+
+ctrl --> ui : filePath
+deactivate ctrl
+
+ui --> actor : "Report saved to <filePath>"
+deactivate ui
+
+@enduml
