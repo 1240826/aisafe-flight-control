@@ -1,36 +1,47 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US106 — Implement Function-Specific Threads in the Parent Process
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task is assigned in Sprint 3. The objective is to introduce dedicated threads in the
+simulation parent process so that safety violation detection and report generation operate
+concurrently and independently. This US builds on US105 (hybrid simulation environment with
+shared memory) and is a prerequisite for US107 (condition variable notification between threads).
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Cláudio Pinto
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #76 (Function-Specific Threads in Parent Process)
+- Design: #76 (Function-Specific Threads in Parent Process)
+- Implement: #76 (Function-Specific Threads in Parent Process)
+- Test: #76 (Function-Specific Threads in Parent Process)
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US106** As a PO, I want the simulation controller parent process to have at least two dedicated
+threads — one for safety violation detection and one for report generation — so that each
+functionality operates concurrently and independently.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US106.1** The parent process creates a safety violation detection thread responsible for
+  scanning the shared memory for aircraft flight conflicts.
+- **US106.2** A report generation thread is created to compile simulation results and respond to
+  safety violation events.
+- **US106.3** Any additional thread deemed appropriate for the required functionalities may be
+  added.
+- **US106.4** Threads are managed using mutexes and condition variables for internal
+  synchronization.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US105 — Shared memory must exist and be initialised before threads are created.
+- US107 — Condition variable notification between violation detector and report thread.
+- US108 — Step-by-step synchronisation via semaphores (flight processes).
+- US100–US103 — Sprint 2 simulation logic (processes, pipes, signals) that this Sprint 3
+  architecture replaces and extends.
 
 ---
 
@@ -39,108 +50,149 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 ### 3.0 LLM Assistance
 
 Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+---
+
+#### Prompt 1 — Thread structure and synchronisation model
+
+> "We are implementing a C simulation where the parent process must run at least two concurrent
+> threads: one for safety violation detection (scanning shared memory) and one for report
+> generation (responding to violations). Threads must synchronise using mutexes and condition
+> variables. Suggest a thread structure and synchronisation approach."
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- Two dedicated thread functions: `violation_detector_thread()` and `report_generator_thread()`
+  created with `pthread_create()` in `main()` after shared memory is initialised
+- A `pthread_mutex_t` protecting the violation event queue written by the detector and read by
+  the report thread
+- A `pthread_cond_t` used by the detector to signal the report thread when a new violation is
+  detected — the report thread blocks on `pthread_cond_wait()` between events
 
-**Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+**Decisions made by the team / deviations from LLM output:**
+- The LLM suggested a single global mutex for all shared memory — split into two: `pos_mutex`
+  for flight positions and `viol_mutex` for the violation queue, to reduce contention
+- The LLM proposed busy-waiting in the detector thread — replaced with `pthread_cond_timedwait`
+  to avoid wasting CPU cycles between simulation steps
 
-### 3.1 Framework Roles
+---
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+### 3.1 Thread Model
 
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
+| Thread | Function | Responsibility |
+|--------|----------|---------------|
+| Violation Detector | `violation_detector_thread()` | Scans shared memory for flight conflicts; signals report thread via condition variable |
+| Report Generator | `report_generator_thread()` | Waits on condition variable; compiles results and logs violation events |
+
+Both threads share access to the flight state in shared memory and the violation event queue,
+protected by mutexes.
+
+### 3.2 Synchronisation Model
+
+```c
+/* violation_detector_thread() */
+pthread_mutex_lock(&pos_mutex);
+/* read flight positions from shared memory */
+pthread_mutex_unlock(&pos_mutex);
+if (conflict_detected) {
+    pthread_mutex_lock(&viol_mutex);
+    enqueue_violation(event);
+    pthread_cond_signal(&viol_cond);
+    pthread_mutex_unlock(&viol_mutex);
 }
+
+/* report_generator_thread() */
+pthread_mutex_lock(&viol_mutex);
+pthread_cond_wait(&viol_cond, &viol_mutex);
+/* process violation event */
+pthread_mutex_unlock(&viol_mutex);
 ```
 
 ---
 
 ## 4. Design
 
-### 4.1 Realization
+The parent process creates both threads after shared memory is initialised (US105). The
+violation detector scans shared memory on each simulation step, locking `pos_mutex` for reads.
+When a conflict is found, it enqueues the event under `viol_mutex` and signals `viol_cond`.
+The report thread blocks on `pthread_cond_wait()` and wakes immediately upon signal, processes
+the event, and blocks again — ensuring violations are logged in real time rather than at the
+end of the simulation.
+main():
+init_shared_memory()          ← US105
+pthread_create(violation_detector_thread)
+pthread_create(report_generator_thread)
+run simulation (child processes)
+pthread_join() both threads
+cleanup mutexes and cond
 
-**Classes to create:**
+### 4.1 Acceptance Tests
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+**AT1 — Both threads are created and run concurrently (US106.1, US106.2)**
 
-**Sequence Diagram — Login with Security Clearance Check:**
+Given the simulation starts with at least two flight processes,
+When `main()` initialises shared memory and calls `pthread_create()` for both threads,
+Then both `violation_detector_thread()` and `report_generator_thread()` are running
+concurrently before any flight process executes its first step.
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
+**AT2 — Violation logged immediately, not at end of simulation (US106.2)**
 
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
+Given a simulation with flights that produce a conflict at step t,
+When the violation detector signals the report thread,
+Then the report thread logs the event at step t — not after all steps complete.
 
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+**AT3 — Detector uses mutex to protect shared memory reads (US106.4)**
 
-### 4.2 Acceptance Tests
+Given the detector thread reads flight positions from shared memory,
+When it accesses the shared memory segment,
+Then it always acquires `pos_mutex` before reading and releases it immediately after,
+preventing data races with the child flight processes writing positions.
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+**AT4 — Both threads joined cleanly on termination (US106.4)**
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
-
-**AT2 — Valid security clearance allows login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
-
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
-
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
-Then the system rejects the operation with an authorization error.
+Given the simulation has completed all steps,
+When `main()` signals both threads to stop and calls `pthread_join()`,
+Then both threads exit without deadlock and all mutexes and condition variables are destroyed
+before the process exits.
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
+| File | Responsibility |
+|------|---------------|
+| `us106_threads.c` | `violation_detector_thread()`, `report_generator_thread()`, thread creation |
+| `us106_threads.h` | Thread function declarations, mutex and condition variable declarations |
+| `main.c` | Calls thread initialisation after shared memory initialisation (US105) |
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
-
-*Major commits: (to be filled after implementation)*
+**Compile:**
+```bash
+gcc -Wall -Wextra -D_GNU_SOURCE \
+    main.c us105_shm.c us106_threads.c us107_notify.c us108_sync.c \
+    -o simulation -lpthread -lm
+```
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+```bash
+./simulation ../test/scenario3_violations.json
+```
+
+Expected — violation logged immediately by the report thread, not at end of simulation:
+[DETECTOR] step=2338  conflict detected: TP201 <-> IB202
+[REPORT]   step=2338  violation logged and report updated
+
+Confirm both threads joined cleanly — no output after simulation end other than final report.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+- All threads must be joined with `pthread_join()` before `main()` exits to avoid resource leaks.
+- Mutexes and condition variables must be destroyed after joining with `pthread_mutex_destroy()`
+  and `pthread_cond_destroy()`.
+- The violation detector reads flight positions from shared memory written by child flight
+  processes — `pos_mutex` must be acquired for both reads and writes to the same memory region.
