@@ -137,6 +137,28 @@ Then the system rejects the operation.
 
 ---
 
+## 6. Integration/Demonstration
+
+To demonstrate this user story:
+
+1. Bootstrap or manually register an air control area (US050).
+2. Bootstrap or manually register weather data for that area (US041) to confirm the domain object
+   and repository are working.
+3. Prepare a valid CSV file with multiple weather data records, including at least one invalid
+   record.
+4. Log in as a Weather Person.
+5. Select "Import Weather Data", provide the CSV file path.
+6. Verify that valid records are persisted and the import summary lists the invalid ones without
+   interrupting the import.
+
+To demonstrate extensibility (US042.5):
+
+1. Implement a new `WeatherDataImporter` for a different format (e.g. JSON).
+2. Register it in `WeatherDataImporterFactory`.
+3. Verify that no existing class was modified and the new format is accepted by the system.
+
+---
+
 ## 7. Observations
 
 Adding a new import format in a future sprint requires only: (1) implementing `WeatherDataImporter`,
