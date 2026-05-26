@@ -1,0 +1,41 @@
+@startuml sd_us043_consult_weather_data
+title US043 — Consult Weather Data
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Authorized User\n(Pilot, WP, FCO)" as actor
+participant ":ConsultWeatherUI"         as ui    <<presentation>>
+participant ":ConsultWeatherController" as ctrl  <<application>>
+participant ":AuthorizationService"     as authz <<framework>>
+participant ":WeatherDataRepository"    as repo  <<persistence>>
+
+actor -> ui : selects "Consult Weather Data"
+activate ui
+
+ui --> actor : requests AirControlArea code and Date
+actor -> ui : inputs areaCode and date
+
+ui -> ctrl : consultWeather(areaCode, date)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(WEATHER_PERSON, PILOT, FCO)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> repo : findByAreaAndDate(areaCode, date)
+activate repo
+repo --> ctrl : weatherDataList
+deactivate repo
+
+ctrl --> ui : weatherDataList
+deactivate ctrl
+
+ui --> actor : displays weather data
+deactivate ui
+@enduml

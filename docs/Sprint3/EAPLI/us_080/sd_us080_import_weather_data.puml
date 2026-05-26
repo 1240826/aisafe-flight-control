@@ -1,0 +1,64 @@
+@startuml sd_us080_create_flight_plan
+title US080 — Create a Flight Plan
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Pilot" as actor
+participant ":CreateFlightPlanUI"         as ui         <<presentation>>
+participant ":CreateFlightPlanController" as ctrl       <<application>>
+participant ":PilotRepository"            as pilot_repo <<persistence>>
+participant "pilot:Pilot"                 as pilot      <<domain>>
+participant "route:FlightRoute"           as route      <<domain>>
+participant "fuel:FuelQuantity"           as fuel       <<domain>>
+participant "plan:FlightPlan"             as plan       <<domain>>
+participant "flight:Flight"               as flight     <<domain>>
+participant ":FlightRepository"           as repo       <<persistence>>
+
+actor -> ui : selects "Register Flight Plan"
+activate ui
+ui -> ctrl : getAvailableRoutes()
+activate ctrl
+ctrl --> ui : routeList
+deactivate ctrl
+ui --> actor : shows routes and asks to select one
+
+actor -> ui : selects route and provides details
+ui -> ctrl : createFlightPlan(routeId, aircraftId, date, fuelValue)
+activate ctrl
+
+ctrl -> pilot_repo : findBySystemUser(currentUser)
+activate pilot_repo
+pilot_repo --> ctrl : currentPilot
+deactivate pilot_repo
+
+ctrl -> route : getCompany()
+activate route
+route --> ctrl : routeCompany
+deactivate route
+
+ctrl -> pilot : belongsTo()
+activate pilot
+pilot --> ctrl : pilotCompany
+deactivate pilot
+note right of ctrl: Verifies pilotCompany == routeCompany (US080.2)
+
+ctrl -> fuel** : valueOf(fuelValue)
+ctrl -> plan** : create(fuel)
+note right of plan: Status set to FlightPlanStatus.DRAFT
+
+ctrl -> flight** : create(flightDesignator, route, aircraft, pilot, date, plan)
+ctrl -> repo : save(flight)
+activate repo
+repo --> ctrl : savedFlight
+deactivate repo
+
+ctrl --> ui : success
+deactivate ctrl
+ui --> actor : displays success and draft status
+deactivate ui
+@enduml
