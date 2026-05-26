@@ -1,36 +1,38 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US076 — List Pilot Roster
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task was assigned in Sprint 3 within the Applications Engineering (EAPLI) scope. The objective is to allow an Air Transport Company Collaborator (ATCC) to view the full list of pilots currently associated with their company, supporting fleet and crew management decisions.
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Dinis Silva
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #78
+- Design: #78
+- Implement: #78
+- Test: #78
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US076** As an Air Transport Company Collaborator, I want to list my company's pilot roster.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US076.1** The system must display all pilots currently associated with the authenticated ATCC's company.
+- **US076.2** The list must only include active pilots — inactive pilots (removed via US077) must not appear.
+- **US076.3** The authenticated ATCC can only view pilots from their own company; pilots from other companies must not be listed.
+- **US076.4** Access must be restricted to users with the `ATC_COLLABORATOR` role.
+- **US076.5** If the company has no active pilots, the system must display a clear message indicating the roster is empty.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US030 — Authentication and authorization infrastructure
+- US060 — Register an air transport company
+- US075 — Add a pilot (pilots must exist to be listed)
+- US077 — Remove a pilot (inactive pilots must be excluded)
 
 ---
 
@@ -38,35 +40,22 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 
 ### 3.0 LLM Assistance
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+**Prompt 1:** "In a DDD Java application, what is the cleanest way to list all active pilots scoped to a specific company, given that the Pilot aggregate holds a reference to the company by ID?"
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- The repository query filters by both `companyId` and `status = ACTIVE`, keeping the filtering logic in the persistence layer rather than in the service or controller
+- The result is returned as a read-only DTO or a list of `Pilot` aggregate roots — no lazy-loaded collections are exposed to the UI layer
 
 **Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+- The ATCC's company is resolved automatically from the authenticated session — the collaborator does not manually select a company
+- The list is displayed in a simple tabular format showing at minimum the pilot's name, username, and certified aircraft models
+- Sorting is alphabetical by pilot name for consistency and readability
 
-### 3.1 Framework Roles
+### 3.1 Domain Connections
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
-
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
-```
+The operation queries the `Pilot` aggregate filtered by the `AirTransportCompany` identifier extracted from the authenticated ATCC's session. No modification of any aggregate occurs — this is a pure read operation. The `AircraftModel` aggregate may be referenced to resolve model names for display purposes.
 
 ---
 
@@ -74,73 +63,75 @@ public class AISafeRoles {
 
 ### 4.1 Realization
 
-**Classes to create:**
+**Classes to create/modify:**
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+| `ListPilotRosterUI` | `aisafe.app.atcc.console` | Triggers the listing and renders the pilot roster in a tabular format |
+| `ListPilotRosterController` | `aisafe.core` | Resolves the ATCC's company from the session and delegates to the service |
+| `PilotService` | `aisafe.core` | Contains business logic for retrieving active pilots by company |
+| `PilotRepository` | `aisafe.core` | Declares the query method (e.g., `findActiveByCompany`) |
+| `JpaPilotRepository` | `aisafe.persistence.impl` | Implements the filtered database query |
 
-**Sequence Diagram — Login with Security Clearance Check:**
+**Sequence Diagram — List Pilot Roster:**
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
-
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
-
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+![Sequence Diagram — List Pilot Roster](diagrams/SD_US076_ListPilotRoster.png)
 
 ### 4.2 Acceptance Tests
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+**AT1 — Roster with active pilots is displayed correctly**
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
+Given an authenticated ATCC whose company has two active pilots,
+When the ATCC requests the pilot roster,
+Then the system displays both pilots with their names, usernames, and certified aircraft models.
 
-**AT2 — Valid security clearance allows login (US030.4)**
+**AT2 — Inactive pilots are excluded from the list**
 
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
+Given an authenticated ATCC whose company has one active pilot and one inactive pilot (removed via US077),
+When the ATCC requests the pilot roster,
+Then only the active pilot is displayed and the inactive one does not appear.
 
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
+**AT3 — Empty roster displays a clear message**
 
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
+Given an authenticated ATCC whose company has no active pilots,
+When the ATCC requests the pilot roster,
+Then the system displays a message indicating the roster is currently empty.
+
+**AT4 — Pilots from other companies are not shown**
+
+Given an authenticated ATCC from company "AirAlpha",
+And company "AirBeta" has its own active pilots registered in the system,
+When the ATCC from "AirAlpha" requests the pilot roster,
+Then only pilots belonging to "AirAlpha" are displayed.
+
+**AT5 — Unauthorized role is blocked**
+
+Given an authenticated user with the `BACKOFFICE_OPERATOR` role,
+When the user attempts to access the List Pilot Roster feature,
 Then the system rejects the operation with an authorization error.
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
+**Key new/modified files:**
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+- `[List relevant files created or altered]`
 
-*Major commits: (to be filled after implementation)*
+*Major commits: [Insert links or hashes]*
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+1. Log in as an Air Transport Company Collaborator.
+2. Add at least one pilot via the Add Pilot feature (US075).
+3. Navigate to the Pilots menu and select "List Pilot Roster".
+4. Verify that all active pilots for the company are displayed with correct information.
+5. Remove a pilot via US077 and confirm they no longer appear in the roster.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+[Insert any technical debt, difficulties encountered, or architectural notes here]
