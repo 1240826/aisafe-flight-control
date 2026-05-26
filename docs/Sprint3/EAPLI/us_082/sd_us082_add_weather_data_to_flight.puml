@@ -1,0 +1,80 @@
+@startuml sd_us082_add_weather_data_to_flight
+title US082 — Insert Weather Data in a Flight
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Pilot" as actor
+participant ":AddWeatherDataToFlightUI"        as ui      <<presentation>>
+participant ":AddWeatherDataToFlightController" as ctrl   <<application>>
+participant ":AuthorizationService"            as authz   <<framework>>
+participant ":FlightRepository"                as flightRepo <<persistence>>
+participant ":WeatherDataRepository"           as wdRepo  <<persistence>>
+participant ":Flight"                          as flight  <<domain>>
+
+actor -> ui : selects "Add Weather Data to Flight"
+activate ui
+
+ui -> ctrl : myFlights()
+activate ctrl
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(PILOT)
+activate authz
+authz --> ctrl
+deactivate authz
+ctrl -> flightRepo : findByPilot(pilot)
+activate flightRepo
+flightRepo --> ctrl : flights
+deactivate flightRepo
+ctrl --> ui : flights
+deactivate ctrl
+
+ui -> actor : displays flight list
+actor -> ui : selects flight
+
+ui -> ctrl : availableWeatherData()
+activate ctrl
+ctrl -> wdRepo : findAll()
+activate wdRepo
+wdRepo --> ctrl : weatherDataList
+deactivate wdRepo
+ctrl --> ui : weatherDataList
+deactivate ctrl
+
+ui -> actor : displays weather data list
+actor -> ui : selects weatherData
+
+ui -> ctrl : addWeatherData(flightId, weatherDataId)
+activate ctrl
+
+ctrl -> flightRepo : ofIdentity(flightId)
+activate flightRepo
+flightRepo --> ctrl : flight
+deactivate flightRepo
+
+ctrl -> wdRepo : ofIdentity(weatherDataId)
+activate wdRepo
+wdRepo --> ctrl : weatherData
+deactivate wdRepo
+
+ctrl -> flight : addWeatherData(weatherData)
+activate flight
+note right : if flightPlan.status == TESTED\nreset to DRAFT
+flight --> ctrl
+deactivate flight
+
+ctrl -> flightRepo : save(flight)
+activate flightRepo
+flightRepo --> ctrl
+deactivate flightRepo
+
+ctrl --> ui : success
+deactivate ctrl
+
+ui --> actor : displays confirmation
+deactivate ui
+
+@enduml

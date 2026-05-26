@@ -1,0 +1,49 @@
+@startuml sd_us112_monthly_report_generation
+title US112 — Monthly Report Generation
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "FlightControlOperator" as actor
+participant ":GenerateMonthlyReportUI"        as ui        <<presentation>>
+participant ":GenerateMonthlyReportController" as ctrl     <<application>>
+participant ":AuthorizationService"           as authz     <<framework>>
+participant ":MonthlyStatisticsReportGenerator" as generator <<application>>
+participant ":ReportWriter"                   as writer    <<application>>
+
+actor -> ui : selects "Generate Monthly Report"
+activate ui
+
+ui -> actor : requests month and year
+actor -> ui : provides month and year
+
+ui -> ctrl : generateMonthlyReport(month, year)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(FLIGHT_CONTROL_OPERATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> generator : generate(month, year)
+activate generator
+note right : Template Method:\n1. collectData()\n2. buildSections()\n3. applyBranding()
+generator --> ctrl : report
+deactivate generator
+
+ctrl -> writer : write(report)
+activate writer
+writer --> ctrl : filePath
+deactivate writer
+
+ctrl --> ui : filePath
+deactivate ctrl
+
+ui --> actor : displays confirmation and file path
+deactivate ui
+
+@enduml
