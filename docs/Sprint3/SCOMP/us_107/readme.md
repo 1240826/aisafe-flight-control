@@ -1,36 +1,37 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US107 — Notify Report Thread via Condition Variables upon Safety Violation Detection
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task was assigned in Sprint 3 within the Computer Systems (SCOMP) scope. The objective is to implement the inter-thread notification mechanism between the safety violation detection thread and the report generation thread, using POSIX condition variables and mutexes, so that safety violations are logged in real time as the simulation progresses.
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Dinis Silva
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #81
+- Design: #81
+- Implement: #81
+- Test: #81
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US107** As a PO, I want the simulation system safety violation detection thread to notify the report generation thread through condition variables when a safety violation occurs, so that the report is updated in real time with accurate information.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US107.1** The safety violation detection thread continuously monitors shared memory for flight conflicts.
+- **US107.2** Upon detecting a safety violation, the detection thread signals the report generation thread using a POSIX condition variable.
+- **US107.3** The report generation thread waits on the condition variable and, upon being signalled, immediately processes and logs the safety violation event.
+- **US107.4** Proper mutex locking must be used around all accesses to the shared violation data to ensure thread safety.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US105 — Initialize hybrid simulation environment with shared memory (shared memory and thread setup)
+- US106 — Implement function-specific threads in the parent process (creates the detection and report threads that this US connects)
+- US108 — Enforce step-by-step simulation synchronization (semaphores controlling simulation progression)
+- US109 — Generate and store final simulation report (report thread writes the final output)
 
 ---
 
@@ -38,109 +39,165 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 
 ### 3.0 LLM Assistance
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+**Prompt 1:** "In a POSIX C multi-threaded simulation, what is the correct pattern for a producer-consumer notification between a violation detection thread and a report generation thread using pthread condition variables and mutexes? What are the common pitfalls?"
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- The standard producer-consumer pattern is used: the detection thread locks the mutex, writes the violation data to a shared queue, signals the condition variable, and unlocks the mutex; the report thread loops on `pthread_cond_wait` inside a `while` check on a predicate to guard against spurious wakeups
+- A dedicated violation queue (circular buffer or linked list) is used instead of a single shared variable, so that multiple violations detected in quick succession are not lost
 
 **Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+- A single `pthread_mutex_t` and `pthread_cond_t` pair is used exclusively for the detection-to-report notification channel, keeping synchronization concerns separated from the simulation step semaphores (US108)
+- The report thread does not block the detection thread — after signalling, the detection thread immediately releases the mutex and resumes monitoring
+- The violation event stored in the shared structure includes: timestamp, aircraft identifiers, positions, and velocity vectors, as required by US109
 
-### 3.1 Framework Roles
+### 3.1 Concurrency Model
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+Two threads in the parent process interact through this mechanism:
 
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
-```
+- **Safety Violation Detection Thread** (producer) — scans shared memory at each simulation step, detects proximity violations, appends to the violation queue, and signals the condition variable
+- **Report Generation Thread** (consumer) — waits on the condition variable, wakes up on signal, drains the violation queue, and logs each event to the report structure
+
+The shared violation queue and its associated mutex/condition variable are allocated in the parent process heap (not in shared memory), since both threads belong to the same process.
 
 ---
 
 ## 4. Design
 
-### 4.1 Realization
+### 4.1 Shared Data Structures
 
-**Classes to create:**
+```c
+/* Violation event recorded by the detection thread */
+typedef struct {
+    time_t    timestamp;
+    char      flight_a[16];
+    char      flight_b[16];
+    double    pos_a[3];      /* x, y, altitude */
+    double    pos_b[3];
+    double    vel_a[3];
+    double    vel_b[3];
+} ViolationEvent;
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+/* Shared notification channel between detection and report threads */
+typedef struct {
+    ViolationEvent  queue[MAX_VIOLATIONS];
+    int             head;
+    int             tail;
+    int             count;
+    pthread_mutex_t mutex;
+    pthread_cond_t  cond;
+} ViolationChannel;
+```
 
-**Sequence Diagram — Login with Security Clearance Check:**
+### 4.2 Realization
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
+**Files to create/modify:**
 
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
+| File | Responsibility |
+|------|---------------|
+| `violation_channel.h` | Declares `ViolationChannel`, `ViolationEvent`, and the channel API |
+| `violation_channel.c` | Implements `vc_init`, `vc_push` (detection side), `vc_wait_and_drain` (report side), `vc_destroy` |
+| `detection_thread.c` | Detection thread loop; calls `vc_push` on each detected violation |
+| `report_thread.c` | Report thread loop; calls `vc_wait_and_drain` and logs each event |
+| `simulation.c` | Initializes `ViolationChannel` and passes it to both threads at startup |
 
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+**Sequence Diagram — Condition Variable Notification:**
 
-### 4.2 Acceptance Tests
+![Sequence Diagram — US107](diagrams/SD_US107_CondVarNotification.png)
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+### 4.3 Detection Thread Logic (producer)
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
+```c
+void vc_push(ViolationChannel *vc, ViolationEvent *event) {
+    pthread_mutex_lock(&vc->mutex);
 
-**AT2 — Valid security clearance allows login (US030.4)**
+    if (vc->count < MAX_VIOLATIONS) {
+        vc->queue[vc->tail] = *event;
+        vc->tail = (vc->tail + 1) % MAX_VIOLATIONS;
+        vc->count++;
+    }
 
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
+    pthread_cond_signal(&vc->cond);
+    pthread_mutex_unlock(&vc->mutex);
+}
+```
 
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
+### 4.4 Report Thread Logic (consumer)
 
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
-Then the system rejects the operation with an authorization error.
+```c
+void vc_wait_and_drain(ViolationChannel *vc, ViolationEvent *out, int *n) {
+    pthread_mutex_lock(&vc->mutex);
+
+    /* Guard against spurious wakeups */
+    while (vc->count == 0) {
+        pthread_cond_wait(&vc->cond, &vc->mutex);
+    }
+
+    *n = 0;
+    while (vc->count > 0) {
+        out[(*n)++] = vc->queue[vc->head];
+        vc->head = (vc->head + 1) % MAX_VIOLATIONS;
+        vc->count--;
+    }
+
+    pthread_mutex_unlock(&vc->mutex);
+}
+```
+
+### 4.5 Acceptance Tests
+
+**AT1 — Violation is logged in real time**
+
+Given a running simulation where two aircraft enter a proximity violation at step N,
+When the detection thread detects the conflict and calls `vc_push`,
+Then the report thread wakes up, drains the event, and logs it before step N+1 begins.
+
+**AT2 — Spurious wakeup does not cause incorrect behaviour**
+
+Given the report thread waiting on the condition variable,
+When a spurious wakeup occurs with no violation in the queue (`count == 0`),
+Then the report thread returns to waiting without logging any event.
+
+**AT3 — Multiple violations in rapid succession are not lost**
+
+Given two violations detected by the detection thread within the same simulation step,
+When both are pushed to the queue before the report thread drains it,
+Then the report thread logs both events correctly in FIFO order.
+
+**AT4 — Mutex ensures thread-safe access to the queue**
+
+Given the detection thread and report thread accessing the violation queue concurrently,
+When both attempt to access the queue simultaneously,
+Then the mutex guarantees that only one thread accesses the queue at a time, with no data corruption.
+
+**AT5 — Channel is correctly cleaned up after simulation ends**
+
+Given a simulation that has completed,
+When `vc_destroy` is called on the `ViolationChannel`,
+Then `pthread_mutex_destroy` and `pthread_cond_destroy` are called without errors, and no resources are leaked.
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
+**Key new/modified files:**
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+- `[TBD]`
 
-*Major commits: (to be filled after implementation)*
+*Major commits: [TBD]*
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+1. Start the simulation with at least two flights whose paths are known to produce a proximity violation.
+2. Observe the report output file being updated in real time as violations are detected.
+3. Confirm that the timestamp, aircraft identifiers, and position data in the report match the simulation step at which the violation occurred.
+4. Run the simulation with no violations and confirm the report thread remains idle without logging any false events.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+[TBD]
