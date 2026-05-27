@@ -1,36 +1,46 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US90 — External Logging of Remote Accesses
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task is assigned in Sprint 3. It is the first time this feature is being developed.
+The objective is to ensure that every remote access event (successful login, failed login,
+logout, disconnect) occurring on the TCP servers (US44, US78, US86) is transmitted via UDP
+datagram to a dedicated Remote Accesses Logging Server running on a cloud node, where it is
+stored and made available for visualization (US91).
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** (to be filled by the team)
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #63 (External Logging of Remote Accesses)
+- Design: #63 (External Logging of Remote Accesses)
+- Implement: #63 (External Logging of Remote Accesses)
+- Test: #63 (External Logging of Remote Accesses)
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US90** As Administrator, I want to have logs for every remote access to the system.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US90.1** Remote access events must be transmitted to a remote application, the Remote
+  Accesses Logging Server, by using UDP datagrams.
+- **US90.2** Both successful logins and failed logins must be registered; logouts and
+  disconnects must also be logged.
+- **US90.3** Logged data must include: a timestamp, the username, the client's IP address,
+  the client's port number, and the service (US44, US78, or US86).
+- **US90.4** The Remote Accesses Logging Server application must run at a dedicated network
+  node in a cloud.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US44 — Weather Person remote access; one of the TCP servers that must send log events.
+- US78 — Air Transport Company Collaborator remote access; one of the TCP servers that must send log events.
+- US86 — Pilot remote access; one of the TCP servers that must send log events.
+- US91 — Remote Accesses Logging Visualization; the server that receives, stores, and
+  displays the UDP datagrams produced by this US.
 
 ---
 
@@ -39,34 +49,168 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 ### 3.0 LLM Assistance
 
 Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Below are the main prompts used, the suggestions adopted, and the decisions the team made
+independently or where we deviated from the AI output.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+---
+
+#### Prompt 1 — Integrating UDP logging into an existing TCP server
+
+> "How should UDP datagram sending be integrated into a Java TCP client handler without
+> blocking or degrading the main TCP communication flow? Where is the correct place to
+> intercept login success, login failure, logout and disconnect events?"
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- A dedicated `UdpLoggerService` class is responsible for building the datagram payload and
+  sending it via `DatagramSocket` — keeps logging logic decoupled from the TCP handler
+- The UDP send operation is placed immediately after the authentication result is known and
+  on session teardown (logout request or connection drop detection)
+- UDP is fire-and-forget: the send call is wrapped in a try-catch; failures are silently
+  ignored so the main TCP flow is never interrupted
 
-**Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+**Decisions made by the team / deviations from LLM output:**
+- The LLM suggested a separate logging thread with a queue to avoid any blocking — rejected
+  as unnecessarily complex given UDP's non-blocking nature at this scale
+- The LLM proposed JSON as the datagram payload format — replaced with a simple
+  pipe-delimited string for lower overhead and easier parsing on the logging server side
 
-### 3.1 Framework Roles
+---
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+#### Prompt 2 — UDP datagram payload format
 
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
+> "What is a simple and robust format for a UDP log entry containing timestamp, username,
+> IP, port, service identifier and event type?"
+
+**LLM suggestions adopted:**
+- Pipe-delimited plain text: `timestamp|username|clientIp|clientPort|serviceId|eventType`
+- ISO-8601 timestamp format for unambiguous date/time representation
+
+**Decisions made by the team / deviations from LLM output:**
+- Fields are fixed-order — no field names needed, reducing payload size
+- The logging server (US91) parses by splitting on `|`, which is guaranteed not to appear
+  in any of the field values
+
+---
+
+### 3.1 System Architecture
+
+The US90 component is not a standalone application — it is a logging hook integrated into
+each of the three TCP servers (US44, US78, US86). Each TCP server, upon processing an
+authentication attempt or a session termination, calls the shared `UdpLoggerService` which
+sends a UDP datagram to the Remote Accesses Logging Server.
+
 ```
+┌─────────────────────────────────────────┐       ┌──────────────────────────────┐
+│              AISafe Server              │       │   Cloud Node                 │
+│                                         │       │                              │
+│  ┌─────────────────────────────────┐    │  UDP  │  ┌────────────────────────┐  │
+│  │ TcpClientHandler (US44)         │ ──────────►│  │                        │  │
+│  │  calls UdpLoggerService on:     │    │       │  │  RemoteAccesses        │  │
+│  │  - login success / failure      │    │       │  │  Logging Server        │  │
+│  │  - logout / disconnect          │    │       │  │  (UDP receiver — US91) │  │
+│  └─────────────────────────────────┘    │       │  │                        │  │
+│  ┌─────────────────────────────────┐    │  UDP  │  │                        │  │
+│  │ TcpClientHandler (US78)         │ ──────────►│  │                        │  │
+│  └─────────────────────────────────┘    │       │  │                        │  │
+│  ┌─────────────────────────────────┐    │  UDP  │  │                        │  │
+│  │ TcpClientHandler (US86)         │ ──────────►│  └────────────────────────┘  │
+│  └─────────────────────────────────┘    │       │                              │
+│                                         │       │                              │
+│  ┌─────────────────────────────────┐    │       └──────────────────────────────┘
+│  │ UdpLoggerService (shared)       │    │
+│  │  - builds payload string        │    │
+│  │  - sends DatagramPacket         │    │
+│  └─────────────────────────────────┘    │
+└─────────────────────────────────────────┘
+```
+
+---
+
+### 3.2 UDP Datagram Payload Format
+
+Each datagram contains a single log entry as a pipe-delimited string:
+
+```
+<timestamp>|<username>|<clientIp>|<clientPort>|<serviceId>|<eventType>
+```
+
+Example:
+```
+2026-06-01T14:32:01|weather.person@aisafe.com|192.168.1.10|52341|US44|LOGIN_SUCCESS
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | ISO-8601 string | Date and time of the event |
+| `username` | string | Username of the user attempting access |
+| `clientIp` | string | IP address of the remote client |
+| `clientPort` | integer | TCP port number of the remote client |
+| `serviceId` | enum string | `US44`, `US78`, or `US86` |
+| `eventType` | enum string | `LOGIN_SUCCESS`, `LOGIN_FAILURE`, `LOGOUT`, `DISCONNECT` |
+
+---
+
+### 3.3 Event Trigger Points
+
+| Event | Trigger point in TCP handler |
+|-------|------------------------------|
+| `LOGIN_SUCCESS` | Immediately after successful authentication |
+| `LOGIN_FAILURE` | Immediately after failed authentication attempt |
+| `LOGOUT` | When the client sends a logout/exit request |
+| `DISCONNECT` | When the TCP connection drops unexpectedly (IOException on read) |
+
+---
+
+### 3.4 Key Classes
+
+| Class | Responsibility |
+|-------|---------------|
+| `UdpLoggerService` | Builds the pipe-delimited payload string and sends a `DatagramPacket` to the configured logging server address and port |
+| `LoggingServerConfig` | Holds the logging server IP and port; loaded from configuration file at startup |
+| `TcpClientHandler` (US44/US78/US86) | TCP session handler; calls `UdpLoggerService` at each event trigger point, passing the appropriate `serviceId` |
+
+---
+
+### 3.5 Acceptance Tests
+
+**AT1 — Successful login is logged (US90.2, US90.3)**
+
+Given a Weather Person (US44) who successfully authenticates via TCP,
+When the login is processed by the TCP server,
+Then a UDP datagram is sent to the logging server containing: timestamp, username,
+client IP, client port, service = US44, eventType = LOGIN_SUCCESS.
+
+**AT2 — Failed login is logged (US90.2, US90.3)**
+
+Given a Pilot (US86) who provides incorrect credentials,
+When the login attempt is processed by the TCP server,
+Then a UDP datagram is sent containing: timestamp, username, client IP, client port,
+service = US86, eventType = LOGIN_FAILURE.
+
+**AT3 — Logout is logged (US90.2)**
+
+Given an authenticated ATC Collaborator (US78) who sends a logout request,
+When the session is terminated,
+Then a UDP datagram is sent containing: timestamp, username, client IP, client port,
+service = US78, eventType = LOGOUT.
+
+**AT4 — Disconnect is logged (US90.2)**
+
+Given an authenticated user whose TCP connection drops unexpectedly,
+When the TCP server detects the disconnection via an IOException,
+Then a UDP datagram is sent containing the session data and eventType = DISCONNECT.
+
+**AT5 — Logging server address is configurable (US90.4)**
+
+Given a configured logging server IP and port in the application properties,
+When the system starts,
+Then `UdpLoggerService` uses those values for all subsequent UDP datagrams.
+
+**AT6 — UDP failure does not interrupt TCP flow (US90.1)**
+
+Given the logging server is unreachable,
+When a remote access event occurs,
+Then the UDP send fails silently and the TCP session continues normally.
 
 ---
 
@@ -74,57 +218,22 @@ public class AISafeRoles {
 
 ### 4.1 Realization
 
-**Classes to create:**
+Two sequence diagrams are provided:
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+- **SD1** — Login event: successful and failed login logging flow.
+- **SD2** — Logout / Disconnect event: session teardown logging flow.
 
-**Sequence Diagram — Login with Security Clearance Check:**
-
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
-
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
-
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
-
-### 4.2 Acceptance Tests
-
-**AT1 — Expired security clearance blocks login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
-
-**AT2 — Valid security clearance allows login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
-
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
-
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
-Then the system rejects the operation with an authorization error.
+![SD1 — Login Event](sd_us90_login_event.svg)
+![SD2 — Logout / Disconnect Event](sd_us90_logout_disconnect_event.svg)
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
-
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+| File | Responsibility |
+|------|---------------|
+| `UdpLoggerService.java` | Builds payload string and sends UDP datagram |
+| `LoggingServerConfig.java` | Loads and holds logging server IP and port from config |
 
 *Major commits: (to be filled after implementation)*
 
@@ -132,15 +241,27 @@ Then the system rejects the operation with an authorization error.
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+To demonstrate this user story:
+
+1. Start the Remote Accesses Logging Server (US91) on the configured cloud node.
+2. Configure the logging server IP and port in the application properties.
+3. Connect as a Weather Person (US44) with valid credentials → verify LOGIN_SUCCESS
+   appears on the US91 events page within 5 seconds.
+4. Attempt login with invalid credentials → verify LOGIN_FAILURE appears.
+5. Log out → verify LOGOUT appears.
+6. Drop the TCP connection without logging out → verify DISCONNECT appears.
+7. Confirm all entries include the correct timestamp, username, IP, port and service.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+- `UdpLoggerService` is shared by all three TCP servers (US44, US78, US86); only the
+  `serviceId` parameter differs per call. It should be instantiated once and injected
+  into each TCP handler.
+- UDP is intentionally fire-and-forget — this US must never degrade the performance or
+  reliability of the TCP services it hooks into.
+- The logging server (US91) and this US share the same payload format contract — any
+  change to the datagram structure must be coordinated between both implementations.
+- `RemoteAccessEventStore` (defined in US91) is the consumer of the datagrams sent by
+  this US; both must agree on the pipe-delimited format described in section 3.2.
