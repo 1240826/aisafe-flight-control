@@ -128,9 +128,9 @@ Then the system rejects the operation with an authorization error.
 
 **Key new/modified files:**
 
-- `[List relevant files created or altered]`
+- `[TBD]`
 
-*Major commits: [Insert links or hashes]*
+*Major commits: [TBD]*
 
 ---
 
@@ -146,4 +146,4 @@ Then the system rejects the operation with an authorization error.
 
 ## 7. Observations
 
-[Insert any technical debt, difficulties encountered, or architectural notes here]
+[TBD]
