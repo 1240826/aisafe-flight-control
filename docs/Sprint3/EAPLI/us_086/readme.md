@@ -1,36 +1,48 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US086 — Pilot Remote Access (EAPLI side)
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task is assigned in Sprint 3. It is the first time this feature is being developed.
+The objective is to expose all Pilot/Flight Control Operator (FCO) user stories through a
+TCP-based remote access layer, allowing a Pilot to interact with the system from a remote
+client application. This document covers the EAPLI side: exposing existing controllers via
+a `RemotePilotService` that the RCOMP TCP handler invokes.
 
-**Assigned to:** Shared (all team members)
+**Issue:** #62
+**Assigned to:** Fábio Costa (both EAPLI and RCOMP sides)
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #62
+- Design: #62
+- Implement: #62
+- Test: #62
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US086** As a Pilot (Flight Control Operator), I want to remotely access the system in order to manage flight plans and view reports.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US086.1** A `RemotePilotService` must wrap existing FCO controllers so they can be invoked from a TCP handler without UI dependency.
+- **US086.2** Access to every operation must require prior authentication and authorization (via EAPLI `AuthzRegistry`).
+- **US086.3** The following FCO operations must be remotely accessible:
+  - US072 — List company fleet
+  - US080 — Create a flight plan
+  - US085 — Test/validate a flight plan
+  - US111 — Generate a simulation report
+  - US112 — Monthly report generation
+  - US121 — Create a valid flight plan from a file
+- **US086.4** No client code may interact directly with the database — all access must go through the application layer.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US072, US080, US085, US111, US112, US121 — existing FCO controllers
+- US030 — Authentication and authorization infrastructure
+- NFR09 — Authentication and authorization enforced on all functionalities
+- RCOMP US86 — TCP server and client implementation
 
 ---
 
@@ -38,35 +50,87 @@ This task was assigned in Sprint 2 as shared infrastructure. It is the first tim
 
 ### 3.0 LLM Assistance
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+Generative AI (Claude, Anthropic) was used to support the analysis of this user story.
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+**Prompt 1:** "In a Java DDD application with existing controllers, how do I create a service layer that wraps controllers so a TCP handler can invoke them without depending on the UI?"
 
 **LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+- `RemotePilotService` is a facade that depends only on existing application service interfaces (not controllers directly)
+- Each remote operation maps to exactly one method in the facade
+- Authorization is checked at the facade level before delegating to the underlying service
 
 **Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+- The `RemotePilotService` does not duplicate authorization — it calls the same controller methods that already enforce authorization
+- Session state (authenticated user) is managed by the RCOMP `PilotClientHandler`, not by the EAPLI layer
+- Output is returned as plain strings (serialized by the caller) — the service layer returns domain objects or simple DTOs
 
-### 3.1 Framework Roles
+---
+
+### 3.1 Architecture
+
+```
+PilotClientHandler (RCOMP)
+    ↓ calls
+RemotePilotService (EAPLI facade)
+    ↓ delegates to
+Existing Application Services / Controllers
+    ↓
+Domain / Persistence
+```
+
+- `RemotePilotService` is instantiated per-session (one instance per TCP connection)
+- It receives the authenticated `SystemUser` on construction so that all delegated calls can be traced back to the authenticated user
+- All methods throw typed exceptions (`UnauthorizedException`, `BusinessRuleException`) that the RCOMP handler maps to `ERR|<reason>` responses
+
+---
+
+### 3.2 RemotePilotService Interface
 
 ```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+public class RemotePilotService {
 
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
+    public RemotePilotService(SystemUser authenticatedUser);
+
+    public List<AircraftDTO> listFleet();                                  // US072
+    public FlightPlan createFlightPlan(FlightId flightId, String dsl);     // US080
+    public ValidationResult validateFlightPlan(FlightPlanId id);           // US085
+    public SimulationReport generateReport(FlightId flightId);             // US111
+    public MonthlyReport monthlyReport(int year, int month);               // US112
+    public FlightPlan importFlightPlan(String filePath);                   // US121
 }
 ```
+
+---
+
+### 3.3 Identified Domain Concepts
+
+| Concept | Responsibility |
+|---------|---------------|
+| `RemotePilotService` | Facade exposing FCO operations for remote invocation |
+| `AircraftDTO` | Lightweight DTO for fleet listing (avoids serializing full aggregates) |
+| `ValidationResult` | Result object containing pass/fail and reason |
+
+---
+
+### 3.4 Acceptance Tests
+
+**AT1 — List fleet requires authenticated Pilot (US086.2)**
+
+Given a non-authenticated invocation of `RemotePilotService.listFleet()`,
+When the method is called,
+Then an `UnauthorizedException` is thrown.
+
+**AT2 — Valid operations return correct results (US086.3)**
+
+Given an authenticated Pilot and an existing flight with a draft flight plan,
+When `validateFlightPlan` is called with the flight plan ID,
+Then a `ValidationResult` with the correct pass/fail status is returned.
+
+**AT3 — No direct DB access from client code (US086.4)**
+
+Given the `RemotePilotService` implements any operation,
+When the operation executes,
+Then all persistence access occurs only through the application/repository layer — never directly in the service.
 
 ---
 
@@ -74,45 +138,8 @@ public class AISafeRoles {
 
 ### 4.1 Realization
 
-**Classes to create:**
-
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
-
-**Sequence Diagram — Login with Security Clearance Check:**
-
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
-
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
-
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
-
-### 4.2 Acceptance Tests
-
-**AT1 — Expired security clearance blocks login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
-
-**AT2 — Valid security clearance allows login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
-
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
-
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
-Then the system rejects the operation with an authorization error.
+The sequence diagram for the full remote access flow is in the RCOMP US86 documentation:
+`docs/Sprint3/RCOMP/us_086/sd_us086_pilot_remote_access.puml`
 
 ---
 
@@ -120,27 +147,28 @@ Then the system rejects the operation with an authorization error.
 
 **Key new files:**
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
+| File | Responsibility |
+|------|---------------|
+| `eapli.aisafe.app.remote.pilot.RemotePilotService` | Facade wrapping existing FCO controllers |
+| `eapli.aisafe.app.remote.pilot.AircraftDTO` | DTO for fleet listing |
 
-*Major commits: (to be filled after implementation)*
+*No existing controller is modified — only a new facade is created.*
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+1. Start the main application (TCP server embedded).
+2. Launch the Pilot Client App (standalone Java console).
+3. Connect to the server IP and Pilot-dedicated port.
+4. Authenticate as `fco1` / `Password1`.
+5. Execute LIST_FLEET, CREATE_FLIGHT_PLAN, VALIDATE_FLIGHT_PLAN operations.
+6. All responses are received over TCP — the client never touches the database.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+- `RemotePilotService` depends only on existing application service interfaces — no UI or infrastructure coupling.
+- The RCOMP handler is responsible for session management (authentication state, socket lifecycle).
+- DTOs are kept minimal to reduce serialization overhead over the TCP connection.

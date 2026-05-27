@@ -1,0 +1,65 @@
+[
+  {
+    "ID": "PASS1",
+    "Type": "regular",
+    "Route": "W-E1",
+    "DepartureTime": "09:30",
+    "DepartureTZ": "+01:00",
+    "Leg": [{
+      "Departure": "A",
+      "Arrival": "B",
+      "Fuel": { "Quantity": 8000, "Unit": "kg" },
+      "Flight Profile": {
+        "Climb": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 200, "Unit": "Knots" }, "RateClimb": { "Value": 10.0, "Unit": "m/s" } }],
+        "Descend": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 140, "Unit": "Knots" }, "RateDescent": { "Value": -5, "Unit": "m/s" } }],
+        "Cruise": { "Speed": { "Value": 430, "Unit": "Knots" } }
+      },
+      "Segments": [
+        { "Mode": "climb", "Start": { "Latitude": 42.50, "Longitude": -9.50, "Altitude": { "Quantity": 0, "Unit": "m" } }, "End": { "Latitude": 42.50, "Longitude": -9.00, "Altitude": { "Quantity": 9200, "Unit": "m" } } },
+        { "Mode": "cruise", "Start": { "Latitude": 42.50, "Longitude": -9.00, "Altitude": { "Quantity": 9200, "Unit": "m" } }, "End": { "Latitude": 42.50, "Longitude": -2.50, "Altitude": { "Quantity": 9200, "Unit": "m" } } }
+      ]
+    }]
+  },
+  {
+    "ID": "PASS2",
+    "Type": "regular",
+    "Route": "W-E2",
+    "DepartureTime": "09:30",
+    "DepartureTZ": "+01:00",
+    "Leg": [{
+      "Departure": "C",
+      "Arrival": "D",
+      "Fuel": { "Quantity": 8000, "Unit": "kg" },
+      "Flight Profile": {
+        "Climb": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 200, "Unit": "Knots" }, "RateClimb": { "Value": 10.0, "Unit": "m/s" } }],
+        "Descend": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 140, "Unit": "Knots" }, "RateDescent": { "Value": -5, "Unit": "m/s" } }],
+        "Cruise": { "Speed": { "Value": 400, "Unit": "Knots" } }
+      },
+      "Segments": [
+        { "Mode": "climb", "Start": { "Latitude": 40.50, "Longitude": -9.50, "Altitude": { "Quantity": 0, "Unit": "m" } }, "End": { "Latitude": 40.50, "Longitude": -9.00, "Altitude": { "Quantity": 10600, "Unit": "m" } } },
+        { "Mode": "cruise", "Start": { "Latitude": 40.50, "Longitude": -9.00, "Altitude": { "Quantity": 10600, "Unit": "m" } }, "End": { "Latitude": 40.50, "Longitude": -2.50, "Altitude": { "Quantity": 10600, "Unit": "m" } } }
+      ]
+    }]
+  },
+  {
+    "ID": "PASS3",
+    "Type": "regular",
+    "Route": "S-N",
+    "DepartureTime": "09:30",
+    "DepartureTZ": "+01:00",
+    "Leg": [{
+      "Departure": "E",
+      "Arrival": "F",
+      "Fuel": { "Quantity": 8000, "Unit": "kg" },
+      "Flight Profile": {
+        "Climb": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 200, "Unit": "Knots" }, "RateClimb": { "Value": 10.0, "Unit": "m/s" } }],
+        "Descend": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 140, "Unit": "Knots" }, "RateDescent": { "Value": -5, "Unit": "m/s" } }],
+        "Cruise": { "Speed": { "Value": 400, "Unit": "Knots" } }
+      },
+      "Segments": [
+        { "Mode": "climb", "Start": { "Latitude": 39.00, "Longitude": -6.00, "Altitude": { "Quantity": 0, "Unit": "m" } }, "End": { "Latitude": 39.50, "Longitude": -6.00, "Altitude": { "Quantity": 11000, "Unit": "m" } } },
+        { "Mode": "cruise", "Start": { "Latitude": 39.50, "Longitude": -6.00, "Altitude": { "Quantity": 11000, "Unit": "m" } }, "End": { "Latitude": 44.00, "Longitude": -6.00, "Altitude": { "Quantity": 11000, "Unit": "m" } } }
+      ]
+    }]
+  }
+]

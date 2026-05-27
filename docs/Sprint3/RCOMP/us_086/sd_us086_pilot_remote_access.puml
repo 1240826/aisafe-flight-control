@@ -1,0 +1,60 @@
+@startuml sd_us086_pilot_remote_access
+title US086 — Pilot Remote Access (Simple SD)
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+participant "PilotClientApp"          as client  <<client>>
+participant "PilotServerDaemon"       as server  <<server>>
+participant "PilotClientHandler"      as handler <<thread>>
+participant ":RemotePilotService"     as service <<application>>
+participant ":FCO Controllers"        as ctrl    <<application>>
+
+client -> server : TCP connect (IP:Port)
+activate server
+server -> handler** : spawn thread
+deactivate server
+
+client -> handler : AUTH|user|pass
+activate handler
+handler -> service : authenticate()\ncheck role & clearance
+activate service
+service --> handler : auth result
+deactivate service
+handler --> client : AUTH_OK
+
+client -> handler : CREATE_FLIGHT_PLAN|flightId|dsl
+activate handler
+handler -> service : createFlightPlan(...)
+activate service
+service -> ctrl : createFlightPlan(...)
+activate ctrl
+ctrl --> service : success
+deactivate ctrl
+service --> handler : result
+deactivate service
+handler --> client : OK|flightPlanId
+deactivate handler
+
+client -> handler : VALIDATE_FLIGHT_PLAN|fpId
+activate handler
+handler -> service : validateFlightPlan(...)
+activate service
+service -> ctrl : validateFlightPlan(...)
+activate ctrl
+ctrl --> service : result
+deactivate ctrl
+service --> handler : result
+deactivate service
+handler --> client : OK|status
+deactivate handler
+
+client -> handler : QUIT
+activate handler
+handler --> client : close
+deactivate handler
+@enduml

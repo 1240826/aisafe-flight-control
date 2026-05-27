@@ -1,146 +1,161 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US108 – Semaphore-Based Step-by-Step Synchronization
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+As a Flight Control Operator, I want the simulation steps to be synchronized using semaphores, so that all flight processes advance in lockstep and the parent can detect violations after all positions are updated.
 
-**Assigned to:** Shared (all team members)
+**Assigned to:** Fábio Costa
 
-### 1.1 List of Issues
+### List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #78
+- Design: #78
+- Implement: #78
+- Test: #78
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
-
-### Acceptance Criteria
-
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
-
-### Dependencies/References
-
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
-
----
+- The parent process and child flight processes must synchronize each simulation step using POSIX semaphores.
+- Each step: parent signals children to start → children compute next position → children signal completion → parent detects violations.
+- Semaphores must be process-shared (stored in shared memory).
+- The synchronization must ensure no child runs ahead of others (lockstep barrier).
 
 ## 3. Analysis
 
-### 3.0 LLM Assistance
+### Approach
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
-
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
-
-**LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
-
-**Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
-
-### 3.1 Framework Roles
-
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
-
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
+The previous Sprint 2 approach used blocking `read()` on pipes as a barrier:
 ```
+parent: write(go_pipe[i])  →  child: read() unblocks → compute → write(report_pipe[i]) → parent: read() unblocks
+```
+
+In Sprint 3, the pipe-based barrier is replaced by a counting semaphore pair stored in shared memory:
+
+- `sem_step_start`: Counting semaphore, initially 0.  
+  Parent posts N times (one per active child). Each child waits once.
+
+- `sem_step_done`: Counting semaphore, initially 0.  
+  Each child posts once after writing its updated position to shared memory.  
+  Parent waits N times (one per active child) before proceeding to violation detection.
+
+### Synchronization Flow
+
+```
+PARENT (step = 0..N):
+  1. For each active child i:
+       sem_post(&shm->sem_step_start)     // unblock child i
+
+  2. For each active child i:
+       sem_wait(&shm->sem_step_done)      // wait for child i
+
+  3. Signal detector thread to scan for violations
+  4. Check termination conditions
+
+CHILD (flight i, infinite loop):
+  1. sem_wait(&shm->sem_step_start)       // block until parent starts step
+  2. if shared->running == 0: exit
+  3. Lock pos_mutex
+  4. Read alt_adjust / hold_position from shared memory
+  5. If !hold_position: advance() physics
+  6. Write new position to shared memory
+  7. history[n++] = snapshot
+  8. Unlock pos_mutex
+  9. sem_post(&shm->sem_step_done)        // signal parent we're done
+```
+
+This guarantees that all children complete step `t` before the parent starts violation detection for step `t`.
 
 ---
 
 ## 4. Design
 
-### 4.1 Realization
+### Semaphore Initialization (in Shared Memory)
 
-**Classes to create:**
+```c
+sem_init(&shm->sem_step_start, 1, 0);   // pshared=1, initial 0
+sem_init(&shm->sem_step_done,  1, 0);   // pshared=1, initial 0
+```
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+The `pshared=1` flag makes both semaphores accessible to the parent process and all forked children because they reside in the shared memory segment.
 
-**Sequence Diagram — Login with Security Clearance Check:**
+### Parent Step Loop Pseudocode
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
+```c
+for (step = 0; step < max_steps && !stop; step++) {
+    // Release children
+    for (i = 0; i < n; i++)
+        if (shared->flights[i].active)
+            sem_post(&shared->sem_step_start);
 
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
+    // Collect children
+    for (i = 0; i < n; i++)
+        if (shared->flights[i].active)
+            sem_wait(&shared->sem_step_done);
 
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+    // Signal detection thread to scan
+    pthread_mutex_lock(&shared->detect_mutex);
+    shared->step_ready = 1;
+    pthread_cond_signal(&shared->detect_cond);
+    pthread_mutex_unlock(&shared->detect_mutex);
+}
+```
 
-### 4.2 Acceptance Tests
+### Child Step Loop Pseudocode
 
-**AT1 — Expired security clearance blocks login (US030.4)**
+```c
+while (shared->running) {
+    sem_wait(&shared->sem_step_start);
+    if (!shared->running) break;
 
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
+    pthread_mutex_lock(&shared->pos_mutex);
 
-**AT2 — Valid security clearance allows login (US030.4)**
+    if (shared->flights[idx].hold_position) {
+        // hold, don't advance
+    } else {
+        if (shared->flights[idx].alt_adjust != 0) {
+            pos.alt += shared->flights[idx].alt_adjust;
+            shared->flights[idx].alt_adjust = 0;
+        }
+        done = advance(plan, &seg[cur], &pos, &vel, timestep);
+        shared->flights[idx].pos = pos;
+        shared->flights[idx].vel = vel;
+        if (done) shared->flights[idx].completed = 1;
+    }
 
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
-
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
-
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
-Then the system rejects the operation with an authorization error.
+    pthread_mutex_unlock(&shared->pos_mutex);
+    sem_post(&shared->sem_step_done);
+}
+```
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
+| File | Responsibility |
+|------|---------------|
+| `us108_sync.c` | `step_sync()`, `flight_wait_start()`, `flight_signal_done()`, barrier logic |
+| `us108_sync.h` | Function declarations |
+| `common.h` | Semaphore fields in `SharedData` |
 
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
-
-*Major commits: (to be filled after implementation)*
+Semaphores are unnamed POSIX semaphores initialized with `pshared=1` so they work across fork boundaries. Cleanup: `sem_destroy()` after child processes have exited.
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+```bash
+make
+ ../test/scenario3_violations.json 09:30
+```
+
+Expected output: all flights advance in lockstep. No flight runs ahead of others. Violations detected at the correct simulated time.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+- `sem_wait()` can return `EINTR` if a signal is received. The child and parent must handle this by retrying the `sem_wait()` call.
+- `sem_post()` is async-signal-safe and can be called from signal handlers if needed.
+- Counting semaphores eliminate the need for a per-flight semaphore pair — a single pair suffices for N flights.

@@ -1,0 +1,38 @@
+@startuml sd_us105_hybrid_simulation
+title US105 — Initialize Hybrid Simulation Environment
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+participant "Main Process"    as main    <<controller>>
+participant "OS"              as os      <<system>>
+participant "Safety Thread"   as thread1 <<thread>>
+participant "Report Thread"   as thread2 <<thread>>
+participant "Flight Process"  as child   <<process>>
+
+main -> os : shm_open("/sim_shm")
+activate os
+os --> main : shm_fd
+deactivate os
+
+main -> main : ftruncate(shm_fd, sizeof(SimulationData))
+main -> main : mmap(shm_fd)
+main -> main : sem_init(&shared_data->sem_step, 1, 0)
+
+main -> thread1** : pthread_create(safety_monitor)
+main -> thread2** : pthread_create(report_generator)
+
+loop for each flight
+    main -> child** : fork()
+    activate child
+    child -> child : mmap(shm_fd)
+    note right of child: Attaches to shared memory\nand waits on semaphores
+    deactivate child
+end
+
+main -> main : startSimulationLoop()
+@enduml

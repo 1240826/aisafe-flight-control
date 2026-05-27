@@ -1,0 +1,59 @@
+@startuml sd_us073_create_flight_route
+title US073 — Create a Flight Route
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "ATC Collaborator" as actor
+participant ":CreateFlightRouteUI"         as ui          <<presentation>>
+participant ":CreateFlightRouteController" as ctrl        <<application>>
+participant ":AuthorizationService"        as authz       <<framework>>
+participant ":CollaboratorRepository"      as collab_repo <<persistence>>
+participant "company:AirTransportCompany"  as company     <<domain>>
+participant "routeName:RouteName"          as vo          <<domain>>
+participant "route:FlightRoute"            as domain      <<domain>>
+participant ":FlightRouteRepository"       as repo        <<persistence>>
+
+actor -> ui : selects "Create Flight Route"
+activate ui
+ui --> actor : requests route details (name, origin, destination)
+
+actor -> ui : inputs details (e.g., "TP123", "OPO", "LIS")
+ui -> ctrl : createRoute(name, originId, destId)
+activate ctrl
+
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(ATC_COLLABORATOR)
+activate authz
+authz --> ctrl
+deactivate authz
+
+ctrl -> collab_repo : findBySystemUser(currentUser)
+activate collab_repo
+collab_repo --> ctrl : atcCollaborator
+deactivate collab_repo
+
+ctrl -> company : atcCollaborator.employedBy()
+note right of ctrl: System ensures the route name prefix\nmatches the ATC's company.
+
+ctrl -> vo** : valueOf(name)
+
+ctrl -> repo : findByName(routeName)
+activate repo
+repo --> ctrl : empty (validates uniqueness)
+deactivate repo
+
+ctrl -> domain** : create(routeName, origin, destination, company)
+ctrl -> repo : save(route)
+activate repo
+repo --> ctrl : savedRoute
+deactivate repo
+
+ctrl --> ui : success
+deactivate ctrl
+ui --> actor : displays success message
+deactivate ui
+@enduml
