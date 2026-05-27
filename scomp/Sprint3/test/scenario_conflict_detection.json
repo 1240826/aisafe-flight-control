@@ -1,0 +1,132 @@
+[
+  {
+    "ID": "FR202",
+    "Type": "regular",
+    "Route": "STN-AGP",
+    "DepartureTime": "08:30",
+    "DepartureTZ": "+01:00",
+    "Leg": [{
+      "Departure": "STN",
+      "Arrival": "AGP",
+      "Fuel": { "Quantity": 8500, "Unit": "kg" },
+      "Flight Profile": {
+        "Climb": [
+          { "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 205, "Unit": "Knots" }, "RateClimb": { "Value": 11.0, "Unit": "m/s" } },
+          { "Altitude": { "Value": 9200, "Unit": "m" }, "Speed": { "Value": 285, "Unit": "Knots" }, "RateClimb": { "Value": 7.0, "Unit": "m/s" } }
+        ],
+        "Descend": [
+          { "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 140, "Unit": "Knots" }, "RateDescent": { "Value": -5, "Unit": "m/s" } },
+          { "Altitude": { "Value": 9200, "Unit": "m" }, "Speed": { "Value": 285, "Unit": "Knots" }, "RateDescent": { "Value": -9, "Unit": "m/s" } }
+        ],
+        "Cruise": { "Speed": { "Value": 430, "Unit": "Knots" } }
+      },
+      "Segments": [
+        {
+          "Mode": "climb",
+          "Start": { "Latitude": 51.88, "Longitude": 0.23, "Altitude": { "Quantity": 20, "Unit": "m" } },
+          "End": { "Latitude": 50.00, "Longitude": -1.00, "Altitude": { "Quantity": 9200, "Unit": "m" } }
+        },
+        {
+          "Mode": "cruise",
+          "Start": { "Latitude": 50.00, "Longitude": -1.00, "Altitude": { "Quantity": 9200, "Unit": "m" } },
+          "End": { "Latitude": 44.00, "Longitude": -4.00, "Altitude": { "Quantity": 9200, "Unit": "m" } }
+        },
+        {
+          "Mode": "cruise",
+          "Start": { "Latitude": 44.00, "Longitude": -4.00, "Altitude": { "Quantity": 9200, "Unit": "m" } },
+          "End": { "Latitude": 41.00, "Longitude": -4.00, "Altitude": { "Quantity": 9200, "Unit": "m" } }
+        },
+        {
+          "Mode": "cruise",
+          "Start": { "Latitude": 41.00, "Longitude": -4.00, "Altitude": { "Quantity": 9200, "Unit": "m" } },
+          "End": { "Latitude": 38.00, "Longitude": -4.50, "Altitude": { "Quantity": 9200, "Unit": "m" } }
+        }
+      ]
+    }]
+  },
+  {
+    "ID": "TP303",
+    "Type": "regular",
+    "Route": "LIS-BIO",
+    "DepartureTime": "09:15",
+    "DepartureTZ": "+01:00",
+    "Leg": [{
+      "Departure": "LIS",
+      "Arrival": "BIO",
+      "Fuel": { "Quantity": 3800, "Unit": "kg" },
+      "Flight Profile": {
+        "Climb": [
+          { "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 195, "Unit": "Knots" }, "RateClimb": { "Value": 10.0, "Unit": "m/s" } },
+          { "Altitude": { "Value": 9200, "Unit": "m" }, "Speed": { "Value": 280, "Unit": "Knots" }, "RateClimb": { "Value": 6.5, "Unit": "m/s" } }
+        ],
+        "Descend": [
+          { "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 140, "Unit": "Knots" }, "RateDescent": { "Value": -5, "Unit": "m/s" } },
+          { "Altitude": { "Value": 9200, "Unit": "m" }, "Speed": { "Value": 280, "Unit": "Knots" }, "RateDescent": { "Value": -9, "Unit": "m/s" } }
+        ],
+        "Cruise": { "Speed": { "Value": 200, "Unit": "Knots" } }
+      },
+      "Segments": [
+        {
+          "Mode": "climb",
+          "Start": { "Latitude": 38.78, "Longitude": -9.14, "Altitude": { "Quantity": 113, "Unit": "m" } },
+          "End": { "Latitude": 39.50, "Longitude": -8.00, "Altitude": { "Quantity": 9200, "Unit": "m" } }
+        },
+        {
+          "Mode": "cruise",
+          "Start": { "Latitude": 39.50, "Longitude": -8.00, "Altitude": { "Quantity": 9200, "Unit": "m" } },
+          "End": { "Latitude": 42.00, "Longitude": -5.00, "Altitude": { "Quantity": 9200, "Unit": "m" } }
+        },
+        {
+          "Mode": "cruise",
+          "Start": { "Latitude": 42.00, "Longitude": -5.00, "Altitude": { "Quantity": 9200, "Unit": "m" } },
+          "End": { "Latitude": 43.30, "Longitude": -2.50, "Altitude": { "Quantity": 9200, "Unit": "m" } }
+        }
+      ]
+    }]
+  },
+  {
+    "ID": "VY404",
+    "Type": "charter",
+    "Route": "SCQ-LPA",
+    "DepartureTime": "08:00",
+    "DepartureTZ": "+01:00",
+    "Leg": [{
+      "Departure": "SCQ",
+      "Arrival": "LPA",
+      "Fuel": { "Quantity": 12000, "Unit": "kg" },
+      "Flight Profile": {
+        "Climb": [
+          { "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 200, "Unit": "Knots" }, "RateClimb": { "Value": 10.0, "Unit": "m/s" } },
+          { "Altitude": { "Value": 10600, "Unit": "m" }, "Speed": { "Value": 290, "Unit": "Knots" }, "RateClimb": { "Value": 6.5, "Unit": "m/s" } }
+        ],
+        "Descend": [
+          { "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 140, "Unit": "Knots" }, "RateDescent": { "Value": -5, "Unit": "m/s" } },
+          { "Altitude": { "Value": 10600, "Unit": "m" }, "Speed": { "Value": 290, "Unit": "Knots" }, "RateDescent": { "Value": -9, "Unit": "m/s" } }
+        ],
+        "Cruise": { "Speed": { "Value": 450, "Unit": "Knots" } }
+      },
+      "Segments": [
+        {
+          "Mode": "climb",
+          "Start": { "Latitude": 42.90, "Longitude": -8.43, "Altitude": { "Quantity": 25, "Unit": "m" } },
+          "End": { "Latitude": 42.00, "Longitude": -8.00, "Altitude": { "Quantity": 10600, "Unit": "m" } }
+        },
+        {
+          "Mode": "cruise",
+          "Start": { "Latitude": 42.00, "Longitude": -8.00, "Altitude": { "Quantity": 10600, "Unit": "m" } },
+          "End": { "Latitude": 40.00, "Longitude": -8.00, "Altitude": { "Quantity": 10600, "Unit": "m" } }
+        },
+        {
+          "Mode": "cruise",
+          "Start": { "Latitude": 40.00, "Longitude": -8.00, "Altitude": { "Quantity": 10600, "Unit": "m" } },
+          "End": { "Latitude": 38.50, "Longitude": -10.00, "Altitude": { "Quantity": 10600, "Unit": "m" } }
+        },
+        {
+          "Mode": "descend",
+          "Start": { "Latitude": 38.50, "Longitude": -10.00, "Altitude": { "Quantity": 10600, "Unit": "m" } },
+          "End": { "Latitude": 28.00, "Longitude": -15.40, "Altitude": { "Quantity": 5, "Unit": "m" } }
+        }
+      ]
+    }]
+  }
+]

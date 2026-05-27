@@ -1,0 +1,44 @@
+[
+  {
+    "ID": "CROSS1",
+    "Type": "regular",
+    "Route": "S-N",
+    "DepartureTime": "09:30",
+    "DepartureTZ": "+01:00",
+    "Leg": [{
+      "Departure": "A",
+      "Arrival": "B",
+      "Fuel": { "Quantity": 8000, "Unit": "kg" },
+      "Flight Profile": {
+        "Climb": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 200, "Unit": "Knots" }, "RateClimb": { "Value": 10.0, "Unit": "m/s" } }],
+        "Descend": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 140, "Unit": "Knots" }, "RateDescent": { "Value": -5, "Unit": "m/s" } }],
+        "Cruise": { "Speed": { "Value": 400, "Unit": "Knots" } }
+      },
+      "Segments": [
+        { "Mode": "climb", "Start": { "Latitude": 39.00, "Longitude": -7.00, "Altitude": { "Quantity": 0, "Unit": "m" } }, "End": { "Latitude": 39.50, "Longitude": -7.00, "Altitude": { "Quantity": 10000, "Unit": "m" } } },
+        { "Mode": "cruise", "Start": { "Latitude": 39.50, "Longitude": -7.00, "Altitude": { "Quantity": 10000, "Unit": "m" } }, "End": { "Latitude": 44.00, "Longitude": -7.00, "Altitude": { "Quantity": 10000, "Unit": "m" } } }
+      ]
+    }]
+  },
+  {
+    "ID": "CROSS2",
+    "Type": "regular",
+    "Route": "N-S",
+    "DepartureTime": "09:30",
+    "DepartureTZ": "+01:00",
+    "Leg": [{
+      "Departure": "C",
+      "Arrival": "D",
+      "Fuel": { "Quantity": 8000, "Unit": "kg" },
+      "Flight Profile": {
+        "Climb": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 200, "Unit": "Knots" }, "RateClimb": { "Value": 10.0, "Unit": "m/s" } }],
+        "Descend": [{ "Altitude": { "Value": 0, "Unit": "m" }, "Speed": { "Value": 140, "Unit": "Knots" }, "RateDescent": { "Value": -5, "Unit": "m/s" } }],
+        "Cruise": { "Speed": { "Value": 400, "Unit": "Knots" } }
+      },
+      "Segments": [
+        { "Mode": "climb", "Start": { "Latitude": 43.00, "Longitude": -7.00, "Altitude": { "Quantity": 0, "Unit": "m" } }, "End": { "Latitude": 42.50, "Longitude": -7.00, "Altitude": { "Quantity": 10000, "Unit": "m" } } },
+        { "Mode": "cruise", "Start": { "Latitude": 42.50, "Longitude": -7.00, "Altitude": { "Quantity": 10000, "Unit": "m" } }, "End": { "Latitude": 38.00, "Longitude": -7.00, "Altitude": { "Quantity": 10000, "Unit": "m" } } }
+      ]
+    }]
+  }
+]

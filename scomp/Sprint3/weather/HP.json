@@ -1,0 +1,456 @@
+﻿{
+    "provider":  "Happy Weather Data",
+    "duration_hours":  7.5,
+    "zones":  [
+                  {
+                      "speed_kt":  25,
+                      "alt_ft_hi":  1000,
+                      "alt_ft_lo":  0,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  90
+                  },
+                  {
+                      "speed_kt":  18,
+                      "alt_ft_hi":  1000,
+                      "alt_ft_lo":  0,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  105
+                  },
+                  {
+                      "speed_kt":  12,
+                      "alt_ft_hi":  1000,
+                      "alt_ft_lo":  0,
+                      "lat_north":  43.840454,
+                      "lat_south":  41.123456,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  45
+                  },
+                  {
+                      "speed_kt":  15,
+                      "alt_ft_hi":  1000,
+                      "alt_ft_lo":  0,
+                      "lat_north":  41.123457,
+                      "lat_south":  37.052988,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  45
+                  },
+                  {
+                      "speed_kt":  20,
+                      "alt_ft_hi":  1500,
+                      "alt_ft_lo":  0,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  35
+                  },
+                  {
+                      "speed_kt":  30,
+                      "alt_ft_hi":  1500,
+                      "alt_ft_lo":  0,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  35
+                  },
+                  {
+                      "speed_kt":  20,
+                      "alt_ft_hi":  1000,
+                      "alt_ft_lo":  0,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  15
+                  },
+                  {
+                      "speed_kt":  30,
+                      "alt_ft_hi":  1000,
+                      "alt_ft_lo":  0,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  15
+                  },
+                  {
+                      "speed_kt":  35,
+                      "alt_ft_hi":  2000,
+                      "alt_ft_lo":  1001,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  105
+                  },
+                  {
+                      "speed_kt":  30,
+                      "alt_ft_hi":  2000,
+                      "alt_ft_lo":  1001,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  110
+                  },
+                  {
+                      "speed_kt":  21,
+                      "alt_ft_hi":  2000,
+                      "alt_ft_lo":  1001,
+                      "lat_north":  43.840454,
+                      "lat_south":  41.123456,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  50
+                  },
+                  {
+                      "speed_kt":  25,
+                      "alt_ft_hi":  2000,
+                      "alt_ft_lo":  1001,
+                      "lat_north":  41.123457,
+                      "lat_south":  37.052988,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  45
+                  },
+                  {
+                      "speed_kt":  25,
+                      "alt_ft_hi":  2000,
+                      "alt_ft_lo":  1501,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  35
+                  },
+                  {
+                      "speed_kt":  30,
+                      "alt_ft_hi":  2000,
+                      "alt_ft_lo":  1501,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  30
+                  },
+                  {
+                      "speed_kt":  25,
+                      "alt_ft_hi":  2000,
+                      "alt_ft_lo":  1001,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  20
+                  },
+                  {
+                      "speed_kt":  20,
+                      "alt_ft_hi":  2000,
+                      "alt_ft_lo":  1001,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  15
+                  },
+                  {
+                      "speed_kt":  40,
+                      "alt_ft_hi":  3450,
+                      "alt_ft_lo":  2001,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  120
+                  },
+                  {
+                      "speed_kt":  40,
+                      "alt_ft_hi":  3450,
+                      "alt_ft_lo":  2001,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  120
+                  },
+                  {
+                      "speed_kt":  45,
+                      "alt_ft_hi":  3450,
+                      "alt_ft_lo":  2001,
+                      "lat_north":  43.840454,
+                      "lat_south":  41.123456,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  115
+                  },
+                  {
+                      "speed_kt":  50,
+                      "alt_ft_hi":  3450,
+                      "alt_ft_lo":  2001,
+                      "lat_north":  41.123457,
+                      "lat_south":  37.052988,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  115
+                  },
+                  {
+                      "speed_kt":  40,
+                      "alt_ft_hi":  3450,
+                      "alt_ft_lo":  2001,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  120
+                  },
+                  {
+                      "speed_kt":  45,
+                      "alt_ft_hi":  3450,
+                      "alt_ft_lo":  2001,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  120
+                  },
+                  {
+                      "speed_kt":  40,
+                      "alt_ft_hi":  3750,
+                      "alt_ft_lo":  2001,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  120
+                  },
+                  {
+                      "speed_kt":  40,
+                      "alt_ft_hi":  3750,
+                      "alt_ft_lo":  2001,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  120
+                  },
+                  {
+                      "speed_kt":  60,
+                      "alt_ft_hi":  4500,
+                      "alt_ft_lo":  3451,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  150
+                  },
+                  {
+                      "speed_kt":  60,
+                      "alt_ft_hi":  4500,
+                      "alt_ft_lo":  3451,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  150
+                  },
+                  {
+                      "speed_kt":  60,
+                      "alt_ft_hi":  4500,
+                      "alt_ft_lo":  3451,
+                      "lat_north":  43.840454,
+                      "lat_south":  41.123456,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  150
+                  },
+                  {
+                      "speed_kt":  60,
+                      "alt_ft_hi":  4500,
+                      "alt_ft_lo":  3451,
+                      "lat_north":  41.123457,
+                      "lat_south":  37.052988,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  150
+                  },
+                  {
+                      "speed_kt":  60,
+                      "alt_ft_hi":  4500,
+                      "alt_ft_lo":  3451,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  150
+                  },
+                  {
+                      "speed_kt":  60,
+                      "alt_ft_hi":  4500,
+                      "alt_ft_lo":  3451,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  150
+                  },
+                  {
+                      "speed_kt":  60,
+                      "alt_ft_hi":  4500,
+                      "alt_ft_lo":  3751,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  150
+                  },
+                  {
+                      "speed_kt":  60,
+                      "alt_ft_hi":  4500,
+                      "alt_ft_lo":  3751,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  150
+                  },
+                  {
+                      "speed_kt":  70,
+                      "alt_ft_hi":  7000,
+                      "alt_ft_lo":  4501,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  160
+                  },
+                  {
+                      "speed_kt":  70,
+                      "alt_ft_hi":  7000,
+                      "alt_ft_lo":  4501,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  160
+                  },
+                  {
+                      "speed_kt":  70,
+                      "alt_ft_hi":  7000,
+                      "alt_ft_lo":  4501,
+                      "lat_north":  43.840454,
+                      "lat_south":  41.123456,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  160
+                  },
+                  {
+                      "speed_kt":  70,
+                      "alt_ft_hi":  7000,
+                      "alt_ft_lo":  4501,
+                      "lat_north":  41.123457,
+                      "lat_south":  37.052988,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  160
+                  },
+                  {
+                      "speed_kt":  70,
+                      "alt_ft_hi":  7000,
+                      "alt_ft_lo":  4501,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  160
+                  },
+                  {
+                      "speed_kt":  70,
+                      "alt_ft_hi":  7000,
+                      "alt_ft_lo":  4501,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  160
+                  },
+                  {
+                      "speed_kt":  70,
+                      "alt_ft_hi":  7000,
+                      "alt_ft_lo":  4501,
+                      "lat_north":  43.840454,
+                      "lat_south":  40.225,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  160
+                  },
+                  {
+                      "speed_kt":  70,
+                      "alt_ft_hi":  7000,
+                      "alt_ft_lo":  4501,
+                      "lat_north":  40.225001,
+                      "lat_south":  37.052988,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  160
+                  },
+                  {
+                      "speed_kt":  85,
+                      "alt_ft_hi":  12000,
+                      "alt_ft_lo":  7001,
+                      "lat_north":  43.840454,
+                      "lat_south":  37.052988,
+                      "lon_east":  -7.9501,
+                      "lon_west":  -9.795711,
+                      "dir_deg":  170
+                  },
+                  {
+                      "speed_kt":  90,
+                      "alt_ft_hi":  12000,
+                      "alt_ft_lo":  7001,
+                      "lat_north":  43.840454,
+                      "lat_south":  41.123456,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  170
+                  },
+                  {
+                      "speed_kt":  85,
+                      "alt_ft_hi":  12000,
+                      "alt_ft_lo":  7001,
+                      "lat_north":  41.123457,
+                      "lat_south":  37.052988,
+                      "lon_east":  -2.34,
+                      "lon_west":  -7.950101,
+                      "dir_deg":  170
+                  },
+                  {
+                      "speed_kt":  85,
+                      "alt_ft_hi":  12000,
+                      "alt_ft_lo":  7001,
+                      "lat_north":  43.840454,
+                      "lat_south":  37.052988,
+                      "lon_east":  0.5,
+                      "lon_west":  -2.340001,
+                      "dir_deg":  170
+                  },
+                  {
+                      "speed_kt":  85,
+                      "alt_ft_hi":  12000,
+                      "alt_ft_lo":  7001,
+                      "lat_north":  43.840454,
+                      "lat_south":  37.052988,
+                      "lon_east":  4.936039,
+                      "lon_west":  0.500001,
+                      "dir_deg":  170
+                  }
+              ]
+}
