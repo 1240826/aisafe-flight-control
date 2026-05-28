@@ -93,11 +93,11 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- drivers for H2 -->
+		<!-- drivers for PostgreSQL -->
 		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<version>2.2.224</version>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>42.7.1</version>
 			<scope>runtime</scope>
 		</dependency>
 

@@ -29,22 +29,13 @@
     <class>eapli.aisafe.simulation.domain.Simulation</class>
 
     <properties>
-      <!--<property name="jakarta.persistence.jdbc.url" value="jdbc:h2:tcp://localhost/~/eapliexemplo"/>-->
-      <property name="jakarta.persistence.jdbc.url" value="jdbc:h2:~/aisafe"/>
+      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://vsgate-s1.dei.isep.ipp.pt:10309/aisafe"/>
 
-      <property name="jakarta.persistence.jdbc.user" value="sa"/>
-      <property name="jakarta.persistence.jdbc.password" value=""/>
-      <property name="jakarta.persistence.jdbc.driver" value="org.h2.Driver"/>
-      <!-- JPA standard schema generation: uncomment to recreate schema on bootstrap run -->
-      <!-- <property name="jakarta.persistence.schema-generation.database.action" value="drop-and-create"/> -->
-      <!-- Hibernate DDL:
-             update = auto-create tables when database is empty; preserve data on subsequent runs.
-             To fully reset: delete ~/aisafe.mv.db and re-run bootstrap.
-             Change to 'validate' in production to catch schema drift.  -->
+      <property name="jakarta.persistence.jdbc.user" value="postgres"/>
+      <property name="jakarta.persistence.jdbc.password" value="9FL4Fk6VEcJz"/>
+      <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
       <property name="hibernate.hbm2ddl.auto" value="update"/>
-      <!-- <property name="eclipselink.logging.level" value="FINE"/> -->
-      <!-- <property name = "hibernate.show_sql" value = "true" /> -->
-      <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+      <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
 
     </properties>
   </persistence-unit>
