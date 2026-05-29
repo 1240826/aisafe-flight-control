@@ -6,7 +6,7 @@ This task was assigned in Sprint 3. The objective is to allow a Pilot to associa
 with their flight plan. If the flight plan had been previously tested, adding weather data voids
 the test result and resets the flight plan status to draft.
 
-**Assigned to:** [name]
+**Assigned to:** Cláudio Pinto
 
 ### 1.1 List of Issues
 
