@@ -75,13 +75,13 @@ class SemanticValidationTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -162,13 +162,13 @@ class SemanticValidationTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -192,13 +192,13 @@ class SemanticValidationTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m WIDTH -50 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH -50 m];
                         }
                     }
                 }
@@ -217,13 +217,13 @@ class SemanticValidationTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-02-30T08:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-02-30T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -240,13 +240,13 @@ class SemanticValidationTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-20T25:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-20T27:00+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }

@@ -1,0 +1,47 @@
+// Valid long-haul charter flight: Dubai -> New York (direct, multiple segments)
+
+flight EK201 : charter {
+
+    route {
+        origin      : DXB;
+        destination : JFK;
+    }
+
+    aircraft : A6-EDV;
+    pilot    : P98765;
+
+    leg {
+
+        departure {
+            airport  : DXB;
+            datetime : 2026-08-15T02:30+04:00;
+        }
+
+        arrival {
+            airport  : JFK;
+            datetime : 2026-08-15T12:45-04:00;
+        }
+
+        fuel {
+            quantity : 95000 kg;
+        }
+
+        segment {
+            from      : (25.2532, 55.3657);
+            to        : (35.6895, 51.3890);
+            altitudes : [12000 m WIDTH 80 m];
+        }
+
+        segment {
+            from      : (35.6895, 51.3890);
+            to        : (55.7558, 37.6176);
+            altitudes : [12000 m WIDTH 80 m, 13000 m WIDTH 100 m];
+        }
+
+        segment {
+            from      : (55.7558, 37.6176);
+            to        : (40.7128, -74.0060);
+            altitudes : [11000 m WIDTH 70 m];
+        }
+    }
+}

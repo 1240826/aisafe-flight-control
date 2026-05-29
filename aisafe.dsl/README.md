@@ -1,6 +1,6 @@
 # Flight Plan DSL
 
-**Module:** `aisafe.dsl` | **USs:** US081, US083  
+**Module:** `aisafe.dsl` | **USs:** US081, US083, US120, US121  
 **Grammar:** `src/main/antlr4/FlightPlan.g4`
 
 ---
@@ -67,27 +67,28 @@ flight TP5678 : charter {
         destination : WAW;
     }
 
-    leg L1 {
-        departure { airport: OPO;  date: 2026-06-15; time: 06:00; }
-        arrival   { airport: EDDF; time: 09:30; }
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+        departure { airport: OPO; datetime: 2026-06-15T06:00+01:00; }
+        arrival   { airport: EDDF; datetime: 2026-06-15T09:30+02:00; }
         fuel      { quantity: 18500 kg; }
-        segment SEG1 {
+        segment {
             from      : (41.2481, -8.6814);
             to        : (50.0333,  8.5706);
             altitudes : [11000 m WIDTH 80 m];
-            wind      : (90, 20 m/s);
         }
     }
 
-    leg L2 {
-        departure { airport: EDDF; date: 2026-06-15; time: 11:00; }
-        arrival   { airport: WAW;  time: 13:15; }
+    leg {
+        departure { airport: EDDF; datetime: 2026-06-15T11:00+02:00; }
+        arrival   { airport: WAW;  datetime: 2026-06-15T13:15+02:00; }
         fuel      { quantity: 12000 kg; }
-        segment SEG2 {
+        segment {
             from      : (50.0333,  8.5706);
             to        : (52.1657, 20.9671);
             altitudes : [10000 m WIDTH 60 m];
-            wind      : (45, 10 m/s);
         }
     }
 }
@@ -97,6 +98,7 @@ flight TP5678 : charter {
 
 ```
 // Lisbon → Madrid → Paris  (regular weekly, file: valid_regular_multi_leg.flightplan)
+// Multiple schedules: Monday, Wednesday, Friday at 07:00
 
 flight TP3000 : regular {
 
@@ -105,27 +107,32 @@ flight TP3000 : regular {
         destination : CDG;
     }
 
-    leg L1 {
-        departure { airport: LIS; day: Monday; time: 07:00; }
-        arrival   { airport: MAD; time: 08:30; }
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+        departure { airport: LIS; day: Monday;   datetime: 2026-05-18T07:00+01:00;
+                                   day: Wednesday; datetime: 2026-05-20T07:00+01:00;
+                                   day: Friday;    datetime: 2026-05-22T07:00+01:00; }
+        arrival   { airport: MAD; datetime: 2026-05-18T09:30+02:00; }
         fuel      { quantity: 8000 kg; }
-        segment SEG1 {
+        segment {
             from      : (38.7813, -9.1359);
             to        : (40.4983, -3.5676);
             altitudes : [10000 m WIDTH 60 m];
-            wind      : (90, 20 m/s);
         }
     }
 
-    leg L2 {
-        departure { airport: MAD; day: Monday; time: 10:00; }
-        arrival   { airport: CDG; time: 12:30; }
+    leg {
+        departure { airport: MAD; day: Monday;   datetime: 2026-05-18T11:00+02:00;
+                                   day: Wednesday; datetime: 2026-05-20T11:00+02:00;
+                                   day: Friday;    datetime: 2026-05-22T11:00+02:00; }
+        arrival   { airport: CDG; datetime: 2026-05-18T13:30+02:00; }
         fuel      { quantity: 9000 kg; }
-        segment SEG2 {
+        segment {
             from      : (40.4983, -3.5676);
             to        : (49.0097, 2.5479);
             altitudes : [11000 m WIDTH 60 m];
-            wind      : (315, 15 m/s);
         }
     }
 }
@@ -145,7 +152,7 @@ LEG    : [lL][eE][gG] ;
 // 20 keywords total
 ```
 
-The specification requires keywords to be case-insensitive. Each letter position uses a character class matching both cases (`[fF]`), so `flight`, `FLIGHT`, `Flight` all produce the same token. Keywords: `FLIGHT`, `LEG`, `ROUTE`, `DEPARTURE`, `ARRIVAL`, `FUEL`, `SEGMENT`, `AIRPORT`, `DATE`, `DAY`, `TIME`, `ORIGIN`, `DESTINATION`, `FROM`, `TO`, `ALTITUDES`, `WIND`, `QUANTITY`, `WIDTH`, `REGULAR`, `CHARTER`. (`DAY` is an extension — see 4.6.)
+The specification requires keywords to be case-insensitive. Each letter position uses a character class matching both cases (`[fF]`), so `flight`, `FLIGHT`, `Flight` all produce the same token. Keywords: `FLIGHT`, `LEG`, `ROUTE`, `DEPARTURE`, `ARRIVAL`, `FUEL`, `SEGMENT`, `AIRPORT`, `DATETIME`, `DAY`, `ORIGIN`, `DESTINATION`, `FROM`, `TO`, `ALTITUDES`, `WIND`, `QUANTITY`, `WIDTH`, `REGULAR`, `CHARTER`, `AIRCRAFT`, `PILOT`.
 
 ### 3.2 Identifiers
 
@@ -172,15 +179,28 @@ NUMBER : '-'?[0-9]+('.'[0-9]+)? ;
 
 The optional leading `-` is required for negative coordinates (Lisbon longitude: −9.1359). Without it, negative coordinates would require a subtraction expression, which is out of scope.
 
-### 3.5 Date, Time, and Day-of-week
+### 3.5 Timestamps and Day-of-week
 
 ```antlr
-DATE_LITERAL : [0-9][0-9][0-9][0-9]'-'[0-9][0-9]'-'[0-9][0-9] ; // YYYY-MM-DD
-TIME_LITERAL : [0-9][0-9]':'[0-9][0-9](':'[0-9][0-9])? ;          // HH:MM[:SS]
-DAY_LITERAL  : [mM][oO][nN][dD][aA][yY] | [tT][uU][eE][sS][dD][aA][yY] | ... ;
+TIMESTAMP
+    : [0-9][0-9][0-9][0-9] '-' [0-9][0-9] '-' [0-9][0-9]
+      'T'
+      [0-9][0-9] ':' [0-9][0-9] (':' [0-9][0-9])?
+      ( 'Z' | ('+' | '-') [0-9][0-9] ':' [0-9][0-9] )
+    ;
+
+DAY_OF_WEEK
+    : [mM][oO][nN][dD][aA][yY]
+    | [tT][uU][eE][sS][dD][aA][yY]
+    | [wW][eE][dD][nN][eE][sS][dD][aA][yY]
+    | [tT][hH][uU][rR][sS][dD][aA][yY]
+    | [fF][rR][iI][dD][aA][yY]
+    | [sS][aA][tT][uU][rR][dD][aA][yY]
+    | [sS][uU][nN][dD][aA][yY]
+    ;
 ```
 
-`DATE_LITERAL` locks in ISO 8601 (`YYYY-MM-DD`): any other format (e.g., `10-05-2026`) tokenises differently and the parser rejects it immediately. `TIME_LITERAL` requires a two-digit hour — `8:30` tokenises as `NUMBER COLON NUMBER` and fails. Calendar validity (Feb 30, month > 12, etc.) is a semantic check — rule R10. `DAY_LITERAL` matches all seven English day names case-insensitively and must be declared before `IDENTIFIER` so that `Monday` is not lexed as an identifier (see 4.6).
+`TIMESTAMP` locks in ISO 8601 (`YYYY-MM-DDTHH:MM+HH:MM`) with mandatory timezone offset. Any other format (e.g., `10-05-2026T08:00`) tokenises as plain `NUMBER` tokens and the parser rejects it. The optional `:SS` seconds component allows both `HH:MM` and `HH:MM:SS` precision. Calendar validity (Feb 30, month > 12, hour > 23, etc.) is a semantic check — rule R10. `DAY_OF_WEEK` matches all seven English day names case-insensitively and must be declared before `IDENTIFIER` so that `Monday` is not lexed as an identifier.
 
 ### 3.6 Units — `UNIT_` prefix and compound-before-simple ordering
 
@@ -206,11 +226,13 @@ BLOCK_COMMENT : '/*' .*? '*/' -> skip ;
 ### 3.8 File and Flight
 
 ```antlr
-flightFile : flightDecl+ ;
+flightFile : flightDecl EOF;
 
 flightDecl
     : FLIGHT flightId COLON flightType LBRACE
           routeDecl
+          AIRCRAFT COLON IDENTIFIER SEMI
+          PILOT    COLON IDENTIFIER SEMI
           legDecl+
       RBRACE
     ;
@@ -219,7 +241,7 @@ flightId   : IDENTIFIER ;
 flightType : REGULAR | CHARTER ;
 ```
 
-`flightDecl+` enforces at least one flight per file — an empty file fails at parse time. `route` is at flight level, not inside each leg: semantic rules R5/R6 reference the *first* and *last* leg airports, proving that `route` is a shared concept across all legs. `REGULAR | CHARTER` are the only two valid types — anything else produces `mismatched input 'cargo' expecting {REGULAR, CHARTER}`.
+`flightDecl EOF` enforces exactly one flight per file — an empty file or a file with multiple flights fails at parse time. `route` is at flight level, not inside each leg: semantic rules R5/R6 reference the *first* and *last* leg airports, proving that `route` is a shared concept across all legs. `REGULAR | CHARTER` are the only two valid types — anything else produces `mismatched input 'cargo' expecting {REGULAR, CHARTER}`.
 
 ### 3.9 Route
 
@@ -240,7 +262,7 @@ airportCode : IATA_CODE | ICAO_CODE ;
 
 ```antlr
 legDecl
-    : LEG IDENTIFIER LBRACE
+    : LEG LBRACE
           departureDecl
           arrivalDecl
           fuelDecl
@@ -249,7 +271,7 @@ legDecl
     ;
 ```
 
-The four sub-blocks are mandatory and ordered — departure then arrival then fuel then segment(s). `segmentDecl+` catches a missing segment at parse time (`mismatched input '}' expecting SEGMENT`) before any semantic check runs.
+The four sub-blocks are mandatory and ordered — departure then arrival then fuel then segment(s). `segmentDecl+` catches a missing segment at parse time (`mismatched input '}' expecting SEGMENT`) before any semantic check runs. Legs are identified by their sequential position in the file (first `leg {}` = leg 1, second = leg 2, etc.).
 
 ### 3.11 Departure and Arrival
 
@@ -257,25 +279,36 @@ The four sub-blocks are mandatory and ordered — departure then arrival then fu
 departureDecl
     : DEPARTURE LBRACE
           AIRPORT COLON airportCode  SEMI
-          scheduleField
-          TIME    COLON TIME_LITERAL SEMI
+          departureSchedule
       RBRACE
     ;
 
-scheduleField
-    : DATE COLON DATE_LITERAL SEMI   // charter: specific date
-    | DAY  COLON DAY_LITERAL  SEMI   // regular: day of week
+departureSchedule
+    : DATETIME COLON TIMESTAMP SEMI                                    // charter: exact datetime
+    | daySchedule+                                                     // regular: one or more day + datetime pairs
+    ;
+
+daySchedule
+    : DAY COLON DAY_OF_WEEK SEMI DATETIME COLON TIMESTAMP SEMI
     ;
 
 arrivalDecl
     : ARRIVAL LBRACE
           AIRPORT COLON airportCode SEMI
-          TIME    COLON TIME_LITERAL SEMI
+          arrivalSchedule
       RBRACE
+    ;
+
+arrivalSchedule
+    : DATETIME COLON TIMESTAMP SEMI
     ;
 ```
 
-`scheduleField` is an extension (see 4.6). It allows departure to carry either an ISO date (`date: 2026-06-15`) or a day-of-week name (`day: Monday`), depending on flight type. Semantic rule R11 enforces that charter flights use `date:` and regular flights use `day:`. Arrival has `airport + time` only — the specification does not include a date for arrival. Semantic rule R4 uses the leg's departure schedule as a proxy for the arrival date/day when comparing consecutive leg times.
+`departureSchedule` supports two formats depending on flight type:
+- **Charter**: `datetime: YYYY-MM-DDTHH:MM+HH:MM;` — a specific date and time with timezone offset.
+- **Regular**: one or more `day: DayOfWeek; datetime: YYYY-MM-DDTHH:MM+HH:MM;` pairs — each pair describes a weekly schedule instance (e.g., Monday at 07:00, Wednesday at 07:00). Each `datetime` carries its own timezone for correct cross-timezone flight duration.
+
+Semantic rule R11 enforces that charter flights use `datetime:` only, and regular flights use `day: + datetime:`. Arrival always uses `datetime:` only — the destination timezone is required.
 
 ### 3.12 Fuel
 
@@ -289,27 +322,27 @@ fuelDecl
 
 Single quantity with optional unit. Semantic rule R2 checks it is strictly positive (grammar alone allows zero and negative values via `NUMBER`).
 
-### 3.13 Segment, Coordinates, Altitudes, Wind
+### 3.13 Segment, Coordinates, Altitudes
 
 ```antlr
 segmentDecl
-    : SEGMENT IDENTIFIER LBRACE
+    : SEGMENT LBRACE
           FROM      COLON coordinatePair   SEMI
           TO        COLON coordinatePair   SEMI
           ALTITUDES COLON altitudeSlotList SEMI
-          WIND      COLON windDecl         SEMI
       RBRACE
     ;
 
 coordinatePair   : LPAREN numericValue COMMA numericValue RPAREN ;
-windDecl         : LPAREN numericValue COMMA numericValue RPAREN ;
 altitudeSlotList : LBRACKET altitudeSlot (COMMA altitudeSlot)* RBRACKET ;
-altitudeSlot     : numericValue (WIDTH numericValue)? ;
+altitudeSlot     : numericValue WIDTH numericValue ;
 numericValue     : NUMBER unit? ;
 unit : UNIT_KG | UNIT_L | UNIT_MS | UNIT_M | UNIT_KMH | UNIT_KM | UNIT_FT | UNIT_KT ;
 ```
 
-`coordinatePair` and `windDecl` share the same `(value, value)` structure — rule names are enough to distinguish them in the visitor. `altitudeSlot` accepts an optional `WIDTH` (see 4 Extensions). Semantic rule R9 checks altitude > 0 and width > 0.
+`altitudeSlot` requires a mandatory `WIDTH` for every altitude (each altitude band must specify its corridor width). Semantic rule R9 checks altitude > 0 and width > 0.
+
+**Wind data is not included in the DSL.** Weather information (wind direction and speed) is imported separately via weather forecast files (US042) and associated with flight plans by the pilot (US082). This separation avoids duplication between the DSL and external weather data sources, and keeps the DSL focused on the flight's structural data (route, legs, segments, altitudes, fuel).
 
 ---
 
@@ -329,10 +362,10 @@ BLOCK_COMMENT : '/*' .*? '*/' -> skip ;
 ### 4.2 Altitude corridor width (`WIDTH`)
 
 ```antlr
-altitudeSlot : numericValue (WIDTH numericValue)? ;
+altitudeSlot : numericValue WIDTH numericValue ;
 ```
 
-Each altitude slot can optionally carry a lateral corridor width. In real ATM (Air Traffic Management), an altitude band is paired with a horizontal separation corridor — a plane cleared for FL350 is also assigned a lateral track width. Without the `WIDTH` extension, the DSL could only express an altitude level, not the complete airspace allocation.
+Each altitude slot carries a lateral corridor width. In real ATM (Air Traffic Management), an altitude band is paired with a horizontal separation corridor — a plane cleared for FL350 is also assigned a lateral track width. Without the `WIDTH` extension, the DSL could only express an altitude level, not the complete airspace allocation.
 
 ### 4.3 Multiple altitude slots per segment
 
@@ -362,24 +395,38 @@ The Core DSL units (`kg`, `l`, `m`, `m/s`) cover basic quantities. The extension
 
 A DSL that only accepts `m` for altitude and `m/s` for speed cannot express standard aviation quantities without manual conversion.
 
-### 4.5 Optional seconds in `TIME_LITERAL`
+### 4.5 Timestamp with timezone
 
 ```antlr
-TIME_LITERAL : [0-9][0-9]':'[0-9][0-9](':'[0-9][0-9])? ;
+TIMESTAMP
+    : [0-9][0-9][0-9][0-9] '-' [0-9][0-9] '-' [0-9][0-9]
+      'T'
+      [0-9][0-9] ':' [0-9][0-9] (':' [0-9][0-9])?
+      ( 'Z' | ('+' | '-') [0-9][0-9] ':' [0-9][0-9] )
+    ;
 ```
 
-Times can be expressed as `HH:MM` or `HH:MM:SS`. Minute-level precision is sufficient for scheduled flights; second-level precision is needed for time-critical operations (e.g., RVSM separation checks, slot compliance). Accepting both forms makes the DSL forward-compatible without breaking existing files that use `HH:MM` only.
+The timestamp literal combines date, time, and timezone offset into a single token matching ISO 8601. Example: `2026-06-15T06:00+01:00` or `2026-06-15T08:30Z`. This design was chosen over separate `DATE_LITERAL` + `TIME_LITERAL` tokens because:
+- Timezone offsets are inseparable from the datetime — a departure at `08:30` in Lisbon means `+01:00` in summer.
+- Having a single token avoids three-way tokenisation (`DATE TIME TIMEZONE`) and makes the grammar simpler.
+- The optional seconds component (`:SS`) allows minute-level precision for scheduling and second-level precision for time-critical operations.
 
-### 4.6 Schedule type tied to flight type (`DAY_LITERAL`, `scheduleField`, R11)
+Semantic rule R10 validates calendar correctness (e.g., rejects Feb 30, hour > 23).
+
+### 4.6 Schedule type tied to flight type (`DAY_OF_WEEK`, `departureSchedule`, R11)
 
 ```antlr
-scheduleField
-    : DATE COLON DATE_LITERAL SEMI
-    | DAY  COLON DAY_LITERAL  SEMI
+departureSchedule
+    : DATETIME COLON TIMESTAMP SEMI
+    | daySchedule+
+    ;
+
+daySchedule
+    : DAY COLON DAY_OF_WEEK SEMI DATETIME COLON TIMESTAMP SEMI
     ;
 
 DAY         : [dD][aA][yY] ;
-DAY_LITERAL : [mM][oO][nN][dD][aA][yY]
+DAY_OF_WEEK : [mM][oO][nN][dD][aA][yY]
             | [tT][uU][eE][sS][dD][aA][yY]
             | [wW][eE][dD][nN][eE][sS][dD][aA][yY]
             | [tT][hH][uU][rR][sS][dD][aA][yY]
@@ -392,12 +439,12 @@ DAY_LITERAL : [mM][oO][nN][dD][aA][yY]
 **Motivation:** regular and charter flights have fundamentally different scheduling semantics. A regular flight (e.g., TP001) runs every Monday and Thursday — its schedule is expressed as a day of week. A charter flight is booked for a specific date — its schedule is a full calendar date. Conflating the two would make the DSL imprecise about when a flight actually operates.
 
 **Design decisions:**
-- `scheduleField` replaces the hard-coded `DATE COLON DATE_LITERAL` in `departureDecl`, so both schedule forms are syntactically valid. The grammar does not enforce which form is used — that responsibility belongs to semantic rule R11.
-- `DAY_LITERAL` is declared before `IDENTIFIER` so that day names (`Monday`, `TUESDAY`, etc.) are not tokenised as identifiers.
-- `DAY` is declared before `DATE` to prevent the prefix `day` from partially matching the `date` rule under maximal munch.
-- R11 is enforced in `exitDepartureDecl`, where the current flight type (captured in `enterFlightDecl`) is compared against the `scheduleField` alternative present in the parse tree.
-
-**R4 for regular flights:** Arrival blocks have no date or day field. For multi-leg regular flights, the listener uses the departure day of each leg as a proxy for the arrival day. Cross-leg ordering is compared using a day-ordinal score (Monday = 1, …, Sunday = 7) combined with time in minutes. This handles same-day and multi-day regular schedules correctly for non-cross-midnight legs.
+- `departureSchedule` replaces the hard-coded `DATETIME COLON TIMESTAMP` in `departureDecl`, so both schedule forms are syntactically valid. The grammar does not enforce which form is used — that responsibility belongs to semantic rule R11.
+- Regular flights can have **multiple** `day + datetime` pairs per leg, allowing a weekly schedule with different days and times (e.g., Monday 07:00, Wednesday 07:00, Friday 07:00).
+- `DAY_OF_WEEK` is declared before `IDENTIFIER` so that day names (`Monday`, `TUESDAY`, etc.) are not tokenised as identifiers.
+- `DAY` is declared separately from `DATETIME` to prevent the prefix `day` from partially matching the `datetime` rule under maximal munch.
+- R11 is enforced in `exitDepartureDecl`, where the current flight type (captured in `enterFlightDecl`) is compared against the `departureSchedule` alternative present in the parse tree.
+- All timestamps (both regular and charter) carry full ISO 8601 datetime with timezone, enabling consistent UTC-aware comparison for R4.
 
 ---
 
@@ -432,15 +479,7 @@ matched tokens and child rules. The Visitor and Listener both operate on this tr
 `ParseTreeWalker.DEFAULT.walk(listener, tree)`. The walker calls `enterXxx`/`exitXxx`
 automatically, depth-first — **no explicit child visits needed**.
 
-**Symbol table (R1):** `seenFlightIds: Set<String>` accumulates every declared flight ID.
-`enterFlightDecl` fires at each `flight` keyword — the correct point to check for duplicates and to capture the flight type for R11:
-
-```java
-if (!seenFlightIds.add(id)) {
-    error(..., "R1", "flight identifier '" + id + "' already declared in this file");
-}
-currentFlightType = ctx.flightType().REGULAR() != null ? "REGULAR" : "CHARTER";
-```
+**R1 enforcement:** The grammar rule `flightFile : flightDecl EOF` ensures exactly one flight declaration per file — a parser error is raised if a second `flight` keyword appears. The flight type is captured in `enterFlightDecl` for R11:
 
 **State across events (R3–R11):** For rules that span multiple blocks, the listener accumulates state across events:
 
@@ -452,7 +491,6 @@ enterFlightDecl  → clear per-flight state; capture flight type (R11)
   exitFuelDecl       → R2: fuel > 0
   exitSegmentDecl    → R8: from ≠ to
   exitAltitudeSlot   → R9: altitude > 0, width > 0
-  exitWindDecl       → R9: direction 0-360, speed ≥ 0
   exitLegDecl        → append [depAirport, dateOrDay, depTime, arrAirport, arrTime] to legs list
 exitFlightDecl   → R3 R4 R5 R6 R7 using the accumulated legs list
 ```
@@ -461,7 +499,7 @@ exitFlightDecl   → R3 R4 R5 R6 R7 using the accumulated legs list
 
 | Rule | Constraint | Checked at |
 |------|-----------|------------|
-| **R1** | Flight identifier unique within file | `enterFlightDecl` |
+| **R1** | Flight identifier unique within file | grammar: `flightDecl EOF` |
 | **R2** | Fuel quantity > 0 | `exitFuelDecl` |
 | **R3** | Arrival airport of leg N = departure airport of leg N+1 | `exitFlightDecl` |
 | **R4** | Arrival time of leg N < departure time of leg N+1 | `exitFlightDecl` |
@@ -469,7 +507,7 @@ exitFlightDecl   → R3 R4 R5 R6 R7 using the accumulated legs list
 | **R6** | Route destination = last leg arrival airport | `exitFlightDecl` |
 | **R7** | No airport visited more than once in the same flight | `exitFlightDecl` |
 | **R8** | Segment from-coordinate ≠ to-coordinate | `exitSegmentDecl` |
-| **R9** | Altitudes, widths and wind speed > 0; wind direction ∈ [0, 360] | `exitAltitudeSlot`, `exitWindDecl` |
+| **R9** | Altitudes and corridor widths > 0 | `exitAltitudeSlot` |
 | **R10** | Dates are valid calendar dates; times are valid HH:MM[:SS] values | `exitDepartureDecl`, `exitArrivalDecl` |
 | **R11** _(extension)_ | Regular flights must use `day:`, charter flights must use `date:` | `exitDepartureDecl` |
 
@@ -499,19 +537,26 @@ public String visitFlightDecl(FlightPlanParser.FlightDeclContext ctx) {
 }
 ```
 
-Running `FlightPlanRunner.run(path, true)` on `valid_direct_flight.flightplan` prints:
+Running `FlightPlanRunner.run(path, true)` on `valid_regular_multi_leg.flightplan` prints:
 ```
 === Flight Plan Summary ===
-Flight TP1234      [REGULAR]
-  Route    : LIS -> LHR
-  Leg L1
-    Departure : LIS  Monday  08:30
-    Arrival   : LHR  10:45
-    Fuel      : 15000kg
-    Segment SEG1  from:(38.7813,-9.1359) to:(51.4775,-0.4614) alt:[10000m width 50m, 11000m] wind:(270,15m/s)
+Flight TP3000      [REGULAR]
+  Aircraft : CS-TUB
+  Pilot    : P12345
+  Route    : LIS -> CDG
+  Leg 1
+    Departure : LIS  Monday  2026-05-18T07:00+01:00  Wednesday  2026-05-20T07:00+01:00  Friday  2026-05-22T07:00+01:00
+    Arrival   : MAD  2026-05-18T09:30+02:00
+    Fuel      : 8000kg
+    Segment 1 from:(38.7813,-9.1359) to:(40.4983,-3.5676) alt:[10000m width 60m]
+  Leg 2
+    Departure : MAD  Monday  2026-05-18T11:00+02:00  Wednesday  2026-05-20T11:00+02:00  Friday  2026-05-22T11:00+02:00
+    Arrival   : CDG  2026-05-18T13:30+02:00
+    Fuel      : 9000kg
+    Segment 1 from:(40.4983,-3.5676) to:(49.0097,2.5479) alt:[11000m width 60m]
 ```
 
-`visitScheduleField` returns either the ISO date or the day name — the same `visitDepartureDecl` format string handles both.
+`visitDepartureSchedule` returns either the ISO datetime or the day+datetime combination — the same `visitDepartureDecl` format string handles both.
 
 #### The visitor runs only after all three validation phases pass.
 
@@ -523,7 +568,13 @@ All files are in `src/main/resources/examples/`.
 |------|------|--------|
 | `valid_direct_flight.flightplan` | valid | regular flight, LIS→LHR, day-of-week schedule, WIDTH altitude |
 | `valid_multi_leg.flightplan` | valid | charter, OPO→EDDF→WAW, 2 legs, ICAO+IATA mix |
-| `valid_regular_multi_leg.flightplan` | valid | regular, LIS→MAD→CDG, day-of-week, 2 legs (R11 extension) |
+| `valid_regular_multi_leg.flightplan` | valid | regular, LIS→MAD→CDG, 2 legs, 3 schedules each (Mon/Wed/Fri), (R11 extension) |
+| `valid_demo_regular_usa_lis.flightplan` | valid | regular, JFK→LIS, 3 schedules (Tue/Thu/Sat), 3 segments crossing Atlantic |
+| `valid_demo_charter_lis_mad.flightplan` | valid | charter, LIS→MAD, 2 segments |
+| `valid_long_haul_charter.flightplan` | valid | charter, DXB→JFK, 3 segments, multiple altitude slots |
+| `valid_icao_codes.flightplan` | valid | regular, ICAO 4-letter codes LPPT→EDDM |
+| `valid_different_units.flightplan` | valid | charter, altitudes in ft (alternative aviation unit) |
+| `valid_short_hop.flightplan` | valid | charter, OPO→LIS, 2 segments approach |
 | `invalid_bad_flight_type.flightplan` | syntactic | `cargo` is not a valid flight type |
 | `invalid_missing_route.flightplan` | syntactic | route block absent |
 | `invalid_missing_departure.flightplan` | syntactic | departure block absent from leg |

@@ -1,0 +1,41 @@
+// Valid short hop: Porto -> Lisbon (charter, multiple segments for approach)
+
+flight TP456 : charter {
+
+    route {
+        origin      : OPO;
+        destination : LIS;
+    }
+
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+
+        departure {
+            airport  : OPO;
+            datetime : 2026-09-10T14:00+01:00;
+        }
+
+        arrival {
+            airport  : LIS;
+            datetime : 2026-09-10T15:15+01:00;
+        }
+
+        fuel {
+            quantity : 5000 kg;
+        }
+
+        segment {
+            from      : (41.2481, -8.6814);
+            to        : (39.0000, -8.5000);
+            altitudes : [8000 m WIDTH 40 m];
+        }
+
+        segment {
+            from      : (39.0000, -8.5000);
+            to        : (38.7813, -9.1359);
+            altitudes : [5000 m WIDTH 30 m, 3000 m WIDTH 30 m];
+        }
+    }
+}

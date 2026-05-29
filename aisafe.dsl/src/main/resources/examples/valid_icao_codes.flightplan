@@ -1,0 +1,36 @@
+// Valid flight using ICAO 4-letter airport codes (regular, weekly schedule)
+
+flight TP789 : regular {
+
+    route {
+        origin      : LPPT;
+        destination : EDDM;
+    }
+
+    aircraft : CS-TNJ;
+    pilot    : P54321;
+
+    leg {
+
+        departure {
+            airport  : LPPT;
+            day      : Thursday;
+            datetime : 2026-10-01T06:00+01:00;
+        }
+
+        arrival {
+            airport  : EDDM;
+            datetime : 2026-10-01T10:30+02:00;
+        }
+
+        fuel {
+            quantity : 20000 l;
+        }
+
+        segment {
+            from      : (38.7756, -9.1354);
+            to        : (48.3538, 11.7759);
+            altitudes : [11000 m WIDTH 60 m];
+        }
+    }
+}

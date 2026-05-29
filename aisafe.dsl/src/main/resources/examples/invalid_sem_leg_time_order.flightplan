@@ -11,23 +11,23 @@ flight TP104 : charter {
     aircraft : CS-TUB;
     pilot    : P12345;
 
-    leg L1 {
+    leg {
         departure { airport: LIS;  datetime: 2026-05-20T07:00+01:00; }
         arrival   { airport: EDDF; datetime: 2026-05-20T13:00+02:00; }
         fuel      { quantity: 18000 kg; }
-        segment S1 {
+        segment {
             from: (38.7813, -9.1359); to: (50.0333, 8.5706);
-            altitudes: [10000 m]; wind: (90, 20 m/s);
+            altitudes: [10000 m WIDTH 60 m];
         }
     }
 
-    leg L2 {
+    leg {
         departure { airport: EDDF; datetime: 2026-05-20T11:00+02:00; }
         arrival   { airport: WAW;  datetime: 2026-05-20T13:30+02:00; }
         fuel      { quantity: 14000 kg; }
-        segment S2 {
+        segment {
             from: (50.0333, 8.5706); to: (52.1657, 20.9671);
-            altitudes: [10000 m]; wind: (45, 15 m/s);
+            altitudes: [10000 m WIDTH 60 m];
         }
     }
 }

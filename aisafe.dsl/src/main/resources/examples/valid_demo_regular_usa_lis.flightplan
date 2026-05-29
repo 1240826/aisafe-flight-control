@@ -1,0 +1,51 @@
+// Demo — Regular flight: New York (JFK) -> Lisbon (LIS)
+// Multiple weekly schedules: Tuesday, Thursday, Saturday
+// Three segments across the Atlantic
+
+flight TP202 : regular {
+
+    route {
+        origin      : JFK;
+        destination : LIS;
+    }
+
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+
+        departure {
+            airport  : JFK;
+            day      : Tuesday;  datetime : 2026-06-02T22:00-04:00;
+            day      : Thursday; datetime : 2026-06-04T22:00-04:00;
+            day      : Saturday; datetime : 2026-06-06T22:00-04:00;
+        }
+
+        arrival {
+            airport  : LIS;
+            datetime : 2026-06-03T10:30+01:00;
+        }
+
+        fuel {
+            quantity : 60000 kg;
+        }
+
+        segment {
+            from      : (40.6413, -73.7781);
+            to        : (44.0000, -60.0000);
+            altitudes : [11000 m WIDTH 80 m];
+        }
+
+        segment {
+            from      : (44.0000, -60.0000);
+            to        : (50.0000, -30.0000);
+            altitudes : [12000 m WIDTH 100 m, 13000 m WIDTH 100 m];
+        }
+
+        segment {
+            from      : (50.0000, -30.0000);
+            to        : (38.7813, -9.1359);
+            altitudes : [11000 m WIDTH 80 m];
+        }
+    }
+}

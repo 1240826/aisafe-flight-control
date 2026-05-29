@@ -10,13 +10,13 @@ flight TP109 : charter {
     aircraft : CS-TUB;
     pilot    : P12345;
 
-    leg L1 {
+    leg {
         departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
         arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
         fuel      { quantity: 15000 kg; }
-        segment S1 {
+        segment {
             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-            altitudes: [0 m]; wind: (270, 15 m/s);
+            altitudes: [0 m WIDTH 60 m];
         }
     }
 }

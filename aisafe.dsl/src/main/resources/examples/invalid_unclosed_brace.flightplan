@@ -8,13 +8,13 @@ flight TP9007 : regular {
     aircraft : CS-TUB;
     pilot    : P12345;
 
-    leg L1 {
+    leg {
         departure { airport: LIS; day: Monday; datetime: 2026-05-18T08:30+01:00; }
         arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
         fuel      { quantity: 15000 kg; }
-        segment SEG1 {
+        segment {
             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-            altitudes: [10000 m]; wind: (270, 15 m/s);
+            altitudes: [10000 m WIDTH 60 m];
         }
 
     // ERROR: missing closing brace for leg L1 — and for flight block

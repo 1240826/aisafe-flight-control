@@ -9,7 +9,7 @@ flight TP9999 : regular {
     aircraft : REG001;
     pilot    : P99999;
 
-    leg L1 {
+    leg {
         departure {
             airport  : LIS;
             day      : Monday;
@@ -20,9 +20,9 @@ flight TP9999 : regular {
             datetime : 2026-05-18T10:45+01:00;
         }
         fuel    { quantity: 15000 kg; }
-        segment SEG1 {
+        segment {
             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-            altitudes: [10000 m]; wind: (270, 15 m/s);
+            altitudes: [10000 m WIDTH 60 m];
         }
     }
 }
