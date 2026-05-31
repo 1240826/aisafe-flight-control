@@ -1,5 +1,6 @@
-// Valid regular multi-leg flight: Lisbon -> Madrid -> Paris (Mondays)
+// Valid regular multi-leg flight: Lisbon -> Madrid -> Paris
 // Regular flights: day-of-week (weekly pattern) + full datetime with timezone
+// Multiple schedules: departed from same airports on different days at potentially different times
 
 flight TP3000 : regular {
 
@@ -11,27 +12,29 @@ flight TP3000 : regular {
     aircraft : CS-TUB;
     pilot    : P12345;
 
-    leg L1 {
-        departure { airport: LIS; day: Monday; datetime: 2026-05-18T07:00+01:00; }
+    leg {
+        departure { airport: LIS; day: Monday;   datetime: 2026-05-18T07:00+01:00;
+                                   day: Wednesday; datetime: 2026-05-20T07:00+01:00;
+                                   day: Friday;    datetime: 2026-05-22T07:00+01:00; }
         arrival   { airport: MAD; datetime: 2026-05-18T09:30+02:00; }
         fuel      { quantity: 8000 kg; }
-        segment SEG1 {
+        segment {
             from      : (38.7813, -9.1359);
             to        : (40.4983, -3.5676);
             altitudes : [10000 m WIDTH 60 m];
-            wind      : (90, 20 m/s);
         }
     }
 
-    leg L2 {
-        departure { airport: MAD; day: Monday; datetime: 2026-05-18T11:00+02:00; }
+    leg {
+        departure { airport: MAD; day: Monday;   datetime: 2026-05-18T11:00+02:00;
+                                   day: Wednesday; datetime: 2026-05-20T11:00+02:00;
+                                   day: Friday;    datetime: 2026-05-22T11:00+02:00; }
         arrival   { airport: CDG; datetime: 2026-05-18T13:30+02:00; }
         fuel      { quantity: 9000 kg; }
-        segment SEG2 {
+        segment {
             from      : (40.4983, -3.5676);
             to        : (49.0097, 2.5479);
             altitudes : [11000 m WIDTH 60 m];
-            wind      : (315, 15 m/s);
         }
     }
 }

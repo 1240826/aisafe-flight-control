@@ -14,13 +14,13 @@ flight TP100 : charter {
     aircraft : CS-TUB;
     pilot    : P12345;
 
-    leg L1 {
+    leg {
         departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
         arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
         fuel      { quantity: 15000 kg; }
-        segment S1 {
+        segment {
             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-            altitudes: [10000 m]; wind: (270, 15 m/s);
+            altitudes: [10000 m WIDTH 60 m];
         }
     }
 }
@@ -35,13 +35,13 @@ flight TP100 : charter {
     aircraft : CS-TUB;
     pilot    : P12345;
 
-    leg L1 {
+    leg {
         departure { airport: OPO; datetime: 2026-05-20T09:00+01:00; }
         arrival   { airport: CDG; datetime: 2026-05-20T11:30+02:00; }
         fuel      { quantity: 14000 kg; }
-        segment S1 {
+        segment {
             from: (41.2481, -8.6814); to: (49.0097, 2.5479);
-            altitudes: [10000 m]; wind: (270, 20 m/s);
+            altitudes: [10000 m WIDTH 60 m];
         }
     }
 }

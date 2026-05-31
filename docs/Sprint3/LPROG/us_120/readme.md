@@ -98,8 +98,7 @@ flight
 │   └── Segment (1..n)
 │       ├── From coordinates
 │       ├── To coordinates
-│       ├── Altitudes
-│       └── Wind
+│       └── Altitudes
 ├── Leg (2)
 │   └── ...
 └── Leg (n)
@@ -128,9 +127,8 @@ The DSL now distinguishes between:
 | IATA codes | `LIS`, `MAD`, `CDG` | 3 uppercase letters |
 | Numbers | `11000`, `-8.6814` | Integer or decimal |
 | Timestamp literals | `2026-06-15T06:00+01:00` | ISO-8601 |
-| Day literals | `Monday`, `Friday` | Case-insensitive |
+| Day-of-week literals | `Monday`, `Friday` | Case-insensitive |
 | Units | `kg`, `m`, `m/s`, `ft`, `kt` | Attached to numbers |
-| Degree marker | `degrees`, `°` | Optional in wind direction |
 | Symbols | `{ } ( ) [ ] , : ;` | Delimiters |
 | Comments | `//`, `/* */` | Ignored |
 | Whitespace | spaces, tabs, newlines | Ignored |
@@ -140,7 +138,7 @@ The DSL now distinguishes between:
 ## Informal Syntax Specification
 
 ```text
-flightFile ::= flightDecl
+flightFile ::= flightDecl EOF
 
 flightDecl ::= FLIGHT flightId COLON flightType LBRACE
                    routeDecl
@@ -156,7 +154,7 @@ routeDecl ::= ROUTE LBRACE
                   DESTINATION COLON airportCode SEMI
               RBRACE
 
-legDecl ::= LEG IDENTIFIER LBRACE
+legDecl ::= LEG LBRACE
                 departureDecl
                 arrivalDecl
                 fuelDecl
@@ -165,16 +163,17 @@ legDecl ::= LEG IDENTIFIER LBRACE
 
 departureDecl ::= DEPARTURE LBRACE
                       AIRPORT COLON airportCode SEMI
-                      scheduleField
+                      departureSchedule
                   RBRACE
 
-scheduleField ::= DATETIME COLON TIMESTAMP_LITERAL SEMI
-                | DAY COLON DAY_LITERAL SEMI
-                  DATETIME COLON TIMESTAMP_LITERAL SEMI
+departureSchedule ::= DATETIME COLON TIMESTAMP SEMI
+                    | daySchedule+
+
+daySchedule ::= DAY COLON DAY_OF_WEEK SEMI DATETIME COLON TIMESTAMP SEMI
 
 arrivalDecl ::= ARRIVAL LBRACE
                     AIRPORT COLON airportCode SEMI
-                    DATETIME COLON TIMESTAMP_LITERAL SEMI
+                    DATETIME COLON TIMESTAMP SEMI
                 RBRACE
 ```
 
@@ -182,20 +181,21 @@ arrivalDecl ::= ARRIVAL LBRACE
 
 ## Semantic Validation Rules
 
-The semantic analysis validates constraints that cannot be enforced directly by grammar rules.
+The semantic analysis validates constraints that cannot be enforced directly by grammar rules. All rules (R1-R11) are enforced:
 
-Examples:
-
-- A flight must contain at least one leg.
-- Each leg must contain at least one segment.
-- Fuel quantity must be positive.
-- Wind direction must be between `0` and `360`.
-- Coordinates must be within valid latitude/longitude ranges.
-- Charter flights cannot define a `day`.
-- Regular flights must define a `day`.
-- Departure and arrival airports in the same leg cannot be equal.
-- Route origin must match the first departure airport.
-- Route destination must match the final arrival airport.
+| Rule | Constraint |
+|------|-----------|
+| R1 | Exactly one flight declaration per file (enforced by grammar: `flightDecl EOF`) |
+| R2 | Fuel quantity must be strictly positive |
+| R3 | Arrival airport of leg N must match departure airport of leg N+1 |
+| R4 | Arrival datetime of leg N must be before departure datetime of leg N+1 (UTC-aware) |
+| R5 | Route origin must match the first leg's departure airport |
+| R6 | Route destination must match the last leg's arrival airport |
+| R7 | No airport may be visited more than once in the same flight |
+| R8 | Segment from-coordinate must differ from to-coordinate |
+| R9 | Altitudes > 0, corridor widths > 0 |
+| R10 | Timestamps must be valid ISO 8601 datetimes (with timezone) |
+| R11 | Regular flights must use `day: + datetime:`; charter flights must use `datetime:` only |
 
 ---
 
@@ -206,19 +206,15 @@ Examples:
 The implementation follows the ANTLR4 processing pipeline presented in the LPROG lectures.
 
 ```text
-Input File
+Input File (.flightplan)
     ↓
-Lexer
+FlightPlanLexer            [FlightPlanErrorListener] → LEXER errors
     ↓
-Parser
+FlightPlanParser           [FlightPlanErrorListener] → PARSER errors
     ↓
-Parse Tree
-    ↓
-Visitor / Listener
-    ↓
-Semantic Validation
-    ↓
-Domain Object Model
+Parse Tree (AST)
+    ├── ParseTreeWalker + SemanticValidationListener → SEMANTIC errors
+    └── FlightPlanPrinterVisitor                     → formatted summary
 ```
 
 ---
@@ -244,8 +240,9 @@ datetime : 2026-06-15T06:00+01:00;
 #### Regular flight
 
 ```text
-day      : Monday;
-datetime : 2026-05-18T07:00+01:00;
+day      : Monday;   datetime : 2026-05-18T07:00+01:00;
+day      : Wednesday; datetime : 2026-05-20T07:00+01:00;
+day      : Friday;    datetime : 2026-05-22T07:00+01:00;
 ```
 
 ---
@@ -261,15 +258,9 @@ The lexer supports timestamps with timezone offsets:
 
 ---
 
-### Wind direction extension
+### Weather data (wind)
 
-The grammar accepts:
-
-```text
-(90 degrees, 20 m/s)
-(90°, 20 m/s)
-(90, 20 m/s)
-```
+Wind data (direction and speed) is **not included in the DSL**. Weather forecasts are imported separately via weather data files (US042) and associated with flight plans by the pilot (US082). This separation avoids duplication between DSL and external weather data sources, and keeps the DSL focused on the flight's structural data.
 
 ---
 
@@ -282,11 +273,7 @@ ANTLR generates:
 - `FlightPlanListener`
 - `FlightPlanBaseListener`
 
-Visitors are used for:
-
-- semantic validation,
-- internal model construction,
-- parse tree traversal.
+The listener is used for semantic validation (`SemanticValidationListener`), while a visitor (`FlightPlanPrinterVisitor`) is used for formatting the parsed flight plan as a human-readable summary. The generated AST (parse tree) serves as the internal representation.
 
 ---
 
@@ -414,7 +401,6 @@ Validate that semantic constraints are enforced after parsing.
 **Procedure:**
 1. Execute the semantic visitor using files with:
     - negative fuel values,
-    - invalid wind directions,
     - inconsistent route airports,
     - invalid regular/charter scheduling rules.
 
@@ -505,8 +491,8 @@ Both files are successfully validated.
 | `FlightPlan.g4` | `src/main/antlr4/` |
 | `FlightPlanRunner.java` | `src/main/java/.../dsl/` |
 | `FlightPlanErrorListener.java` | `src/main/java/.../errors/` |
-| `FlightPlanSemanticVisitor.java` | `src/main/java/.../visitor/` |
-| `FlightPlanModelBuilderVisitor.java` | `src/main/java/.../visitor/` |
+| `SemanticValidationListener.java` | `src/main/java/.../listener/` |
+| `FlightPlanPrinterVisitor.java` | `src/main/java/.../visitor/` |
 
 ---
 
@@ -572,7 +558,7 @@ Example invalid execution:
 ```text
 Validation FAILED: invalid_semantic.flightplan
 
-[SEMANTIC] line 31:12 - wind direction must be between 0 and 360
+[SEMANTIC] line 24:15 - fuel quantity must be positive
 ```
 
 The implementation integrates:

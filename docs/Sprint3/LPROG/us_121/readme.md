@@ -83,8 +83,7 @@ FlightPlan (Aggregate Root)
                 ├── SegmentId segId
                 ├── Coordinates from
                 ├── Coordinates to
-                ├── List<AltitudeSlot> altitudes
-                └── WindCondition wind
+                └── List<AltitudeSlot> altitudes
 ```
 
 ### Domain Connections
@@ -125,7 +124,7 @@ This US bridges two modules:
 | `LegId` | `aisafe.core.flightplan.domain` | Value Object for leg identification |
 | `Segment` | `aisafe.core.flightplan.domain` | Local entity within Leg |
 | `SegmentId` | `aisafe.core.flightplan.domain` | Value Object for segment identification |
-| `AltitudeSlot` | `aisafe.core.flightplan.domain` | Value Object: altitude + optional width |
+| `AltitudeSlot` | `aisafe.core.flightplan.domain` | Value Object: altitude + corridor width |
 | `FlightPlanRepository` | `aisafe.core.flightplan.repositories` | Repository interface |
 | `JpaFlightPlanRepository` | `aisafe.persistence.impl` | JPA implementation |
 | `FlightPlanAssembler` | `aisafe.core.flightplan.application` | Converts DSL parse tree → domain entities |

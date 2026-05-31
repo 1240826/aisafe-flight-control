@@ -1,0 +1,35 @@
+// Valid flight using altitude in feet (alternative aviation unit)
+
+flight BA101 : charter {
+
+    route {
+        origin      : LHR;
+        destination : JFK;
+    }
+
+    aircraft : G-EUUB;
+    pilot    : P11111;
+
+    leg {
+
+        departure {
+            airport  : LHR;
+            datetime : 2026-12-01T10:00+00:00;
+        }
+
+        arrival {
+            airport  : JFK;
+            datetime : 2026-12-01T17:30-05:00;
+        }
+
+        fuel {
+            quantity : 80000 kg;
+        }
+
+        segment {
+            from      : (51.4700, -0.4543);
+            to        : (40.7128, -74.0060);
+            altitudes : [35000 ft WIDTH 2000 ft, 37000 ft WIDTH 2000 ft];
+        }
+    }
+}

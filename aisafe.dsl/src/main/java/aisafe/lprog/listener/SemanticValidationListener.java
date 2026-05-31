@@ -22,7 +22,7 @@ import java.util.*;
  *   R6  — route destination == last leg arrival airport
  *   R7  — no airport visited more than once in the same flight
  *   R8  — segment from-coordinate != to-coordinate
- *   R9  — altitude and width positive; wind direction 0–360, speed >= 0
+ *   R9  — altitude and width positive
  *   R10 — timestamp is a valid ISO 8601 datetime with timezone
  *   R11 — charter departures use datetime: only; regular departures use day: + datetime:
  *         arrivals always use datetime: (destination timezone) — no R11 for arrivals
@@ -135,31 +135,30 @@ public class SemanticValidationListener extends FlightPlanBaseListener {
     @Override
     public void exitDepartureDecl(FlightPlanParser.DepartureDeclContext ctx) {
         currentDepAirport = ctx.airportCode().getText();
-        var schedule = ctx.scheduleField();
-        String ts = schedule.TIMESTAMP_LITERAL().getText();
-        currentDepTimestamp = ts;
-
-        // R10 — validate the timestamp (catches invalid dates like Feb 30, invalid hours, etc.)
-        try {
-            OffsetDateTime.parse(ts);
-        } catch (DateTimeParseException e) {
-            error(schedule.TIMESTAMP_LITERAL().getSymbol().getLine(), "R10",
-                    "departure timestamp '" + ts + "' is not a valid ISO 8601 datetime");
-        }
+        var schedule = ctx.departureSchedule();
 
         // R11 — departure format must match flight type
-        if (schedule.DAY_LITERAL() != null) {
-            // Regular format (day: + datetime:) used
+        if (!schedule.daySchedule().isEmpty()) {
+            // Regular format: day: + datetime: (one or more pairs)
             if ("CHARTER".equals(currentFlightType)) {
                 error(schedule.getStart().getLine(), "R11",
                         "charter flights must specify departure as datetime: only, not day: + datetime:");
             }
+            // Extract first timestamp for R4/R10; validate all
+            currentDepTimestamp = schedule.daySchedule(0).TIMESTAMP().getText();
+            for (int i = 0; i < schedule.daySchedule().size(); i++) {
+                String ts = schedule.daySchedule(i).TIMESTAMP().getText();
+                r10validate(ts, schedule.daySchedule(i).TIMESTAMP().getSymbol().getLine(), "departure");
+            }
         } else {
-            // Charter format (datetime: only) used
+            // Charter format: datetime: only
             if ("REGULAR".equals(currentFlightType)) {
                 error(schedule.getStart().getLine(), "R11",
                         "regular flights must specify departure as day: + datetime:, not datetime: only");
             }
+            String ts = schedule.TIMESTAMP().getText();
+            currentDepTimestamp = ts;
+            r10validate(ts, schedule.TIMESTAMP().getSymbol().getLine(), "departure");
         }
     }
 
@@ -167,16 +166,9 @@ public class SemanticValidationListener extends FlightPlanBaseListener {
     @Override
     public void exitArrivalDecl(FlightPlanParser.ArrivalDeclContext ctx) {
         currentArrAirport = ctx.airportCode().getText();
-        String ts = ctx.arrivalSchedule().TIMESTAMP_LITERAL().getText();
+        String ts = ctx.arrivalSchedule().TIMESTAMP().getText();
         currentArrTimestamp = ts;
-
-        // R10 — validate arrival timestamp (destination timezone offset required)
-        try {
-            OffsetDateTime.parse(ts);
-        } catch (DateTimeParseException e) {
-            error(ctx.arrivalSchedule().TIMESTAMP_LITERAL().getSymbol().getLine(), "R10",
-                    "arrival timestamp '" + ts + "' is not a valid ISO 8601 datetime");
-        }
+        r10validate(ts, ctx.arrivalSchedule().TIMESTAMP().getSymbol().getLine(), "arrival");
     }
 
     @Override
@@ -201,7 +193,6 @@ public class SemanticValidationListener extends FlightPlanBaseListener {
     // R8 — segment from != to
     @Override
     public void exitSegmentDecl(FlightPlanParser.SegmentDeclContext ctx) {
-        String id   = ctx.IDENTIFIER().getText();
         var fromCtx = ctx.coordinatePair(0);
         var toCtx   = ctx.coordinatePair(1);
 
@@ -209,8 +200,9 @@ public class SemanticValidationListener extends FlightPlanBaseListener {
         double tLat = number(toCtx.numericValue(0)),   tLon = number(toCtx.numericValue(1));
 
         if (Double.compare(fLat, tLat) == 0 && Double.compare(fLon, tLon) == 0) {
+            int idx = ((FlightPlanParser.LegDeclContext) ctx.getParent()).segmentDecl().indexOf(ctx) + 1;
             error(ctx.getStart().getLine(), "R8",
-                    "segment '" + id + "': from and to coordinates must differ");
+                    "segment " + idx + ": from and to coordinates must differ");
         }
     }
 
@@ -222,31 +214,23 @@ public class SemanticValidationListener extends FlightPlanBaseListener {
             error(ctx.getStart().getLine(), "R9",
                     "altitude must be positive, got: " + ctx.numericValue(0).getText());
         }
-        if (ctx.WIDTH() != null && ctx.numericValue().size() > 1) {
-            double w = number(ctx.numericValue(1));
-            if (w <= 0) {
-                error(ctx.getStart().getLine(), "R9",
-                        "corridor width must be positive, got: " + ctx.numericValue(1).getText());
-            }
-        }
-    }
-
-    // R9 — wind direction 0–360, speed >= 0
-    @Override
-    public void exitWindDecl(FlightPlanParser.WindDeclContext ctx) {
-        double dir   = Double.parseDouble(ctx.windDir().NUMBER().getText());
-        double speed = number(ctx.numericValue());
-        if (dir < 0 || dir > 360) {
+        double w = number(ctx.numericValue(1));
+        if (w <= 0) {
             error(ctx.getStart().getLine(), "R9",
-                    "wind direction must be in [0, 360], got: " + ctx.windDir().NUMBER().getText());
-        }
-        if (speed < 0) {
-            error(ctx.getStart().getLine(), "R9",
-                    "wind speed must be non-negative, got: " + ctx.numericValue().getText());
+                    "corridor width must be positive, got: " + ctx.numericValue(1).getText());
         }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private void r10validate(String ts, int line, String label) {
+        try {
+            OffsetDateTime.parse(ts);
+        } catch (DateTimeParseException e) {
+            error(line, "R10",
+                    label + " timestamp '" + ts + "' is not a valid ISO 8601 datetime");
+        }
+    }
 
     private double number(FlightPlanParser.NumericValueContext ctx) {
         return Double.parseDouble(ctx.NUMBER().getText());

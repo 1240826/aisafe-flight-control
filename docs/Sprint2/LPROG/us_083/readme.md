@@ -58,8 +58,7 @@ A flight plan represents a complete flight operation. It may include multiple le
 | ICAO codes | `EDDF`, `LPPT` | Exactly 4 uppercase letters |
 | IATA codes | `LIS`, `LHR` | Exactly 3 uppercase letters |
 | Numbers | `38.7813`, `-9.1359`, `15000` | Integer or float, optionally signed |
-| Date literals | `2026-05-10` | Format `YYYY-MM-DD` |
-| Time literals | `08:30`, `10:45:00` | Format `HH:MM` or `HH:MM:SS` |
+| Timestamp literals | `2026-06-15T06:00+01:00` | ISO 8601 with timezone |
 | Units | `kg`, `l`, `m`, `m/s`, `ft`, `km`, `km/h`, `kt` | Qualify numeric values |
 | Symbols | `{ } ( ) [ ] , : ;` | Block delimiters and separators |
 | Comments | `// ...` and `/* ... */` | Extension — ignored by the lexer |
@@ -70,10 +69,12 @@ Keywords are **case-insensitive**. Identifiers and literals are **case-sensitive
 ### Informal Syntax Specification
 
 ```
-flightFile    ::= flightDecl+ EOF
+flightFile    ::= flightDecl EOF
 
 flightDecl    ::= FLIGHT id COLON flightType LBRACE
                       routeDecl
+                      AIRCRAFT COLON IDENTIFIER SEMI
+                      PILOT COLON IDENTIFIER SEMI
                       legDecl+
                   RBRACE
 
@@ -84,7 +85,7 @@ routeDecl     ::= ROUTE LBRACE
                       DESTINATION COLON airportCode SEMI
                   RBRACE
 
-legDecl       ::= LEG id LBRACE
+legDecl       ::= LEG LBRACE
                       departureDecl
                       arrivalDecl
                       fuelDecl
@@ -92,21 +93,26 @@ legDecl       ::= LEG id LBRACE
                   RBRACE
 
 departureDecl ::= DEPARTURE LBRACE
-                      AIRPORT COLON airportCode  SEMI
-                      DATE    COLON DATE_LITERAL SEMI
-                      TIME    COLON TIME_LITERAL SEMI
+                      AIRPORT COLON airportCode SEMI
+                      departureSchedule
                   RBRACE
 
+departureSchedule
+              ::= DATETIME COLON TIMESTAMP SEMI
+                | daySchedule+
+
+daySchedule     ::= DAY COLON DAY_OF_WEEK SEMI DATETIME COLON TIMESTAMP SEMI
+
 arrivalDecl   ::= ARRIVAL LBRACE
-                      AIRPORT COLON airportCode  SEMI
-                      TIME    COLON TIME_LITERAL SEMI
+                      AIRPORT COLON airportCode SEMI
+                      DATETIME COLON TIMESTAMP SEMI
                   RBRACE
 
 fuelDecl      ::= FUEL LBRACE
                       QUANTITY COLON numericValue SEMI
                   RBRACE
 
-segmentDecl   ::= SEGMENT id LBRACE
+segmentDecl   ::= SEGMENT LBRACE
                       FROM      COLON coordinatePair   SEMI
                       TO        COLON coordinatePair   SEMI
                       ALTITUDES COLON altitudeSlotList SEMI
@@ -114,9 +120,10 @@ segmentDecl   ::= SEGMENT id LBRACE
                   RBRACE
 
 coordinatePair    ::= LPAREN numericValue COMMA numericValue RPAREN
+windDecl          ::= LPAREN windDir COMMA numericValue RPAREN
+windDir           ::= NUMBER DEGREES
 altitudeSlotList  ::= LBRACKET altitudeSlot (COMMA altitudeSlot)* RBRACKET
-altitudeSlot      ::= numericValue (WIDTH numericValue)?
-windDecl          ::= LPAREN numericValue COMMA numericValue RPAREN
+altitudeSlot      ::= numericValue WIDTH numericValue
 numericValue      ::= NUMBER unit?
 airportCode       ::= IATA_CODE | ICAO_CODE
 ```
@@ -238,7 +245,7 @@ Generated automatically during `mvn compile`. These are the base classes that wi
 Validation OK: valid_direct_flight.flightplan
 (flightFile (flightDecl flight (flightId TP1234) : (flightType regular) {
   (routeDecl route { origin : (airportCode LIS) ; destination : (airportCode LHR) ; })
-  (legDecl leg L1 { ... }) }) <EOF>)
+  (legDecl leg { ... }) }) <EOF>)
 ```
 
 **Invalid file output:**

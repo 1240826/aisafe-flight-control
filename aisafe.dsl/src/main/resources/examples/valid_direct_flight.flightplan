@@ -10,7 +10,7 @@ flight TP1234 : regular {
     aircraft : CS-TUB;
     pilot    : P12345;
 
-    leg L1 {
+    leg {
 
         departure {
             airport  : LIS;
@@ -27,11 +27,10 @@ flight TP1234 : regular {
             quantity : 15000 kg;
         }
 
-        segment SEG1 {
+        segment {
             from      : (38.7813, -9.1359);
             to        : (51.4775, -0.4614);
-            altitudes : [10000 m WIDTH 50 m, 11000 m];
-            wind      : (270, 15 m/s);
+            altitudes : [10000 m WIDTH 50 m, 11000 m WIDTH 60 m];
         }
     }
 }

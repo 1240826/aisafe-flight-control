@@ -72,13 +72,13 @@ class FlightPlanRunnerTest {
                     route { origin: LPPT; destination: EDDF; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LPPT; datetime: 2026-05-10T06:00+01:00; }
                         arrival   { airport: EDDF; datetime: 2026-05-10T09:00+02:00; }
                         fuel      { quantity: 12000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (50.0333, 8.5706);
-                            altitudes: [10000 m]; wind: (90, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -94,13 +94,13 @@ class FlightPlanRunnerTest {
                     ROUTE { ORIGIN: LIS; DESTINATION: LHR; }
                     AIRCRAFT : CS-TUB;
                     PILOT    : P12345;
-                    LEG L1 {
+                    LEG {
                         DEPARTURE { AIRPORT: LIS; DAY: Monday; DATETIME: 2026-05-18T08:00+01:00; }
                         ARRIVAL   { AIRPORT: LHR; DATETIME: 2026-05-18T10:00+01:00; }
                         FUEL      { QUANTITY: 15000 kg; }
-                        SEGMENT S1 {
+                        SEGMENT {
                             FROM: (38.7813, -9.1359); TO: (51.4775, -0.4614);
-                            ALTITUDES: [10000 m]; WIND: (270, 15 m/s);
+                            ALTITUDES: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -116,13 +116,13 @@ class FlightPlanRunnerTest {
                     Route { Origin: LIS; Destination: LHR; }
                     Aircraft : CS-TUB;
                     Pilot    : P12345;
-                    Leg L1 {
+                    Leg {
                         Departure { Airport: LIS; Day: Monday; Datetime: 2026-05-18T08:00+01:00; }
                         Arrival   { Airport: LHR; Datetime: 2026-05-18T10:00+01:00; }
                         Fuel      { Quantity: 15000 kg; }
-                        Segment S1 {
+                        Segment {
                             From: (38.7813, -9.1359); To: (51.4775, -0.4614);
-                            Altitudes: [10000 m]; Wind: (270, 15 m/s);
+                            Altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -138,13 +138,13 @@ class FlightPlanRunnerTest {
                     route { origin: OPO; destination: WAW; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: OPO; datetime: 2026-06-15T06:00+01:00; }
                         arrival   { airport: WAW; datetime: 2026-06-15T10:00+02:00; }
                         fuel      { quantity: 18000 kg; }
-                        segment S1 {
+                        segment {
                             from: (41.2481, -8.6814); to: (52.1657, 20.9671);
-                            altitudes: [11000 m WIDTH 80 m]; wind: (45, 20 m/s);
+                            altitudes: [11000 m WIDTH 80 m];
                         }
                     }
                 }
@@ -160,17 +160,17 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (45.0, -5.0);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
-                        segment S2 {
+                        segment {
                             from: (45.0, -5.0); to: (51.4775, -0.4614);
-                            altitudes: [11000 m WIDTH 60 m]; wind: (280, 18 m/s);
+                            altitudes: [11000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -186,13 +186,13 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:00+01:00; }
                         fuel      { quantity: 18000 l; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [35000 ft]; wind: (270, 250 kt);
+                            altitudes: [35000 ft WIDTH 500 ft];
                         }
                     }
                 }
@@ -209,15 +209,15 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:00+01:00; } // arrival
                         fuel      { quantity: 15000 kg; }
                         /* segment below */
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); // Lisbon
                             to:   (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -234,13 +234,13 @@ class FlightPlanRunnerTest {
                     route { origin: GRU; destination: LIS; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: GRU; datetime: 2026-05-10T01:00-03:00; }
                         arrival   { airport: LIS; datetime: 2026-05-10T14:00+01:00; }
                         fuel      { quantity: 50000 kg; }
-                        segment S1 {
+                        segment {
                             from: (-23.4356, -46.4731); to: (38.7813, -9.1359);
-                            altitudes: [12000 m]; wind: (90, 30 m/s);
+                            altitudes: [12000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -257,13 +257,13 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:30:45+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:45:00+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -279,14 +279,13 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:00+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:00+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [8000 m, 9000 m WIDTH 50 m, 10000 m, 11000 m WIDTH 80 m];
-                            wind: (270, 15 m/s);
+                            altitudes: [8000 m WIDTH 60 m, 9000 m WIDTH 50 m, 10000 m WIDTH 60 m, 11000 m WIDTH 80 m];
                         }
                     }
                 }
@@ -303,13 +302,13 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; day: Wednesday; datetime: 2026-05-20T08:30+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-20T10:45+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -407,13 +406,13 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:30+01:00 }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:45+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -429,13 +428,13 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; day: Monday; datetime: 2026-05-18T08:30+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -448,13 +447,13 @@ class FlightPlanRunnerTest {
     void missingRouteBlock() throws IOException {
         String content = """
                 flight TP013 : charter {
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:30+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:45+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -470,7 +469,7 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:30+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:45+01:00; }
                         fuel      { quantity: 15000 kg; }
@@ -488,13 +487,13 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; day: Monday; datetime: 2026-05-18T08:30+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 }
@@ -510,13 +509,13 @@ class FlightPlanRunnerTest {
                     route { origin: LIS; destination: LHR; }
                     aircraft : CS-TUB;
                     pilot    : P12345;
-                    leg L1 {
+                    leg {
                         departure { airport: LIS; datetime: 2026-05-10T08:30+01:00; }
                         arrival   { airport: LHR; datetime: 2026-05-10T10:45+01:00; }
                         fuel      { quantity: 15000 kg; }
-                        segment S1 {
+                        segment {
                             from: (38.7813, -9.1359); to: (51.4775, -0.4614);
-                            altitudes: [10000 m]; wind: (270, 15 m/s);
+                            altitudes: [10000 m WIDTH 60 m];
                         }
                     }
                 // missing closing brace for flight block
