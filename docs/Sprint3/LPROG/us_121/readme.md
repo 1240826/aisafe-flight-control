@@ -2,7 +2,7 @@
 
 ## 1. Context
 
-This user story integrates the Flight DSL (developed in US120) with the EAPLI domain layer, enabling a Pilot to import a `.flightplan` file and automatically create the corresponding `FlightPlan` aggregate in the system.
+This user story integrates the Flight DSL (developed in US120) with the EAPLI domain layer, enabling a Pilot to import a `.flightplan` file and automatically create the corresponding `FlightPlan` entity inside the `Flight` aggregate in the system.
 
 The DSL pipeline — lexer, parser, semantic validation — was already implemented in US120. This user story adds the final step: building EAPLI domain entities from the parsed AST and persisting them.
 
@@ -61,29 +61,38 @@ Cross-reference validation    ← NEW: queries repositories for existence/consis
 FlightPlanRepository.save()
 ```
 
-The `FlightPlan` aggregate has the following structure:
+The `Flight` aggregate root contains `FlightPlan` as an entity:
 
 ```
-FlightPlan (Aggregate Root)
-├── FlightPlanId flightId
-├── FlightPlanStatus status (DRAFT)
-├── RouteName routeId           ← cross-ref to FlightRoute
-├── RegistrationNumber aircraftId ← cross-ref to Aircraft
-├── PilotId pilotId             ← cross-ref to Pilot
-├── FlightType type             ← REGULAR | CHARTER
-└── List<Leg> legs
-        ├── LegId legId
-        ├── AirportIATA depAirport
-        ├── LocalDateTime depDatetime
-        ├── DayOfWeek depDay (regular only)
-        ├── AirportIATA arrAirport
-        ├── LocalDateTime arrDatetime
-        ├── double fuelKg
-        └── List<Segment> segments
-                ├── SegmentId segId
-                ├── Coordinates from
-                ├── Coordinates to
-                └── List<AltitudeSlot> altitudes
+Flight (Aggregate Root)
+├── FlightDesignator designator
+├── FlightType type                        ← REGULAR | CHARTER
+├── DepartureSchedule schedule             ← RegularSchedule or CharterSchedule
+├── Pilot pilotId                          ← cross-ref to Pilot (assigned)
+├── Aircraft aircraftReg                   ← cross-ref to Aircraft
+├── FlightRoute routeId                    ← cross-ref to FlightRoute
+└── List<FlightPlan> flightPlans
+        └── FlightPlan (Entity)
+            ├── FlightPlanId flightId
+            ├── FlightPlanStatus status (DRAFT → IN_TEST → TEST_PASSED/TEST_FAILED)
+            ├── dslContent (raw String)            ← stored for re-validation (US085)
+            ├── FuelQuantity fuel
+            ├── int cruiseAltitude
+            ├── LocalDateTime departureTime
+            ├── LocalDateTime arrivalTime
+            └── List<Leg> legs
+                    ├── LegId legId
+                    ├── AirportIATA depAirport
+                    ├── LocalDateTime depDatetime
+                    ├── DayOfWeek depDay (regular only)
+                    ├── AirportIATA arrAirport
+                    ├── LocalDateTime arrDatetime
+                    ├── FuelQuantity fuelKg
+                    └── List<Segment> segments
+                            ├── SegmentId segId
+                            ├── Coordinates from
+                            ├── Coordinates to
+                            └── List<AltitudeSlot> altitudes
 ```
 
 ### Domain Connections
@@ -93,17 +102,20 @@ This US bridges two modules:
 | Module | Role |
 |--------|------|
 | `aisafe.lprog` (LPROG) | Provides the DSL parsing pipeline — `FlightPlanRunner`, generated lexer/parser, `SemanticValidationListener` |
-| `aisafe.core.flightplan` (EAPLI) | Defines the `FlightPlan` aggregate, repository, and `FlightPlanAssembler` service |
-| `aisafe.core.pilot` (EAPLI) | Provides `PilotRepository` for pilot existence/company validation |
-| `aisafe.core.aircraft` (EAPLI) | Provides `AircraftRepository` for aircraft existence validation |
-| `aisafe.core.airport` (EAPLI) | Provides `AirportRepository` for airport code validation |
-| `aisafe.core.flightroute` (EAPLI) | Provides `FlightRouteRepository` for route existence validation |
+| `eapli.aisafe.flightplan.domain` (EAPLI) | Defines the `FlightPlan` entity, value objects, and `FlightPlanAssembler` service |
+| `eapli.aisafe.flight.domain` (EAPLI) | Defines the `Flight` aggregate root — contains `FlightPlan` entities, accessed via `FlightRepository` |
+| `eapli.aisafe.pilot.domain` (EAPLI) | Provides `PilotRepository` for pilot existence, company, and certification validation |
+| `eapli.aisafe.aircraft.domain` (EAPLI) | Provides `AircraftRepository` for aircraft existence validation |
+| `eapli.aisafe.airport.domain` (EAPLI) | Provides `AirportRepository` for airport code validation |
+| `eapli.aisafe.flightroute.domain` (EAPLI) | Provides `FlightRouteRepository` for route existence validation |
 
 ### Key Design Decisions
 
-- **Shared aggregate:** The `FlightPlan` aggregate is shared with US080 (manual creation) — one domain model, two input paths.
+- **Entity inside Flight aggregate:** `FlightPlan` is an entity inside the `Flight` aggregate root (not a standalone aggregate). Access is always via `FlightRepository`. Shared with US080 (manual creation) — one domain model, two input paths.
 - **Cross-references by identity:** All references to other aggregates use their identity VOs (e.g., `RegistrationNumber`, `RouteName`), never direct object references — consistent with the DDD pattern used throughout the project.
-- **Validation separation:** DSL-level validation (syntax, semantics) is handled by US120 code. Cross-reference validation (entity existence, company consistency) is handled by the `FlightPlanAssembler` in the application layer.
+- **Pilot certification validation (C07):** During import, the system validates that the pilot is certified for the assigned aircraft model (`pilot.certifications.contains(aircraftModelCode)`). This aligns with US085 R7.
+- **DSL content stored:** The raw DSL content is stored as `dslContent` in `FlightPlan` (C03, C10), enabling re-validation in US085.
+- **Validation separation:** DSL-level validation (syntax, semantics) is handled by US120 code. Cross-reference validation (entity existence, company consistency, pilot certification) is handled by the `FlightPlanAssembler` in the application layer.
 - **Assembler pattern:** A `FlightPlanAssembler` service converts the DSL visitor output into domain entities, keeping the controller lean and testable.
 
 ---
@@ -116,20 +128,22 @@ This US bridges two modules:
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `FlightPlan` | `aisafe.core.flightplan.domain` | Aggregate root |
-| `FlightPlanId` | `aisafe.core.flightplan.domain` | Value Object wrapping the flight identifier |
-| `FlightPlanStatus` | `aisafe.core.flightplan.domain` | Enum: `DRAFT`, `VALIDATED` |
-| `FlightType` | `aisafe.core.flightplan.domain` | Enum: `REGULAR`, `CHARTER` |
-| `Leg` | `aisafe.core.flightplan.domain` | Local entity within FlightPlan |
-| `LegId` | `aisafe.core.flightplan.domain` | Value Object for leg identification |
-| `Segment` | `aisafe.core.flightplan.domain` | Local entity within Leg |
-| `SegmentId` | `aisafe.core.flightplan.domain` | Value Object for segment identification |
-| `AltitudeSlot` | `aisafe.core.flightplan.domain` | Value Object: altitude + corridor width |
-| `FlightPlanRepository` | `aisafe.core.flightplan.repositories` | Repository interface |
-| `JpaFlightPlanRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `FlightPlanAssembler` | `aisafe.core.flightplan.application` | Converts DSL parse tree → domain entities |
-| `ImportFlightPlanFromFileController` | `aisafe.core.flightplan.application` | Controller orchestrating the import |
-| `ImportFlightPlanFromFileUI` | `aisafe.app.pilot.console` | Console UI for the Pilot |
+| `Flight` | `eapli.aisafe.flight.domain` | Aggregate root — contains FlightPlan entities |
+| `FlightDesignator` | `eapli.aisafe.flight.domain` | Value Object — flight identifier (e.g. "TP0123") |
+| `FlightPlan` | `eapli.aisafe.flightplan.domain` | **Entity** inside Flight aggregate |
+| `FlightPlanId` | `eapli.aisafe.flightplan.domain` | Value Object wrapping the flight plan identifier |
+| `FlightPlanStatus` | `eapli.aisafe.flightplan.domain` | Enum: `DRAFT`, `IN_TEST`, `TEST_PASSED`, `TEST_FAILED` |
+| `FuelQuantity` | `eapli.aisafe.flightplan.domain` | Value Object: amount + unit |
+| `FlightType` | `eapli.aisafe.flight.domain` | Enum: `REGULAR`, `CHARTER` |
+| `Leg` | `eapli.aisafe.flightplan.domain` | Local entity within FlightPlan |
+| `LegId` | `eapli.aisafe.flightplan.domain` | Value Object for leg identification |
+| `Segment` | `eapli.aisafe.flightplan.domain` | Local entity within Leg |
+| `SegmentId` | `eapli.aisafe.flightplan.domain` | Value Object for segment identification |
+| `AltitudeSlot` | `eapli.aisafe.flightplan.domain` | Value Object: altitude + corridor width |
+| `FlightRepository` | `eapli.aisafe.flight.repositories` | Repository interface for Flight aggregate |
+| `FlightPlanAssembler` | `eapli.aisafe.flightplan.application` | Converts DSL parse tree → domain entities |
+| `ImportFlightPlanFromFileController` | `eapli.aisafe.flightplan.application` | Controller orchestrating the import |
+| `ImportFlightPlanFromFileUI` | `eapli.aisafe.app.pilot.console` | Console UI for the Pilot |
 
 **Sequence Diagram — Import Flight Plan from File:**
 
@@ -237,34 +251,64 @@ This US bridges two modules:
 
 ---
 
+#### Acceptance Test 8 — Pilot not certified for aircraft model is rejected (C07)
+
+**Objective:** Validate pilot certification against aircraft model.
+
+**Procedure:**
+1. Create a `.flightplan` file referencing a pilot who is NOT certified for the aircraft model (e.g., pilot certified only for A320 but aircraft is B738).
+2. Attempt to import the file.
+
+**Expected Result:** The system rejects with: "Pilot is not certified for aircraft model B738".
+
+**Refers to Acceptance Criteria:** C07, US075
+
+---
+
+#### Acceptance Test 9 — Missing DSL content is rejected
+
+**Objective:** Validate that the flight plan stores DSL content for future re-validation.
+
+**Procedure:**
+1. Create an empty `.flightplan` file.
+2. Attempt to import the file.
+
+**Expected Result:** The system rejects with a DSL validation error and nothing is persisted.
+
+**Refers to Acceptance Criteria:** US121.2, US085
+
+---
+
 ## 5. Implementation
 
 ### Main Files
 
 | File | Location | Status |
 |------|----------|--------|
-| `FlightPlan.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `FlightPlanId.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `FlightPlanStatus.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `FlightType.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `Leg.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `LegId.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `Segment.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `SegmentId.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `AltitudeSlot.java` | `aisafe.base/core/../flightplan/domain/` | New |
-| `FlightPlanRepository.java` | `aisafe.base/core/../flightplan/repositories/` | New |
-| `JpaFlightPlanRepository.java` | `aisafe.base/persistence/../jpa/` | New |
-| `FlightPlanAssembler.java` | `aisafe.base/core/../flightplan/application/` | New |
-| `ImportFlightPlanFromFileController.java` | `aisafe.base/core/../flightplan/application/` | New |
-| `ImportFlightPlanFromFileUI.java` | `aisafe.base/app/../pilot/console/` | New |
+| `Flight.java` | `eapli.aisafe.flight.domain/` | New (or extend if exists from Sprint 2) |
+| `FlightDesignator.java` | `eapli.aisafe.flight.domain/` | New |
+| `FlightPlan.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `FlightPlanId.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `FlightPlanStatus.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `FuelQuantity.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `FlightType.java` | `eapli.aisafe.flight.domain/` | New |
+| `Leg.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `LegId.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `Segment.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `SegmentId.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `AltitudeSlot.java` | `eapli.aisafe.flightplan.domain/` | New |
+| `FlightRepository.java` | `eapli.aisafe.flight.repositories/` | New |
+| `FlightPlanAssembler.java` | `eapli.aisafe.flightplan.application/` | New |
+| `ImportFlightPlanFromFileController.java` | `eapli.aisafe.flightplan.application/` | New |
+| `ImportFlightPlanFromFileUI.java` | `eapli.aisafe.app.pilot.console/` | New |
 
 ### Changes to existing files
 
 | File | Change |
 |------|--------|
-| `RepositoryFactory.java` | Add `flightPlanRepository()` method |
-| `JpaRepositoryFactory.java` | Wire `JpaFlightPlanRepository` |
-| `InMemoryRepositoryFactory.java` | Wire `InMemoryFlightPlanRepository` |
+| `RepositoryFactory.java` | Add `flightRepository()` method |
+| `JpaRepositoryFactory.java` | Wire `JpaFlightRepository` (Flight aggregate) |
+| `InMemoryRepositoryFactory.java` | Wire `InMemoryFlightRepository` |
 | `FlightPlanRunner.java` | May need a method that returns structured data instead of printing |
 
 ---
@@ -291,19 +335,22 @@ This US bridges two modules:
 | Component | Integration |
 |-----------|-------------|
 | `aisafe.lprog` | Called by `ImportFlightPlanFromFileController` via `FlightPlanRunner.run()` |
-| `aisafe.core.flightplan` | New package, follows the same DDD patterns as all other aggregates |
-| `aisafe.core.pilot` | Queries `PilotRepository` for pilot existence and company validation |
-| `aisafe.core.aircraft` | Queries `AircraftRepository` for aircraft existence and company validation |
-| `aisafe.core.airport` | Queries `AirportRepository` for airport code validation |
-| `aisafe.core.flightroute` | Queries `FlightRouteRepository` for route existence validation |
+| `eapli.aisafe.flightplan.domain` | New entity (inside Flight aggregate), follows same DDD patterns |
+| `eapli.aisafe.flight.domain` | Flight aggregate root — contains FlightPlan, accessed via `FlightRepository` |
+| `eapli.aisafe.pilot.domain` | Queries `PilotRepository` for pilot existence, company, and certification validation (C07) |
+| `eapli.aisafe.aircraft.domain` | Queries `AircraftRepository` for aircraft existence and company validation |
+| `eapli.aisafe.airport.domain` | Queries `AirportRepository` for airport code validation |
+| `eapli.aisafe.flightroute.domain` | Queries `FlightRouteRepository` for route existence validation |
 
 ---
 
 ## 7. Observations
 
-- The `FlightPlan` aggregate is shared with US080 (manual creation via UI). Both use cases write to the same database table but through separate controllers.
+- The `FlightPlan` entity is shared with US080 (manual creation via UI) and is part of the `Flight` aggregate root (confirmed by professor). Both use cases write to the same database table through separate controllers.
 - The `FlightPlanAssembler` keeps the controller free of DSL concerns — if the DSL changes, only the assembler needs updating.
 - Cross-reference validation is deliberately separated from DSL validation: DSL errors are caught early (before any DB queries), while cross-reference errors are caught after parsing succeeds. This gives the user clear, separated error messages.
+- Pilot certification validation (C07) is performed during import: the pilot must be certified for the aircraft model referenced in the DSL file.
+- The raw DSL content is stored as `dslContent` in the `FlightPlan` entity (C03, C10), enabling re-validation in US085.
 - The `.flightplan` example files from `aisafe.dsl/src/main/resources/examples/` can be reused for integration testing.
 - No changes to the ANTLR grammar are expected — the grammar already supports all constructs needed for flight plan creation.
 - Generative AI tools (Claude) were used to support the design of the assembler pattern and the separation of validation concerns.
