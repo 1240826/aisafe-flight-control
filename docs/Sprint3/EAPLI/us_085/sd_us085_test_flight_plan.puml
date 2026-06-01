@@ -1,0 +1,108 @@
+@startuml sd_us085_test_flight_plan
+title US085 — Test/Validate Flight Plan (Happy Path)
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Pilot" as actor
+participant ":TestFlightPlanUI"                as ui          <<presentation>>
+participant ":TestFlightPlanController"        as ctrl        <<application>>
+participant ":FlightPlanValidationService"     as service     <<domain>>
+participant "flight:Flight"                    as flight      <<domain>>
+participant "plan:FlightPlan"                  as plan        <<domain>>
+participant ":PilotRepository"                 as pilot_repo  <<persistence>>
+participant "pilot:Pilot"                      as pilot       <<domain>>
+participant ":AircraftModelRepository"         as model_repo  <<persistence>>
+participant ":FlightPlanRunner"                as dsl         <<lprog>>
+participant "FlightPlanExporter"               as exporter    <<application>>
+participant "runner:SimulationRunner"          as sim         <<scomp>>
+participant ":ReportParser"                    as parser      <<application>>
+participant ":FlightRepository"                as repo        <<persistence>>
+
+actor -> ui : selects "Test/Validate Flight Plan"
+activate ui
+ui -> ctrl : testFlightPlan(flightPlanId)
+activate ctrl
+
+ctrl -> flight : getFlightPlan(id)
+activate flight
+flight --> ctrl : plan (FlightPlan)
+deactivate flight
+
+ctrl -> plan : status()
+activate plan
+plan --> ctrl : DRAFT
+deactivate plan
+
+ctrl -> plan : startTest()
+activate plan
+plan --> ctrl : status = IN_TEST
+deactivate plan
+
+note right of ctrl : Phase 0 — Pilot Certification (R7)
+
+ctrl -> pilot_repo : findBySystemUser(currentUser)
+activate pilot_repo
+pilot_repo --> ctrl : pilot
+deactivate pilot_repo
+
+ctrl -> pilot : certifications()
+activate pilot
+pilot --> ctrl : Set<AircraftModelCode>
+deactivate pilot
+
+ctrl -> service : validatePilotCertification(plan, pilotCerts)
+activate service
+service --> ctrl : ok
+deactivate service
+
+note right of ctrl : Phase 1 — DSL Re-validation
+
+ctrl -> plan : dslContent()
+activate plan
+plan --> ctrl : raw DSL string
+deactivate plan
+
+ctrl -> dsl : run(dslContent)
+activate dsl
+dsl --> ctrl : valid
+deactivate dsl
+
+note right of ctrl : Phase 2 — JSON Export + C Simulation
+
+ctrl -> exporter : toJson(plan)
+activate exporter
+exporter --> ctrl : jsonPayload
+deactivate exporter
+
+ctrl -> sim : run(jsonPayload)
+activate sim
+sim --> ctrl : reportFile
+deactivate sim
+
+ctrl -> parser : parse(reportFile)
+activate parser
+parser --> ctrl : SimulationReport
+deactivate parser
+
+note right of ctrl : Phase 3 — Record Result
+
+ctrl -> plan : recordTestResult(true, reasons)
+activate plan
+plan --> ctrl : status = TEST_PASSED
+deactivate plan
+
+ctrl -> repo : save(flight)
+activate repo
+repo --> ctrl : ok
+deactivate repo
+
+ctrl --> ui : ValidationResult(passed)
+deactivate ctrl
+ui --> actor : "Flight plan TEST_PASSED"
+deactivate ui
+@enduml

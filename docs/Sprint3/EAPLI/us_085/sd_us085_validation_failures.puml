@@ -1,0 +1,97 @@
+@startuml sd_us085_validation_failures
+title US085 — Test/Validate Flight Plan (Failure Paths)
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Pilot" as actor
+participant ":TestFlightPlanController"        as ctrl        <<application>>
+participant "plan:FlightPlan"                  as plan        <<domain>>
+participant ":PilotRepository"                 as pilot_repo  <<persistence>>
+participant "pilot:Pilot"                      as pilot       <<domain>>
+participant ":FlightPlanRunner"                as dsl         <<lprog>>
+participant "runner:SimulationRunner"          as sim         <<scomp>>
+participant ":FlightRepository"                as repo        <<persistence>>
+
+== Failure 1 — Pilot Not Certified (R7) ==
+
+actor -> ctrl : testFlightPlan(id)
+
+ctrl -> plan : status()
+activate plan
+plan --> ctrl : DRAFT
+deactivate plan
+
+ctrl -> pilot_repo : findBySystemUser(currentUser)
+activate pilot_repo
+pilot_repo --> ctrl : pilot
+deactivate pilot_repo
+
+ctrl -> pilot : certifications()
+activate pilot
+pilot --> ctrl : Set<AircraftModelCode>
+deactivate pilot
+
+note right of ctrl #FFAAAA : B738 not in pilot certs → FAIL
+
+ctrl -> plan : recordTestResult(false, ["Pilot not certified for B738"])
+activate plan
+plan --> ctrl : status = TEST_FAILED
+deactivate plan
+
+ctrl -> repo : save(flight)
+activate repo
+repo --> ctrl : ok
+deactivate repo
+
+ctrl --> actor : ValidationResult(failed, "Pilot not certified")
+
+note right of ctrl : C simulator is NEVER invoked
+
+== Failure 2 — DSL Validation Fails ==
+
+actor -> ctrl : testFlightPlan(id)
+
+ctrl -> plan : status()
+ctrl -> pilot : certifications()
+ctrl -> service : validatePilotCertification() // passes
+
+ctrl -> plan : dslContent()
+ctrl -> dsl : run(dslContent)
+activate dsl
+dsl --> ctrl : invalid + errors
+deactivate dsl
+
+note right of ctrl #FFAAAA : DSL syntax/semantic errors → FAIL
+
+ctrl -> plan : recordTestResult(false, ["line 24: fuel must be positive"])
+ctrl -> repo : save(flight)
+
+ctrl --> actor : ValidationResult(failed, DSL errors + line numbers)
+
+note right of ctrl : C simulator is NEVER invoked (C03)
+
+== Failure 3 — C Simulation Reports Violations ==
+
+actor -> ctrl : testFlightPlan(id)
+
+ctrl -> plan : dslContent()
+ctrl -> dsl : run(dslContent) // passes
+
+ctrl -> sim : run(jsonPayload)
+activate sim
+sim --> ctrl : reportFile
+deactivate sim
+
+note right of ctrl #FFAAAA : C simulator report says FAIL
+
+ctrl -> plan : recordTestResult(false, ["Fuel exhaustion at step 42"])
+ctrl -> repo : save(flight)
+
+ctrl --> actor : ValidationResult(failed, violations from C)
+
+@enduml
