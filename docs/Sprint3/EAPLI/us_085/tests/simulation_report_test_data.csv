@@ -1,0 +1,20 @@
+# US085 — Simulation Report Test Data (Phase 2-3, C14)
+# Uses exact C simulator output format (from scomp/Sprint3/us109/us109_report.c)
+# Columns:
+#   testCaseId      - unique identifier
+#   totalViolations - value of "Total violations detected" in C report (0 = PASS, >0 = FAIL)
+#   expectedPassed  - true if report indicates pass
+#   expectedViolCount - expected violation count parsed
+#   hasViolationLog - true if report includes VIOLATION LOG section
+#   invariant       - what business rule is being tested
+testCaseId,totalViolations,expectedPassed,expectedViolCount,hasViolationLog,invariant
+SR01,0,true,0,false,clean_pass_no_violations_c_format
+SR02,0,true,0,false,multiple_header_fields_correct
+SR03,1,false,1,true,single_violation_with_position_details
+SR04,2,false,2,true,multiple_violations_parsed_correctly
+SR05,3,false,3,true,violations_across_different_flights
+SR06,0,true,0,false,zero_violations_still_pass
+SR07,5,false,5,true,five_violations_all_parsed
+SR08,0,true,0,false,large_scale_10_flights_all_pass
+SR09,10,false,10,true,ten_violations_edge_case
+SR10,0,true,0,true,no_violations_with_empty_violation_log

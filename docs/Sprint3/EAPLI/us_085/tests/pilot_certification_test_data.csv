@@ -1,0 +1,16 @@
+# US085 — Pilot Certification Test Data (R7, C07)
+# Columns:
+#   testCaseId     - unique identifier
+#   pilotCerts     - comma-separated list of aircraft models pilot is certified for
+#   aircraftModel  - the model assigned to the flight plan
+#   expectedStatus - PASS if pilot is certified, FAIL otherwise
+#   invariant      - what business rule is being tested
+testCaseId,pilotCerts,aircraftModel,expectedStatus,invariant
+PC01,"B738",B738,PASS,pilot_certified_for_exact_model
+PC02,"B738,A320,E190",B738,PASS,pilot_certified_with_multiple_models_includes_assigned
+PC03,"A320,E190",B738,FAIL,pilot_not_certified_for_assigned_model
+PC04,"",B738,FAIL,pilot_with_no_certifications
+PC05,"B738,A320,E190,B787,A380",B738,PASS,pilot_with_many_certifications_includes_assigned
+PC06,"A320",A320,PASS,pilot_certified_for_different_model
+PC07,"B738,A320",B738,PASS,pilot_certified_case_sensitive_exact_match
+PC08,"B73",B738,FAIL,pilot_certified_for_partial_code_not_full_match

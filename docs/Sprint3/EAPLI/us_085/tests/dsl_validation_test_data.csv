@@ -1,0 +1,24 @@
+# US085 — DSL Re-validation Test Data (Phase 1, C03)
+# Columns:
+#   testCaseId     - unique identifier
+#   dslSnippet     - brief description of the DSL content
+#   expectedResult - VALID or INVALID
+#   errorType      - NONE, LEXICAL, SYNTACTIC, SEMANTIC, EMPTY
+#   invariant      - what business rule is being tested
+# Note: In the parameterized test, actual DSL strings are loaded from dsl_samples/
+testCaseId,dslSnippet,expectedResult,errorType,invariant
+DV01,"Complete regular flight plan with one leg",VALID,NONE,valid_regular_flight_plan
+DV02,"Complete charter flight plan with multiple segments",VALID,NONE,valid_charter_flight_plan
+DV03,"Missing semicolon after route declaration",INVALID,SYNTACTIC,syntax_error_missing_semicolon
+DV04,"Invalid flight type 'invalid_type'",INVALID,SEMANTIC,invalid_flight_type_not_recognized
+DV05,"Missing aircraft declaration",INVALID,SEMANTIC,semantic_error_missing_aircraft
+DV06,"Empty DSL content",INVALID,EMPTY,empty_dsl_content_rejected
+DV07,"Negative fuel value",INVALID,SEMANTIC,semantic_error_negative_fuel
+DV08,"Missing departure airport in leg",INVALID,SEMANTIC,semantic_error_missing_departure
+DV09,"Very large fuel quantity exceeding max",INVALID,SEMANTIC,semantic_error_fuel_exceeds_max
+DV10,"Multiple legs with valid data",VALID,NONE,valid_flight_plan_multiple_legs
+DV11,"Non-existent airport IATA code",INVALID,SEMANTIC,semantic_error_unknown_airport
+DV12,"Departure after arrival datetime",INVALID,SEMANTIC,semantic_error_departure_after_arrival
+DV13,"Segment with zero altitude",VALID,NONE,boundary_zero_altitude_accepted
+DV14,"Missing segment altitudes block",INVALID,SEMANTIC,semantic_error_missing_altitudes
+DV15,"Wrong coordinate format (decimal)",INVALID,SYNTACTIC,syntax_error_invalid_coordinate
