@@ -37,6 +37,8 @@ import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.authz.domain.repositories.UserRepository;
 import eapli.framework.infrastructure.authz.repositories.impl.jpa.JpaAutoTxUserRepository;
 import eapli.framework.infrastructure.repositories.impl.jpa.JpaAutoTxRepository;
+import eapli.aisafe.flightroute.repositories.FlightRouteRepository;
+
 
 /**
  *
@@ -121,6 +123,10 @@ public class JpaRepositoryFactory implements RepositoryFactory {
     @Override
     public UserSecurityProfileRepository userSecurityProfiles(final TransactionalContext autoTx) {
         return new JpaUserSecurityProfileRepository(autoTx);
+    }
+    @Override
+    public FlightRouteRepository flightRoutes() {
+        return new JpaFlightRouteRepository(Application.settings().getPersistenceUnitName());
     }
 
 }

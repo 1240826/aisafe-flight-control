@@ -37,6 +37,7 @@ import eapli.aisafe.infrastructure.persistence.RepositoryFactory;
 import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.authz.domain.repositories.UserRepository;
 import eapli.framework.infrastructure.authz.repositories.impl.inmemory.InMemoryUserRepository;
+import eapli.aisafe.flightroute.repositories.FlightRouteRepository;
 
 /**
  *
@@ -129,5 +130,10 @@ public class InMemoryRepositoryFactory implements RepositoryFactory {
 		// In-memory has no real transactions; ignore the context
 		return new InMemoryUserSecurityProfileRepository();
 	}
+	@Override
+	public FlightRouteRepository flightRoutes() {
+		return new InMemoryFlightRouteRepository();
+	}
+
 
 }

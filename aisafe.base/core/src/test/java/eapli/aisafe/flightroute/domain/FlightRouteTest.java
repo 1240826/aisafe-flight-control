@@ -1,0 +1,140 @@
+package eapli.aisafe.flightroute.domain;
+
+import eapli.aisafe.company.domain.CompanyIATA;
+import eapli.aisafe.airport.domain.AirportIATA;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Unit tests for FlightRoute aggregate root.
+ * Covers US074: Delete (deactivate) a flight route.
+ *
+ * NOTE: FlightRoute does not yet exist — these tests drive its implementation.
+ * Expected behaviour:
+ *   - A route is ACTIVE by default on creation.
+ *   - deactivate(LocalDate) marks the route as inactive from that date onwards.
+ *   - deactivate() must be rejected if there are planned flights after the date.
+ */
+class FlightRouteTest {
+
+    // ── Test fixtures ─────────────────────────────────────────────────────────
+
+    private static final LocalDate TODAY         = LocalDate.now();
+    private static final LocalDate FUTURE_DATE   = TODAY.plusDays(30);
+    private static final LocalDate PAST_DATE     = TODAY.minusDays(1);
+
+    private static FlightRoute validRoute() {
+        return new FlightRoute(
+                FlightRouteName.valueOf("TP123"),
+                CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("OPO"),
+                AirportIATA.valueOf("LIS")
+        );
+    }
+
+    // ── Happy path ────────────────────────────────────────────────────────────
+
+    @Test
+    void ensureNewRouteIsActiveOnCreation() {
+        // US074: a freshly created route must be active
+        final var route = validRoute();
+        assertTrue(route.isActive(), "A new FlightRoute must be active");
+    }
+
+    @Test
+    void ensureRouteNameIsPreserved() {
+        final var route = validRoute();
+        assertEquals(FlightRouteName.valueOf("TP123"), route.identity());
+    }
+
+    @Test
+    void ensureOriginAirportIsPreserved() {
+        final var route = validRoute();
+        assertEquals(AirportIATA.valueOf("OPO"), route.origin());
+    }
+
+    @Test
+    void ensureDestinationAirportIsPreserved() {
+        final var route = validRoute();
+        assertEquals(AirportIATA.valueOf("LIS"), route.destination());
+    }
+
+    @Test
+    void ensureDeactivationSetsRouteInactive() {
+        // AT1: route with no planned flights after the date → deactivation succeeds
+        final var route = validRoute();
+        route.deactivate(FUTURE_DATE);
+        assertFalse(route.isActive(), "Route must be inactive after deactivation");
+    }
+
+    @Test
+    void ensureDeactivationDateIsPreserved() {
+        // AT1: the exact deactivation date must be stored
+        final var route = validRoute();
+        route.deactivate(FUTURE_DATE);
+        assertEquals(FUTURE_DATE, route.deactivationDate());
+    }
+
+    @Test
+    void ensureDeactivationWithTodayDateSucceeds() {
+        // Edge case: deactivating effective today is valid
+        final var route = validRoute();
+        route.deactivate(TODAY);
+        assertFalse(route.isActive());
+    }
+
+    // ── Guard clauses ─────────────────────────────────────────────────────────
+
+    @Test
+    void ensureDeactivatingAlreadyInactiveRouteThrows() {
+        // AT1 / invariant: cannot deactivate twice
+        final var route = validRoute();
+        route.deactivate(FUTURE_DATE);
+        assertThrows(IllegalStateException.class,
+                () -> route.deactivate(FUTURE_DATE.plusDays(10)),
+                "Deactivating an already-inactive route must throw IllegalStateException");
+    }
+
+    @Test
+    void ensureNullDeactivationDateIsRejected() {
+        // AT4: date is mandatory
+        final var route = validRoute();
+        assertThrows(Exception.class,
+                () -> route.deactivate(null),
+                "deactivate() must reject a null date");
+    }
+
+    @Test
+    void ensureNullRouteNameIsRejected() {
+        assertThrows(Exception.class, () -> new FlightRoute(
+                null,
+                CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("OPO"),
+                AirportIATA.valueOf("LIS")
+        ), "FlightRoute must reject a null name");
+    }
+
+    @Test
+    void ensureNullCompanyIsRejected() {
+        assertThrows(Exception.class, () -> new FlightRoute(
+                FlightRouteName.valueOf("TP123"),
+                null,
+                AirportIATA.valueOf("OPO"),
+                AirportIATA.valueOf("LIS")
+        ), "FlightRoute must reject a null company");
+    }
+
+    @Test
+    void ensureSameOriginAndDestinationIsRejected() {
+        // A route between the same airport makes no sense
+        assertThrows(Exception.class, () -> new FlightRoute(
+                FlightRouteName.valueOf("TP123"),
+                CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("OPO"),
+                AirportIATA.valueOf("OPO")
+        ), "FlightRoute must reject identical origin and destination");
+    }
+}

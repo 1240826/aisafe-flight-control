@@ -33,7 +33,7 @@ import eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository;
 import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.authz.domain.repositories.UserRepository;
-
+import eapli.aisafe.flightroute.repositories.FlightRouteRepository;
 /**
  * @author Paulo Gandra Sousa
  *
@@ -93,4 +93,5 @@ public interface RepositoryFactory {
      */
     UserSecurityProfileRepository userSecurityProfiles(TransactionalContext autoTx);
 
+    FlightRouteRepository flightRoutes();
 }
