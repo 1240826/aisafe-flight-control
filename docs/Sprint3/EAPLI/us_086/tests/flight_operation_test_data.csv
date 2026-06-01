@@ -1,0 +1,26 @@
+# US086 — Flight Operation Test Data (input validation & auth scenarios for RemotePilotService)
+# Columns:
+#   testCaseId      - unique identifier
+#   operation       - which operation: CREATE_FLIGHT_PLAN, VALIDATE_FLIGHT_PLAN, IMPORT_FLIGHT_PLAN
+#   param1          - first parameter (flightId / flightPlanId / filePath)
+#   param2          - second parameter (dsl content / unused = EMPTY)
+#   isValidInput    - true if input passes pre-condition validation
+#   expectAuthCheck - true if auth is verified before delegating
+#   mockOutcome     - what the mock returns: SUCCESS, BUSINESS_ERROR, SYSTEM_ERROR
+#   invariant       - what business rule is being tested
+testCaseId,operation,param1,param2,isValidInput,expectAuthCheck,mockOutcome,invariant
+FO01,CREATE_FLIGHT_PLAN,FL123,departure LIS 10:00,true,true,SUCCESS,valid_create_request
+FO02,CREATE_FLIGHT_PLAN,,departure LIS 10:00,false,false,NONE,rejects_null_flightId
+FO03,CREATE_FLIGHT_PLAN,FL123,,false,false,NONE,rejects_null_dsl
+FO04,CREATE_FLIGHT_PLAN,FL123,   ,false,false,NONE,rejects_blank_dsl
+FO05,VALIDATE_FLIGHT_PLAN,FP001,EMPTY,true,true,SUCCESS,valid_validate_request
+FO06,VALIDATE_FLIGHT_PLAN,,EMPTY,false,false,NONE,rejects_null_flightPlanId
+FO07,VALIDATE_FLIGHT_PLAN,FP001,EMPTY,true,true,BUSINESS_ERROR,propagates_business_error
+FO08,VALIDATE_FLIGHT_PLAN,FP001,EMPTY,true,true,SYSTEM_ERROR,propagates_system_error
+FO09,IMPORT_FLIGHT_PLAN,/home/pilot/plan.flightplan,EMPTY,true,true,SUCCESS,valid_import_request
+FO10,IMPORT_FLIGHT_PLAN,,EMPTY,false,false,NONE,rejects_null_path
+FO11,IMPORT_FLIGHT_PLAN,   ,EMPTY,false,false,NONE,rejects_blank_path
+FO12,IMPORT_FLIGHT_PLAN,/nonexistent/file.flightplan,EMPTY,true,true,BUSINESS_ERROR,file_not_found_propagation
+FO13,CREATE_FLIGHT_PLAN,FL456,departure OPO 14:30,true,true,SUCCESS,different_flight_second_airport
+FO14,VALIDATE_FLIGHT_PLAN,FP002,EMPTY,true,true,BUSINESS_ERROR,flightplan_in_test_status_rejected
+FO15,IMPORT_FLIGHT_PLAN,/tmp/valid_flight.flightplan,EMPTY,true,true,SUCCESS,import_from_temp_directory

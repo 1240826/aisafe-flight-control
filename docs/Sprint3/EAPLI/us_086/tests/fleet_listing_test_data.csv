@@ -1,0 +1,23 @@
+# US086 — Fleet Listing Test Data (AircraftDTO conversion scenarios)
+# Columns:
+#   testCaseId      - unique identifier
+#   registration    - aircraft registration number
+#   regCountry      - registration country
+#   modelCode       - aircraft model code
+#   companyIATA     - operating company IATA code
+#   totalSeats      - total passenger seats
+#   crewCount       - number of crew members
+#   manufactureYear - year of manufacture
+#   expectedDtoCount - expected number of DTOs after conversion
+#   invariant       - what business rule is being tested
+testCaseId,registration,regCountry,modelCode,companyIATA,totalSeats,crewCount,manufactureYear,expectedDtoCount,invariant
+FL01,CS-TUI,Portugal,A320,TP,180,2,2018,1,standard_narrowbody_conversion
+FL02,CS-TUB,Portugal,A330,TP,300,10,2020,1,widebody_conversion
+FL03,D-ABYT,Germany,B737,EW,189,4,2015,1,lowcost_conversion
+FL04,G-EUUP,UK,B777,BA,275,12,2019,1,longhaul_conversion
+FL05,F-HPJB,France,A220,AF,145,3,2022,1,regional_jet_conversion
+FL06,CS-TVA,Portugal,E190,TP,110,3,2023,1,small_regional_conversion
+FL07,N123AA,USA,B787,AA,280,11,2018,1,international_widebody_conversion
+FL08,CS-TXJ,Portugal,A380,TP,500,20,2015,1,superjumbo_conversion
+FL09,EC-MYT,Spain,CRJ9,UX,90,2,2020,1,smallest_fleet_entry
+FL10,CS-TFK,Portugal,A320,TP,180,2,2018,2,duplicate_entries_in_list

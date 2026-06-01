@@ -1,0 +1,21 @@
+# US086 — Report Operation Test Data (input validation for report generation operations)
+# Columns:
+#   testCaseId      - unique identifier
+#   operation       - which operation: GENERATE_REPORT, MONTHLY_REPORT
+#   param1          - flightId (for GENERATE_REPORT) / year (for MONTHLY_REPORT)
+#   param2          - unused (for GENERATE_REPORT) / month (for MONTHLY_REPORT)
+#   isValidInput    - true if input passes pre-condition validation
+#   expectAuthCheck - true if auth is verified before delegating
+#   mockOutcome     - what the mock returns: SUCCESS, BUSINESS_ERROR, SYSTEM_ERROR
+#   invariant       - what business rule is being tested
+testCaseId,operation,param1,param2,isValidInput,expectAuthCheck,mockOutcome,invariant
+RO01,GENERATE_REPORT,FL123,EMPTY,true,true,SUCCESS,valid_generate_report_request
+RO02,GENERATE_REPORT,,EMPTY,false,false,NONE,rejects_null_flightId
+RO03,GENERATE_REPORT,FL123,EMPTY,true,true,BUSINESS_ERROR,no_simulation_data_propagates
+RO04,GENERATE_REPORT,FL999,EMPTY,true,true,BUSINESS_ERROR,unknown_flight_propagates
+RO05,MONTHLY_REPORT,2026,5,true,true,SUCCESS,valid_monthly_report_request
+RO06,MONTHLY_REPORT,1899,5,false,false,NONE,rejects_year_before_1900
+RO07,MONTHLY_REPORT,2026,0,false,false,NONE,rejects_month_below_1
+RO08,MONTHLY_REPORT,2026,13,false,false,NONE,rejects_month_above_12
+RO09,MONTHLY_REPORT,2026,5,true,true,BUSINESS_ERROR,no_data_for_month_propagates
+RO10,GENERATE_REPORT,FL456,EMPTY,true,true,SUCCESS,different_flight_report_ok
