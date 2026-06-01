@@ -4,7 +4,7 @@
 
 US010 (Domain Model) is a living artefact meant to evolve with each sprint. This document records every change made to the domain model during Sprint 3 implementation, the reasoning behind each decision, and the impact on the glossary.
 
-The Sprint 2 domain model is preserved intact in `docs/Sprint2/us_010/`. This document and the accompanying `domain_model_sprint3.puml` represent the **authoritative Sprint 3 state** of the model. Any future sprint revision must follow the same pattern: leave prior sprint docs unchanged and produce a new revision document.
+The Sprint 2 domain model is preserved intact in `docs/Sprint2/us_010/`. This document and the accompanying `domain_model_sprint3.puml` (in this folder) represent the **authoritative Sprint 3 state** of the model. Any future sprint revision must follow the same pattern: leave prior sprint docs unchanged and produce a new revision document.
 
 **Sprint 3 EAPLI scope:** US042, US043, US073–US077, US080, US082, US085, US078, US086, US111, US112.
 
@@ -39,6 +39,63 @@ The enum explicitly defines recognized fuel sources (e.g., `JET_A1`). This provi
 
 ---
 
+### 3.2 Pilot Aggregate
+
+#### Change 2 — `Pilot.certifications` added (C07)
+
+| Attribute | Value |
+|-----------|-------|
+| Source | Client clarification C07 |
+| Motivation | US075, US080, US085, US121 |
+
+A Pilot must store a `Set<AircraftModelCode>` representing the aircraft models they are certified to fly. This was confirmed by the client in C07: "A pilot is certified to pilot one or more aircraft models." The certification set is loaded by the `PilotRepository` during flight plan validation (R7 in US085) and during flight plan creation (US080, US121).
+
+---
+
+### 3.3 Flight Aggregate Updates
+
+#### Change 3 — `FlightPlanStatus` renamed to DRAFT, IN_TEST, TEST_PASSED, TEST_FAILED
+
+| Attribute | Value |
+|-----------|-------|
+| Source | Client clarifications C03, C07, C14 |
+| Motivation | US080, US082, US085 |
+
+Sprint 2 used `draft`, `validated`, `rejected`. Sprint 3 renames to match the lifecycle required by US085:
+
+- **DRAFT** — flight plan created but not yet tested (US080, US081)
+- **IN_TEST** — validation in progress (US085)
+- **TEST_PASSED** — all validation phases passed (US085)
+- **TEST_FAILED** — at least one validation phase failed (US085)
+
+Weather data changes (US082) revert the status back to **DRAFT**.
+
+---
+
+#### Change 4 — `FlightPlan.dslContent` added
+
+| Attribute | Value |
+|-----------|-------|
+| Source | Client clarifications C03, C10 |
+| Motivation | US080, US081, US085 |
+
+FlightPlan stores the raw DSL content as a String so that US085 can re-validate it. The content comes from US080 (entered as text/file, not validated) or US081 (imported file, validated on import).
+
+---
+
+### 3.4 Simulation Aggregate
+
+#### Change 5 — `SimulationReport.content` confirmed as persistent (C14)
+
+| Attribute | Value |
+|-----------|-------|
+| Source | Client clarification C14 |
+| Motivation | US109, US111 |
+
+The client confirmed the report file is "not transient." The `SimulationReport` value object already existed in Sprint 2 with `filePath` and `content`. The team decided to store both: `filePath` for filesystem reference, `content` (TEXT/CLOB) in the database for durability and historical queries.
+
+---
+
 ## 4. Updated Glossary Entries
 
 The following entries are **new or changed** relative to the Sprint 2 glossary (`docs/Sprint2/us_010/glossary.md`). All other entries remain valid.
@@ -46,6 +103,10 @@ The following entries are **new or changed** relative to the Sprint 2 glossary (
 | **Term** | **Type** | **Sprint 3 Change** |
 |:---|:---|:---|
 | **FuelType** | Enum | **NEW.** Replaces the basic `fuelType` attribute. Defines the specific energy source used by an `EngineModel`. Values include `JET_A1` (widely used, explicit in sec. 3.3), `AVGAS`, `ELECTRIC`, and `SAF`. |
+| **FlightPlanStatus** | Enum | **CHANGED.** Sprint 2: `draft/validated/rejected`. Sprint 3: `DRAFT/IN_TEST/TEST_PASSED/TEST_FAILED`. |
+| **FlightPlan.dslContent** | Attribute | **NEW.** Raw DSL text string stored for re-validation (US085). |
+| **Pilot.certifications** | Attribute | **NEW.** `Set<AircraftModelCode>` — models the pilot is certified to fly (C07). |
+| **SimulationReport.content** | Attribute | **CONFIRMED.** Persistent TEXT/CLOB in database, not transient (C14). |
 
 ---
 
@@ -55,10 +116,25 @@ The updated PlantUML diagram is at `domain_model_sprint3.puml`. It supersedes th
 
 **Key conventions in the Sprint 3 diagram:**
 - `EngineModel` now features a directed association to the `FuelType` enum (`consumes`).
-- Aggregates implemented in Sprint 3 (FlightRoute, Flight, Pilot) will have their *"Sprint 3 — Not yet implemented"* notes removed as development progresses.
+- `FlightPlanStatus` uses Sprint 3 values: `DRAFT`, `IN_TEST`, `TEST_PASSED`, `TEST_FAILED`.
+- `FlightPlan.dslContent` is documented.
+- `FlightRoute` notes soft-delete only (C11).
+- `Pilot` notes `Set<AircraftModelCode> certifications` (C07).
+- `SimulationReport` notes permanent storage (C14).
+- Aggregates implemented in Sprint 3 (FlightRoute, Flight, Pilot) have their *"Sprint 3 — Not yet implemented"* notes removed as development progresses.
 
 ---
 
 ## 6. Implementation Architecture Notes
 
-*(To be populated as Sprint 3 implementation details, JPA mapping decisions, and controller patterns for the new Use Cases are solidified by the team).*
+### Key Integration Decisions (Sprint 3)
+
+| Decision | Detail | Source |
+|----------|--------|--------|
+| FlightPlan is an **entity inside Flight** aggregate | Not a standalone aggregate. Accessed via `FlightRepository`. | Professor confirmation |
+| Pilot certifications stored as `Set<AircraftModelCode>` | Loaded via `PilotRepository` for R7 validation | C07 |
+| DSL is **re-validated every time** in US085 | No caching — ensures latest grammar | Team decision |
+| Report stored as **filePath + content (TEXT)** | Both filesystem and DB for durability | C14 |
+| Database: **PostgreSQL** | Already configured in persistence.xml | C01 + existing setup |
+| C invocation via **ProcessBuilder** | File-based handoff, no JNI/sockets | Sprint 2 decision |
+| Package: `eapli.aisafe.flightplan.domain` | Not `flight` — avoids confusion with Flight aggregate | Team decision |

@@ -1,4 +1,4 @@
-@startuml domain_model_sprint2
+@startuml domain_model_sprint3
 skinparam dpi 150
 scale 0.5
 skinparam packageStyle rectangle
@@ -241,27 +241,31 @@ together {
 }
 
 ' =============================================
-' ROW 4 — Pilot + FlightRoute + Flight  (Sprint 3)
+' ROW 4 — Pilot + FlightRoute + Flight (Sprint 3)
 ' =============================================
-note "Sprint 3 — not yet implemented" as N3
 
 package "Pilot_Aggregate" <<aggregate>> {
   class Pilot <<entity>> <<root>> {
   }
+  class PilotId <<value object>> {
+    email
+  }
+  note right of PilotId : pilot's email (linked to SystemUser)
+  Pilot *-- PilotId : identifiedBy
 }
-Pilot .. N3
+note right of Pilot : Set<AircraftModelCode> certifications\n(C07 — pilot certified for models)
 
 package "FlightRoute_Aggregate" <<aggregate>> {
   class FlightRoute <<entity>> <<root>> {
     deactivationDate
   }
+  note right of FlightRoute : soft-delete only (C11)\nnever physically deleted
   class RouteName <<value object>> {
     name
   }
   note right of RouteName : 2 letters + up to 4 digits\ne.g. TP123 (US073)
   FlightRoute *-- RouteName : identifiedBy
 }
-FlightRoute .. N3
 
 package "Flight_Aggregate" <<aggregate>> {
   class Flight <<entity>> <<root>> {
@@ -291,12 +295,15 @@ package "Flight_Aggregate" <<aggregate>> {
     departureTime
   }
   class FlightPlan <<entity>> {
+    dslContent
   }
-  note right of FlightPlan : draft → validated | rejected\nUS080, US082, US085
+  note right of FlightPlan : Status lifecycle:\nDRAFT → IN_TEST →\nTEST_PASSED | TEST_FAILED\n(US080, US082, US085)
+  note right of FlightPlan : dslContent stored as raw String\n(re-validated every time in US085)
   enum FlightPlanStatus {
-    draft
-    validated
-    rejected
+    DRAFT
+    IN_TEST
+    TEST_PASSED
+    TEST_FAILED
   }
   class FuelQuantity <<value object>> {
     value
@@ -313,7 +320,6 @@ package "Flight_Aggregate" <<aggregate>> {
   FlightPlan --> FlightPlanStatus : hasStatus
   FlightPlan *-- FuelQuantity : carries
 }
-Flight .. N3
 
 ' =============================================
 ' ROW 5 — Weather + Simulation
@@ -352,7 +358,7 @@ together {
       filePath
       content
     }
-    note right of SimulationReport : raw file from C module.\nimmutable (US109/US111)
+    note right of SimulationReport : permanently stored (C14)\nfilePath + content (TEXT)\nimmutable (US109/US111)
     enum ValidationResult {
       PASSED
       FAILED
