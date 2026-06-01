@@ -40,13 +40,13 @@ This task was assigned in Sprint 3 within the Applications Engineering (EAPLI) s
 
 Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "[Insert LLM Prompt used for state machine design for flight status or domain modeling]"
+**Prompt 1:** "In a flight planning system, I need to create a FlightPlan aggregate root. A pilot registers it for a specific route. Acceptance criteria specifies: 'The assigned pilot must be of the route's company'. The route has a CompanyIATA reference, and the Pilot has a CompanyIATA reference. How should I structure the domain validation in FlightPlan to enforce this rule during creation?"
 
 **LLM suggestions adopted:**
-- [Insert adopted suggestion, e.g., Enum for FlightPlanStatus]
+- Enforce company alignment directly in the FlightPlan constructor or as a validation guard inside the controller to prevent invalid pilot assignments.
 
 **Decisions made by the team:**
-- [Insert specific team decisions, e.g., how to verify the pilot belongs to the correct company]
+- The status of the flight plan must be hardcoded to FlightPlanStatus.DRAFT during initialization.
 
 ### 3.1 Domain Connections
 
@@ -62,16 +62,16 @@ The `FlightPlan` aggregate will act as the operational instantiation of a `Fligh
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `CreateFlightPlanUI` | `aisafe.app.pilot.console` | Captures flight plan inputs from the Pilot |
-| `CreateFlightPlanController` | `aisafe.core` | Validates inputs, company rules, and creates the plan |
-| `FlightPlan` | `aisafe.core` | Aggregate root |
-| `FlightPlanStatus` | `aisafe.core` | Enum containing `DRAFT` (and future states like `VALIDATED`) |
-| `FlightPlanRepository` | `aisafe.core` | Interface for persistence |
-| `JpaFlightPlanRepository` | `aisafe.persistence.impl`| JPA implementation |
+| `CreateFlightPlanUI` | `eapli.aisafe.ui.flightplan` | Captures flight plan inputs from the Pilot |
+| `CreateFlightPlanController` | `eapli.aisafe.flightplan.application` | Validates inputs, company rules, and creates the plan |
+| `FlightPlan` | `eapli.aisafe.flightplan.domain` | Aggregate root |
+| `FlightPlanStatus` | `eapli.aisafe.flightplan.domain` | Enum containing `DRAFT` (and future states like `VALIDATED`) |
+| `FlightPlanRepository` | `eapli.aisafe.flightplan.repositories` | Interface for persistence |
+| `JpaFlightPlanRepository` | `eapli.aisafe.persistence.jpa`| JPA implementation |
 
 **Sequence Diagram — Create Flight Plan:**
 
-![Sequence Diagram — Create Flight Plan]([Insert Sequence Diagram File Name])
+![Sequence Diagram — Create Flight Plan]([sd_us080_create_flight_plan.png)
 
 ### 4.2 Acceptance Tests
 

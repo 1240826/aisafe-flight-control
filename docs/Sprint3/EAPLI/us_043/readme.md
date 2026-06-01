@@ -39,13 +39,13 @@ This task was assigned in Sprint 3 within the Applications Engineering (EAPLI) s
 
 Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "[Insert LLM Prompt used for querying strategies or UI design]"
+**Prompt 1:** "In a DDD application using JPA, I have a WeatherData aggregate root with a recordedDateTime stored as a LocalDateTime. How should I declare and implement a query method in WeatherDataRepository to retrieve all weather data for a given AreaCode on a specific LocalDate (spanning from 00:00:00 to 23:59:59)?"
 
 **LLM suggestions adopted:**
-- [Insert adopted suggestion, e.g., how to structure the date/area query in the repository]
+- Query database using a date range (recordedDateTime BETWEEN date.atStartOfDay() AND date.atTime(LocalTime.MAX)) to handle time components in a date-only search.
 
 **Decisions made by the team:**
-- [Insert specific team decisions, e.g., formatting of the output or handling days with no recorded data]
+- The controller method consultWeatherData(String areaCode, LocalDate date) should accept standard Java types (String, LocalDate) and construct domain Value Objects internally.
 
 ### 3.1 Domain Connections
 
@@ -58,18 +58,18 @@ The query requires traversing or filtering the `WeatherData` entity (or aggregat
 ### 4.1 Realization
 
 **Classes to create/modify:**
-
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `ConsultWeatherUI` | `aisafe.app.common.console` | Prompts user for area and date, displays results |
-| `ConsultWeatherController` | `aisafe.core` | Orchestrates the query, enforces authorization |
-| `WeatherService` | `aisafe.core` | Contains business logic for retrieving weather |
-| `WeatherDataRepository` | `aisafe.core` | Declares the query method (e.g., `findByAreaAndDate`) |
-| `JpaWeatherDataRepository` | `aisafe.persistence.impl` | Implements the database query |
+eapli.aisafe.weatherdata.application
+| Class                      | Module                        | Responsibility |
+|----------------------------|-------------------------------|----------------|
+| `ConsultWeatherUI`         | `eapli.aisafe.ui.weatherdata` | Prompts user for area and date, displays results |
+| `ConsultWeatherController` | `eapli.aisafe.weatherdata.application`                 | Orchestrates the query, enforces authorization |
+| `WeatherData`              | `eapli.aisafe.weatherdata.domain`                 | Contains business logic for retrieving weather |
+| `WeatherDataRepository`    | `eapli.aisafe.weatherdata.repositories`                 | Declares the query method (e.g., `findByAreaAndDate`) |
+| `JpaWeatherDataRepository` | `eapli.aisafe.persistence.jpa`     | Implements the database query |
 
 **Sequence Diagram — Consult Weather Data:**
 
-![Sequence Diagram — Consult Weather Data]([Insert Sequence Diagram File Name])
+![Sequence Diagram — Consult Weather Data](sd_us043_consult_weather_data.puml)
 
 ### 4.2 Acceptance Tests
 

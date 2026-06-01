@@ -39,13 +39,13 @@ This task was assigned in Sprint 3 within the Applications Engineering (EAPLI) s
 
 Generative AI was used to support the analysis and design of this user story.
 
-**Prompt 1:** "[Insert LLM Prompt used for regex validation or route domain modeling]"
+**Prompt 1:** "Design a CreateFlightRouteController where the route name (e.g., 'TP123') must begin with the 2-letter IATA code of the logged-in user's company (e.g., 'TP'). The logged-in user is an ATC_COLLABORATOR (represented by a Collaborator entity containing a CompanyIATA companyId reference). How do I securely retrieve the logged-in user session, fetch their collaborator record, and validate the route name prefix?"
 
 **LLM suggestions adopted:**
-- [Insert adopted suggestion, e.g., Value Object design for the Route Name]
+- Use regex [A-Z]{2}\\d{1,4} in the FlightRouteName Value Object to enforce structural validation on creation, and check uniqueness via the repository before persisting.
 
 **Decisions made by the team:**
-- [Insert specific team decisions, e.g., how to retrieve the user's associated company to validate the 2-letter prefix]
+- Ensure the origin and destination airports are loaded from the AirportRepository to confirm they exist in the database before instantiating the FlightRoute.
 
 ### 3.1 Domain Connections
 
@@ -59,18 +59,18 @@ The `FlightRoute` aggregate root will need to reference two `Airport` entities (
 
 **Classes to create:**
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `CreateFlightRouteUI` | `aisafe.app.atc.console` | Captures route details from the user |
-| `CreateFlightRouteController` | `aisafe.core` | Coordinates creation, validates uniqueness |
-| `FlightRoute` | `aisafe.core` | Aggregate root representing the route |
-| `RouteName` | `aisafe.core` | Value Object enforcing the 2-letter, 1 to 4-number format |
-| `FlightRouteRepository` | `aisafe.core` | Interface for persistence |
-| `JpaFlightRouteRepository`| `aisafe.persistence.impl`| JPA implementation |
+| Class | Module                                  | Responsibility |
+|-------|-----------------------------------------|----------------|
+| `CreateFlightRouteUI` | `eapli.aisafe.ui.flightroute`           | Captures route details from the user |
+| `CreateFlightRouteController` | `eapli.aisafe.flightroute.application`  | Coordinates creation, validates uniqueness |
+| `FlightRoute` | `eapli.aisafe.flightroute.domain`       | Aggregate root representing the route |
+| `FlightRouteName` | `eapli.aisafe.flightroute.domain`       | Value Object enforcing the 2-letter, 1 to 4-number format |
+| `FlightRouteRepository` | `eapli.aisafe.flightroute.repositories` | Interface for persistence |
+| `JpaFlightRouteRepository`| `eapli.aisafe.persistence.jpa`          | JPA implementation |
 
 **Sequence Diagram — Create Flight Route:**
 
-![Sequence Diagram — Create Flight Route]([Insert Sequence Diagram File Name])
+![Sequence Diagram — Create Flight Route](sd_us073_create_flight_route.png)
 
 ### 4.2 Acceptance Tests
 
