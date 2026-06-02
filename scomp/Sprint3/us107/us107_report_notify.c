@@ -1,6 +1,4 @@
-/*
- US107 - Notify report thread via condition variables upon safety violation detection
-*/
+
 
 #include "us107_report_notify.h"
 #include "us109_report.h"
