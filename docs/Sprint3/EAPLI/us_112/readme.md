@@ -11,10 +11,10 @@ without requiring redesign.
 
 ### 1.1 List of Issues
 
-- Analysis: #74 (Monthly Report Generation)
-- Design: #74 (Monthly Report Generation)
-- Implement: #74 (Monthly Report Generation)
-- Test: #74 (Monthly Report Generation)
+- Analysis: #74 
+- Design: #74 
+- Implement: #74 
+- Test: #74 
 
 ---
 
