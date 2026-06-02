@@ -1,0 +1,42 @@
+package eapli.aisafe.flightplan.domain;
+
+import eapli.aisafe.company.domain.CompanyIATA;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Unit tests for FlightPlan aggregate root (US080).
+ * Covers pilot-company matching and default DRAFT status.
+ * Data sourced from CSV.
+ */
+class FlightPlanTest {
+
+    // ── Parameterized scenarios from CSV ──────────────────────────────────────
+
+    @ParameterizedTest(name = "[{index}] {4}")
+    @CsvFileSource(resources = "/us080/flight_plan_test.csv", numLinesToSkip = 1)
+    void ensureFlightPlanRespectsInvariants(final String routeCompanyStr,
+                                           final String pilotCompanyStr,
+                                           final double fuelQuantity,
+                                           final boolean expectSuccess,
+                                           final String testDescription) {
+
+        final var routeCompany = CompanyIATA.valueOf(routeCompanyStr);
+        final var pilotCompany = CompanyIATA.valueOf(pilotCompanyStr);
+
+        if (expectSuccess) {
+            assertDoesNotThrow(() -> {
+                final var plan = new FlightPlan(routeCompany, pilotCompany, fuelQuantity);
+                assertNotNull(plan);
+                assertEquals(FlightPlanStatus.DRAFT, plan.status());
+                assertEquals(fuelQuantity, plan.fuelQuantity());
+            }, testDescription);
+        } else {
+            assertThrows(Exception.class,
+                    () -> new FlightPlan(routeCompany, pilotCompany, fuelQuantity),
+                    testDescription);
+        }
+    }
+}
