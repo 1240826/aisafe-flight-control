@@ -1,0 +1,106 @@
+package eapli.aisafe.weatherdata.application;
+
+import eapli.aisafe.aircontrolarea.domain.AreaCode;
+import eapli.aisafe.usermanagement.domain.AISafeRoles;
+import eapli.aisafe.weatherdata.domain.WeatherData;
+import eapli.aisafe.weatherdata.domain.WindCondition;
+import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
+import eapli.framework.infrastructure.authz.application.AuthorizationService;
+import eapli.framework.infrastructure.authz.domain.model.Role;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+/**
+ * Unit tests for ConsultWeatherDataController (US043).
+ * Covers authorization rules and repository delegation.
+ * Data sourced from CSV.
+ */
+class ConsultWeatherDataControllerTest {
+
+    private AuthorizationService authz;
+    private WeatherDataRepository repo;
+    private ConsultWeatherDataController controller;
+
+    @BeforeEach
+    void setUp() {
+        authz = mock(AuthorizationService.class);
+        repo = mock(WeatherDataRepository.class);
+        controller = new ConsultWeatherDataController(authz, repo);
+    }
+
+    // ── Dummy fixture ─────────────────────────────────────────────────────────
+
+    private WeatherData dummyWeatherData() {
+        return new WeatherData(
+                AreaCode.valueOf("LPPC"),
+                new WindCondition(15.5, 270, 38.7, -9.1, 1000),
+                18.5,
+                "IPMA",
+                LocalDateTime.now()
+        );
+    }
+
+    // ── Parameterized scenarios from CSV ──────────────────────────────────────
+
+    @ParameterizedTest(name = "[{index}] {6}")
+    @CsvFileSource(resources = "/us043/consult_weather_test.csv", numLinesToSkip = 1)
+    void ensureConsultWeatherRespectsAuthorizationAndData(final String roleStr,
+                                                          final String areaCodeStr,
+                                                          final String dateStr,
+                                                          final boolean mockHasData,
+                                                          final boolean expectAuthPass,
+                                                          final boolean expectEmptyList,
+                                                          final String testDescription) {
+
+        final var areaCode = AreaCode.valueOf(areaCodeStr);
+        final var date = LocalDate.parse(dateStr);
+
+        // Arrange authorization behaviour
+        if (expectAuthPass) {
+            doNothing().when(authz).ensureAuthenticatedUserHasAnyOf(any(Role[].class));
+        } else {
+            doThrow(new SecurityException("Unauthorized"))
+                    .when(authz).ensureAuthenticatedUserHasAnyOf(any(Role[].class));
+        }
+
+        // Arrange repository behaviour
+        if (mockHasData) {
+            when(repo.findByAreaCodeAndDate(areaCode, date))
+                    .thenReturn(List.of(dummyWeatherData()));
+        } else {
+            when(repo.findByAreaCodeAndDate(areaCode, date))
+                    .thenReturn(Collections.emptyList());
+        }
+
+        // Act & Assert
+        if (!expectAuthPass) {
+            assertThrows(SecurityException.class,
+                    () -> controller.consultWeatherData(areaCodeStr, date),
+                    testDescription);
+            verify(repo, never()).findByAreaCodeAndDate(any(), any());
+        } else {
+            final var result = assertDoesNotThrow(
+                    () -> controller.consultWeatherData(areaCodeStr, date),
+                    testDescription);
+
+            assertNotNull(result);
+            if (expectEmptyList) {
+                assertFalse(result.iterator().hasNext(), "Should be empty");
+            } else {
+                assertTrue(result.iterator().hasNext(), "Should contain data");
+            }
+            verify(authz).ensureAuthenticatedUserHasAnyOf(any(Role[].class));
+            verify(repo).findByAreaCodeAndDate(areaCode, date);
+        }
+    }
+}
