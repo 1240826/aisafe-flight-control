@@ -10,10 +10,10 @@ the test result and resets the flight plan status to draft.
 
 ### 1.1 List of Issues
 
-- Analysis: #72 (Insert Weather Data in a Flight)
-- Design: #72 (Insert Weather Data in a Flight)
-- Implement: #72 (Insert Weather Data in a Flight)
-- Test: #72 (Insert Weather Data in a Flight)
+- Analysis: #72 
+- Design: #72 
+- Implement: #72 
+- Test: #72 
 
 ---
 
