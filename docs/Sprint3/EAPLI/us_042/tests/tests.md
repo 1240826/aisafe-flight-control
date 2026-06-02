@@ -2,8 +2,6 @@
 
 All tests follow the **AAA convention** (Arrange, Act, Assert) and are written in JUnit 5.
 Tests are aligned with the actual domain implementation (`WindCondition`, `WeatherData`).
-The `CSVWeatherDataImporterTest` reads from `src/test/resources/`.
-
 ---
 
 ## 1. WindCondition Value Object
