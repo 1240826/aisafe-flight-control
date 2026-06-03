@@ -81,10 +81,16 @@ public class TestFlightPlanController {
             final var flight = entry.flight();
             final var flightPlan = entry.flightPlan();
 
-            if (flightPlan.status() != eapli.aisafe.flightplan.domain.FlightPlanStatus.DRAFT) {
+            final var st = flightPlan.status();
+            if (st != eapli.aisafe.flightplan.domain.FlightPlanStatus.DRAFT
+                    && st != eapli.aisafe.flightplan.domain.FlightPlanStatus.TEST_PASSED
+                    && st != eapli.aisafe.flightplan.domain.FlightPlanStatus.TEST_FAILED) {
                 errors.add("Skipped " + flightPlan.identity()
-                        + " (status: " + flightPlan.status() + ")");
+                        + " (status: " + st + ")");
                 continue;
+            }
+            if (st != eapli.aisafe.flightplan.domain.FlightPlanStatus.DRAFT) {
+                flightPlan.resetToDraft();
             }
 
             final var departureCheck = checkDepartureTime(flight, flightPlan.dslContent());
@@ -290,7 +296,8 @@ public class TestFlightPlanController {
             for (final var fp : flight.flightPlans()) {
                 final var st = fp.status();
                 if (st != eapli.aisafe.flightplan.domain.FlightPlanStatus.DRAFT
-                        && st != eapli.aisafe.flightplan.domain.FlightPlanStatus.TESTED) {
+                        && st != eapli.aisafe.flightplan.domain.FlightPlanStatus.TEST_PASSED
+                        && st != eapli.aisafe.flightplan.domain.FlightPlanStatus.TEST_FAILED) {
                     continue;
                 }
                 // Only show user-imported flight plans (plan ID == flight designator),
