@@ -39,6 +39,7 @@ import eapli.aisafe.ui.company.RegisterAirTransportCompanyUI;
 import eapli.aisafe.ui.enginemodel.CreateEngineModelUI;
 import eapli.aisafe.ui.manufacturer.RegisterManufacturerUI;
 import eapli.aisafe.ui.weatherdata.RegisterWeatherDataUI;
+import eapli.aisafe.ui.weatherdata.ImportBulkWeatherDataUI;
 import eapli.aisafe.ui.flightplan.ImportFlightPlanUI;
 import eapli.aisafe.ui.flightplan.TestFlightPlanUI;
 import eapli.aisafe.ui.flightroute.CreateFlightRouteUI;
@@ -46,6 +47,8 @@ import eapli.aisafe.ui.flightroute.DeactivateFlightRouteUI;
 import eapli.aisafe.ui.pilot.AddPilotUI;
 import eapli.aisafe.ui.pilot.ListPilotRosterUI;
 import eapli.aisafe.ui.pilot.RemovePilotUI;
+import eapli.aisafe.ui.flight.AddWeatherToFlightUI;
+import eapli.aisafe.ui.report.GenerateMonthlyReportUI;
 import eapli.aisafe.infrastructure.Application;
 import eapli.aisafe.ui.authz.ActivateUserUI;
 import eapli.aisafe.ui.authz.AddUserUI;
@@ -120,6 +123,13 @@ public class MainMenu extends AbstractUI {
 
 	// WEATHER DATA submenu
 	private static final int REGISTER_WEATHER_DATA_OPTION = 1;
+	private static final int IMPORT_BULK_WEATHER_DATA_OPTION = 2;
+
+	// PILOT ACTOR submenu
+	private static final int ADD_WEATHER_TO_FLIGHT_OPTION = 1;
+
+	// REPORTS submenu
+	private static final int GENERATE_MONTHLY_REPORT_OPTION = 1;
 
 	// FLIGHT PLANS submenu
 	private static final int IMPORT_FLIGHT_PLAN_OPTION = 1;
@@ -150,6 +160,8 @@ public class MainMenu extends AbstractUI {
 	private static final int WEATHER_DATA_OPTION = 13;
 	private static final int FLIGHT_PLANS_OPTION = 14;
 	private static final int SETTINGS_OPTION = 15;
+	private static final int PILOT_ACTOR_OPTION = 16;
+	private static final int REPORTS_OPTION = 17;
 
 	private static final String SEPARATOR_LABEL = "--------------";
 
@@ -250,6 +262,16 @@ public class MainMenu extends AbstractUI {
 		// US085 — Flights / Flight Plans: Flight Control Operator only
 		if (hasAnyRole(AISafeRoles.FLIGHT_CONTROL_OPERATOR)) {
 			mainMenu.addItem(FLIGHT_PLANS_OPTION, "Flights >", () -> runSubMenu(buildFlightPlanMenu()));
+		}
+
+		// US082 — Pilot actor: can add weather data to flights
+		if (hasAnyRole(AISafeRoles.PILOT)) {
+			mainMenu.addItem(PILOT_ACTOR_OPTION, "My Flights >", () -> runSubMenu(buildPilotActorMenu()));
+		}
+
+		// US112 — Monthly reports: Flight Control Operator only
+		if (hasAnyRole(AISafeRoles.FLIGHT_CONTROL_OPERATOR)) {
+			mainMenu.addItem(REPORTS_OPTION, "Reports >", () -> runSubMenu(buildReportsMenu()));
 		}
 
 		// Settings: Admin only
@@ -359,7 +381,8 @@ public class MainMenu extends AbstractUI {
 
 	private Menu buildWeatherDataMenu() {
 		final var menu = new Menu("Weather Data >");
-		menu.addItem(REGISTER_WEATHER_DATA_OPTION, "Register Weather Data", () -> { new RegisterWeatherDataUI().show(); return false; });
+		menu.addItem(REGISTER_WEATHER_DATA_OPTION, "Register Weather Data (US041)", () -> { new RegisterWeatherDataUI().show(); return false; });
+		menu.addItem(IMPORT_BULK_WEATHER_DATA_OPTION, "Import Bulk Weather Data from CSV (US042)", () -> { new ImportBulkWeatherDataUI().show(); return false; });
 		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
 		return menu;
 	}
@@ -368,6 +391,20 @@ public class MainMenu extends AbstractUI {
 		final var menu = new Menu("Flights >");
 		menu.addItem(IMPORT_FLIGHT_PLAN_OPTION, "Import Flight Plan (from DSL file)", () -> { new ImportFlightPlanUI().show(); return false; });
 		menu.addItem(TEST_FLIGHT_PLAN_OPTION, "Test Flight Plan", () -> { new TestFlightPlanUI().show(); return false; });
+		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
+		return menu;
+	}
+
+	private Menu buildPilotActorMenu() {
+		final var menu = new Menu("My Flights >");
+		menu.addItem(ADD_WEATHER_TO_FLIGHT_OPTION, "Add Weather Data to Flight (US082)", () -> { new AddWeatherToFlightUI().show(); return false; });
+		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
+		return menu;
+	}
+
+	private Menu buildReportsMenu() {
+		final var menu = new Menu("Reports >");
+		menu.addItem(GENERATE_MONTHLY_REPORT_OPTION, "Generate Monthly Report (US112)", () -> { new GenerateMonthlyReportUI().show(); return false; });
 		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
 		return menu;
 	}

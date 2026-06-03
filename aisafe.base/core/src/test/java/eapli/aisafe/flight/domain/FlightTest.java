@@ -1,6 +1,7 @@
 package eapli.aisafe.flight.domain;
 
 import eapli.aisafe.flightplan.domain.FlightPlanId;
+import eapli.aisafe.flightplan.domain.FlightPlanStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -80,5 +81,101 @@ class FlightTest {
         final var f1 = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
         final var f2 = new Flight(FlightDesignator.valueOf("TP5678"), DEP_TIME);
         assertFalse(f1.sameAs(f2));
+    }
+
+    // ── US082 – assignWeatherData ─────────────────────────────────────────────
+
+    @Test
+    void ensureAssignWeatherDataSetsId() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        flight.assignWeatherData(42L);
+        assertEquals(42L, flight.weatherDataId());
+    }
+
+    @Test
+    void ensureAssignWeatherDataIsIdempotentWhenSameId() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        flight.assignWeatherData(42L);
+        flight.assignWeatherData(42L);
+        assertEquals(42L, flight.weatherDataId());
+    }
+
+    @Test
+    void ensureAssignWeatherDataOverwritesPreviousId() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        flight.assignWeatherData(42L);
+        flight.assignWeatherData(99L);
+        assertEquals(99L, flight.weatherDataId());
+    }
+
+    @Test
+    void ensureAssignWeatherDataResetsTestPassedPlansToDraft() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
+        fp.markAsInTest();
+        fp.markAsTestPassed();
+
+        flight.assignWeatherData(42L);
+
+        assertEquals(FlightPlanStatus.DRAFT, fp.status());
+    }
+
+    @Test
+    void ensureAssignWeatherDataResetsTestFailedPlansToDraft() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
+        fp.markAsInTest();
+        fp.markAsTestFailed();
+
+        flight.assignWeatherData(42L);
+
+        assertEquals(FlightPlanStatus.DRAFT, fp.status());
+    }
+
+    @Test
+    void ensureAssignWeatherDataDoesNotResetDraftPlans() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
+        assertEquals(FlightPlanStatus.DRAFT, fp.status());
+
+        flight.assignWeatherData(42L);
+
+        assertEquals(FlightPlanStatus.DRAFT, fp.status());
+    }
+
+    @Test
+    void ensureAssignWeatherDataDoesNotResetInTestPlans() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
+        fp.markAsInTest();
+
+        flight.assignWeatherData(42L);
+
+        assertEquals(FlightPlanStatus.IN_TEST, fp.status());
+    }
+
+    @Test
+    void ensureAssignWeatherDataNullIdIsAccepted() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        flight.assignWeatherData(42L);
+        flight.assignWeatherData(null);
+        assertNull(flight.weatherDataId());
+    }
+
+    @Test
+    void ensureAssignWeatherDataDoesNotResetPlansWhenSameId() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
+        fp.markAsInTest();
+        fp.markAsTestPassed();
+        flight.assignWeatherData(42L);
+        assertEquals(FlightPlanStatus.DRAFT, fp.status());
+
+        fp.markAsInTest();
+        fp.markAsTestPassed();
+        flight.assignWeatherData(42L);
+
+        assertEquals(FlightPlanStatus.TEST_PASSED, fp.status(),
+                "Re-assigning same weather data must not reset plans again");
     }
 }

@@ -2,6 +2,7 @@ package eapli.aisafe.flight.domain;
 
 import eapli.aisafe.flightplan.domain.FlightPlan;
 import eapli.aisafe.flightplan.domain.FlightPlanId;
+import eapli.aisafe.flightplan.domain.FlightPlanStatus;
 import eapli.aisafe.flightroute.domain.FlightRouteName;
 import eapli.aisafe.pilot.domain.PilotId;
 import eapli.framework.domain.model.AggregateRoot;
@@ -53,6 +54,10 @@ public class Flight implements AggregateRoot<FlightDesignator> {
     @AttributeOverrides({@AttributeOverride(name = "licenseNumber", column = @Column(name = "PILOT_LICENSE", length = 20))})
     private PilotId pilotLicense;
 
+    /** Cross-aggregate reference: weather data associated to this flight (US082). */
+    @Column(name = "WEATHER_DATA_ID")
+    private Long weatherDataId;
+
     @OneToMany(mappedBy = "flight", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FlightPlan> flightPlans = new ArrayList<>();
 
@@ -94,6 +99,31 @@ public class Flight implements AggregateRoot<FlightDesignator> {
 
     public PilotId pilotLicense() {
         return pilotLicense;
+    }
+
+    public Long weatherDataId() {
+        return weatherDataId;
+    }
+
+    /**
+     * US082: assign weather data to this flight.
+     * When weather data is assigned, any TEST_PASSED or TEST_FAILED flight plans
+     * are reset to DRAFT so they can be re-tested with the new weather conditions.
+     * If the same weather data is already assigned, the operation is a no-op.
+     *
+     * @param weatherDataId the ID of the WeatherData aggregate
+     */
+    public void assignWeatherData(final Long weatherDataId) {
+        if (this.weatherDataId != null && this.weatherDataId.equals(weatherDataId)) {
+            return;
+        }
+        this.weatherDataId = weatherDataId;
+        for (final FlightPlan fp : flightPlans) {
+            if (fp.status() == FlightPlanStatus.TEST_PASSED
+                    || fp.status() == FlightPlanStatus.TEST_FAILED) {
+                fp.resetToDraft();
+            }
+        }
     }
 
     public FlightPlan addFlightPlan(final FlightPlanId flightPlanId, final String dslContent) {

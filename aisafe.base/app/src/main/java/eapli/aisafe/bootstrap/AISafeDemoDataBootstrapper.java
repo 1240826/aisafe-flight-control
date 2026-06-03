@@ -49,6 +49,8 @@ import eapli.aisafe.flightroute.domain.FlightRouteName;
 import eapli.aisafe.pilot.domain.Pilot;
 import eapli.aisafe.pilot.domain.PilotId;
 import eapli.aisafe.pilot.repositories.PilotRepository;
+import eapli.aisafe.weatherdata.domain.WeatherData;
+import eapli.aisafe.weatherdata.domain.WindCondition;
 
 import java.util.List;
 import java.time.LocalDate;
@@ -237,6 +239,7 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         bootstrapFlightRoutes();
         bootstrapPilots();
         bootstrapFlightPlans();
+        bootstrapWeatherData();
         return true;
     }
 
@@ -686,6 +689,7 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         bootstrapATCCollaborators();
         bootstrapFlightControlOperators();
         bootstrapWeatherPersons();
+        bootstrapPilotUsers();
     }
 
     private void bootstrapATCCollaborators() {
@@ -770,6 +774,23 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
                 Set.of(AISafeRoles.WEATHER_PERSON));
         saveCollaboratorWeather(met2, "Klaus Weber",
                 "Senior Meteorologist", AreaCode.valueOf("WEFIR"));
+    }
+
+    private void bootstrapPilotUsers() {
+        // Pilot user 1 — João Pereira (license P12345, TAP)
+        registerUser("pilot1", TestDataConstants.PASSWORD1,
+                "João", "Pereira", "pilot1@aisafe.local",
+                Set.of(AISafeRoles.PILOT));
+
+        // Pilot user 2 — Miguel Silva (license P54321, TAP)
+        registerUser("pilot2", TestDataConstants.PASSWORD1,
+                "Miguel", "Silva", "pilot2@aisafe.local",
+                Set.of(AISafeRoles.PILOT));
+
+        // Pilot user 3 — Frank Ryan (license P99999, Ryanair)
+        registerUser("pilot3", TestDataConstants.PASSWORD1,
+                "Frank", "Ryan", "pilot3@aisafe.local",
+                Set.of(AISafeRoles.PILOT));
     }
 
     private void saveCollaboratorWeather(final SystemUser user, final String name,
@@ -967,6 +988,45 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
             LOGGER.debug("Bootstrapped flight {} with plan {}", flightDesig, planId);
         } catch (final IntegrityViolationException | ConcurrencyException e) {
             LOGGER.warn("Flight concurrency conflict (skipping): {}", flightDesig);
+        }
+    }
+
+    // ─── Weather Data (US041) ────────────────────────────────────────
+
+    private void bootstrapWeatherData() {
+        saveWeatherData("LPPC", 38.7813, -9.1359, 1000, 25, 180, 22.5, "IPMA",
+                LocalDateTime.of(2026, 6, 1, 14, 30));
+        saveWeatherData("LPPC", 41.2481, -8.6814, 500, 15, 270, 20.0, "METAR LPPC",
+                LocalDateTime.of(2026, 6, 1, 14, 30));
+        saveWeatherData("WEFIR", 48.8566, 2.3522, 1500, 35, 220, 18.0, "EUROCONTROL",
+                LocalDateTime.of(2026, 6, 1, 15, 0));
+        saveWeatherData("WEFIR", 50.0333, 8.5706, 2000, 40, 200, 16.5, "EUROCONTROL",
+                LocalDateTime.of(2026, 6, 2, 10, 0));
+        saveWeatherData("KZNE", 40.7128, -74.0060, 500, 20, 90, 28.0, "NOAA",
+                LocalDateTime.of(2026, 5, 31, 12, 0));
+        saveWeatherData("LPPC", 38.7813, -9.1359, 8000, 55, 240, -5.0, "IPMA",
+                LocalDateTime.of(2026, 6, 2, 8, 0));
+        saveWeatherData("LPPC", 41.2481, -8.6814, 9000, 60, 230, -6.5, "IPMA",
+                LocalDateTime.of(2026, 6, 2, 8, 5));
+    }
+
+    private void saveWeatherData(final String areaCode, final double lat,
+                                  final double lon, final int alt,
+                                  final double windSpeed, final double windDir,
+                                  final double temp,
+                                  final String sourceProvider,
+                                  final LocalDateTime dateTime) {
+        try {
+            final WeatherData wd = new WeatherData(
+                    AreaCode.valueOf(areaCode),
+                    new WindCondition(windSpeed, (int) windDir, lat, lon, alt),
+                    temp, sourceProvider, dateTime);
+            PersistenceContext.repositories().weatherData().save(wd);
+            LOGGER.debug("Bootstrapped weather data: area={} provider={} at {}",
+                    areaCode, sourceProvider, dateTime);
+        } catch (final IntegrityViolationException | ConcurrencyException e) {
+            LOGGER.warn("WeatherData concurrency conflict (skipping): area={} provider={} at {}",
+                    areaCode, sourceProvider, dateTime);
         }
     }
 }
