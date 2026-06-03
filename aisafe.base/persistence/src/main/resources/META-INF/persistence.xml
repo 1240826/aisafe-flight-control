@@ -28,6 +28,12 @@
     <class>eapli.aisafe.weatherdata.domain.WeatherData</class>
     <class>eapli.aisafe.simulation.domain.Simulation</class>
 
+    <!-- Sprint 3 entities -->
+    <class>eapli.aisafe.flight.domain.Flight</class>
+    <class>eapli.aisafe.flightplan.domain.FlightPlan</class>
+    <class>eapli.aisafe.flightroute.domain.FlightRoute</class>
+    <class>eapli.aisafe.pilot.domain.Pilot</class>
+
     <properties>
       <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://vsgate-s1.dei.isep.ipp.pt:10309/aisafe"/>
 

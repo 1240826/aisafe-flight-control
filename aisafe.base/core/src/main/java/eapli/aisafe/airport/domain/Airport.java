@@ -148,7 +148,7 @@ public class Airport implements AggregateRoot<AirportIATA> {
 
     @Override
     public String toString() {
-        return iata + " / " + icao + " — " + name + " (" + city + ", " + country
+        return iata + " / " + icao + " - " + name + " (" + city + ", " + country
                 + ") elev=" + elevation;
     }
 }

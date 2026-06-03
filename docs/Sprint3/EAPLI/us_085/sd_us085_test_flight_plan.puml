@@ -8,90 +8,80 @@ skinparam ParticipantPadding 20
 
 autonumber
 
-actor "Pilot" as actor
+actor "Flight Control Operator" as actor
 participant ":TestFlightPlanUI"                as ui          <<presentation>>
 participant ":TestFlightPlanController"        as ctrl        <<application>>
-participant ":FlightPlanValidationService"     as service     <<domain>>
 participant "flight:Flight"                    as flight      <<domain>>
 participant "plan:FlightPlan"                  as plan        <<domain>>
-participant ":PilotRepository"                 as pilot_repo  <<persistence>>
-participant "pilot:Pilot"                      as pilot       <<domain>>
-participant ":AircraftModelRepository"         as model_repo  <<persistence>>
-participant ":FlightPlanRunner"                as dsl         <<lprog>>
-participant "FlightPlanExporter"               as exporter    <<application>>
-participant "runner:SimulationRunner"          as sim         <<scomp>>
-participant ":ReportParser"                    as parser      <<application>>
+participant ":DslValidator"                    as dsl         <<service>>
+participant ":FlightPlanExporter"              as exporter    <<service>>
+participant ":ProcessBuilderSimulationRunner"  as runner      <<service>>
+participant "ReportParser"                     as parser      <<service>>
 participant ":FlightRepository"                as repo        <<persistence>>
 
-actor -> ui : selects "Test/Validate Flight Plan"
+actor -> ui : selects flight + flight plan
 activate ui
-ui -> ctrl : testFlightPlan(flightPlanId)
+ui -> ctrl : testFlightPlan("TP1234", "FP001")
 activate ctrl
 
-ctrl -> flight : getFlightPlan(id)
+note right of ctrl : Phase 0 — Authorization
+ctrl -> ctrl : ensureAuthenticatedUserHasAnyOf(FLIGHT_CONTROL_OPERATOR)
+
+note right of ctrl : Phase 1 — Load Flight + FlightPlan
+ctrl -> repo : ofIdentity(FlightDesignator.valueOf("TP1234"))
+activate repo
+repo --> ctrl : Flight("TP1234")
+deactivate repo
+ctrl -> flight : flightPlan(FlightPlanId.valueOf("FP001"))
 activate flight
-flight --> ctrl : plan (FlightPlan)
+flight --> ctrl : FlightPlan("FP001")
 deactivate flight
 
+note right of ctrl : Phase 2 — Check DRAFT status
 ctrl -> plan : status()
 activate plan
 plan --> ctrl : DRAFT
 deactivate plan
 
-ctrl -> plan : startTest()
-activate plan
-plan --> ctrl : status = IN_TEST
-deactivate plan
-
-note right of ctrl : Phase 0 — Pilot Certification (R7)
-
-ctrl -> pilot_repo : findBySystemUser(currentUser)
-activate pilot_repo
-pilot_repo --> ctrl : pilot
-deactivate pilot_repo
-
-ctrl -> pilot : certifications()
-activate pilot
-pilot --> ctrl : Set<AircraftModelCode>
-deactivate pilot
-
-ctrl -> service : validatePilotCertification(plan, pilotCerts)
-activate service
-service --> ctrl : ok
-deactivate service
-
-note right of ctrl : Phase 1 — DSL Re-validation
-
+note right of ctrl : Phase 3 — DSL Re-validation
 ctrl -> plan : dslContent()
 activate plan
 plan --> ctrl : raw DSL string
 deactivate plan
-
-ctrl -> dsl : run(dslContent)
+ctrl -> dsl : validate(dslContent)
 activate dsl
-dsl --> ctrl : valid
+dsl --> ctrl : ValidationResult(passed)
 deactivate dsl
 
-note right of ctrl : Phase 2 — JSON Export + C Simulation
+ctrl -> plan : markAsInTest()
+activate plan
+plan --> ctrl : status = IN_TEST
+deactivate plan
+ctrl -> repo : save(flight)
+activate repo
+repo --> ctrl : ok
+deactivate repo
 
-ctrl -> exporter : toJson(plan)
+note right of ctrl : Phase 4 — JSON Export
+ctrl -> exporter : exportForSimulator(flightPlan)
 activate exporter
 exporter --> ctrl : jsonPayload
 deactivate exporter
 
-ctrl -> sim : run(jsonPayload)
-activate sim
-sim --> ctrl : reportFile
-deactivate sim
+note right of ctrl : Phase 5 — C Simulation
+ctrl -> runner : run(jsonPayload)
+activate runner
+runner --> ctrl : reportContent (String)
+deactivate runner
 
-ctrl -> parser : parse(reportFile)
+note right of ctrl : Phase 6 — Parse Report
+ctrl -> parser : parse(reportContent)
 activate parser
-parser --> ctrl : SimulationReport
+parser --> ctrl : ReportParseResult(passed=yes, viol=0)
 deactivate parser
 
-note right of ctrl : Phase 3 — Record Result
-
-ctrl -> plan : recordTestResult(true, reasons)
+note right of ctrl : Phase 7 — Record Result
+ctrl -> plan : recordTestResult(true, null, reportContent)
 activate plan
 plan --> ctrl : status = TEST_PASSED
 deactivate plan
@@ -101,8 +91,8 @@ activate repo
 repo --> ctrl : ok
 deactivate repo
 
-ctrl --> ui : ValidationResult(passed)
+ctrl --> ui : TestResult(passed, "PASSED (violations: 0)", reportContent)
 deactivate ctrl
-ui --> actor : "Flight plan TEST_PASSED"
+ui --> actor : "Flight plan FP001 PASSED (violations: 0)"
 deactivate ui
 @enduml

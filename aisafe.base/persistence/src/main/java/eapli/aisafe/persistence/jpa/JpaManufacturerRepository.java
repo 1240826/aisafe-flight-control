@@ -7,6 +7,8 @@ import eapli.aisafe.infrastructure.Application;
 import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.repositories.impl.jpa.JpaAutoTxRepository;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -26,6 +28,8 @@ public class JpaManufacturerRepository
 
     @Override
     public Optional<Manufacturer> findByNameIgnoreCase(final String name) {
-        return matchOne("UPPER(e.name.name) = UPPER('" + name.replace("'", "''") + "')");
+        final Map<String, Object> params = new HashMap<>();
+        params.put("name", name);
+        return matchOne("UPPER(e.name.name) = UPPER(:name)", params);
     }
 }

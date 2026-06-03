@@ -5,12 +5,26 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+char g_report_output_path[512] = "";
+
+void set_report_output_path(const char *path) {
+    if (path) {
+        snprintf(g_report_output_path, sizeof(g_report_output_path), "%s", path);
+    } else {
+        g_report_output_path[0] = '\0';
+    }
+}
+
 void write_report(SharedData *shm, int total_steps)
 {
-    char path[64];
+    char path[512];
     time_t now = time(NULL);
-    struct tm *tm_ptr = localtime(&now);
-    strftime(path, sizeof(path), "report_%Y%m%d_%H%M%S.txt", tm_ptr);
+    if (g_report_output_path[0]) {
+        snprintf(path, sizeof(path), "%s", g_report_output_path);
+    } else {
+        struct tm *tm_ptr = localtime(&now);
+        strftime(path, sizeof(path), "report_%Y%m%d_%H%M%S.txt", tm_ptr);
+    }
 
     FILE *f = fopen(path, "w");
     if (!f) { perror("fopen report"); return; }
@@ -59,7 +73,7 @@ void write_report(SharedData *shm, int total_steps)
 
     fclose(f);
 
-    char buf[128];
+    char buf[1024];
     snprintf(buf, sizeof(buf), "\n  Report written to %s  RESULT: %s\n",
              path, result ? "PASS" : "FAIL");
     write(STDERR_FILENO, buf, strlen(buf));

@@ -1,0 +1,31 @@
+// Invalid: airport XXX does not exist in the database
+// Purpose: demonstrates semantic validation failure
+flight TP9999 : charter {
+
+    route {
+        origin      : LIS;
+        destination : XXX;
+    }
+
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+        departure {
+            airport  : LIS;
+            datetime : 2026-06-02T10:00+01:00;
+        }
+        arrival {
+            airport  : XXX;
+            datetime : 2026-06-02T12:00+01:00;
+        }
+        fuel {
+            quantity : 5000 kg;
+        }
+        segment {
+            from      : (38.7813, -9.1359);
+            to        : (40.0000, -8.0000);
+            altitudes : [9000 m WIDTH 50 m];
+        }
+    }
+}

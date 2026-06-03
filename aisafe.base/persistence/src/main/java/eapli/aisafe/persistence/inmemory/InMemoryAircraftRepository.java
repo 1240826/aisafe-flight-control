@@ -16,7 +16,9 @@ public class InMemoryAircraftRepository
 
     @Override
     public Optional<Aircraft> findByRegistrationNumber(final RegistrationNumber registrationNumber) {
-        return ofIdentity(registrationNumber);
+        return StreamSupport.stream(findAll().spliterator(), false)
+                .filter(a -> a.identity().number().equals(registrationNumber.number()))
+                .findFirst();
     }
 
     @Override

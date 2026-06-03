@@ -29,7 +29,9 @@ public class JpaAircraftRepository
 
     @Override
     public Optional<Aircraft> findByRegistrationNumber(final RegistrationNumber registrationNumber) {
-        return findById(registrationNumber);
+        final var results = match("e.registrationNumber.number = '" + registrationNumber.number() + "'");
+        final var list = new java.util.ArrayList<>(results);
+        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
     }
 
     @Override

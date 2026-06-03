@@ -37,7 +37,9 @@ import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.authz.domain.repositories.UserRepository;
 import eapli.framework.infrastructure.authz.repositories.impl.jpa.JpaAutoTxUserRepository;
 import eapli.framework.infrastructure.repositories.impl.jpa.JpaAutoTxRepository;
+import eapli.aisafe.flight.repositories.FlightRepository;
 import eapli.aisafe.flightroute.repositories.FlightRouteRepository;
+import eapli.aisafe.pilot.repositories.PilotRepository;
 
 
 /**
@@ -78,6 +80,11 @@ public class JpaRepositoryFactory implements RepositoryFactory {
     @Override
     public AircraftRepository aircraft() {
         return new JpaAircraftRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public AircraftRepository aircraft(final TransactionalContext autoTx) {
+        return new JpaAircraftRepository(autoTx);
     }
 
     @Override
@@ -127,6 +134,31 @@ public class JpaRepositoryFactory implements RepositoryFactory {
     @Override
     public FlightRouteRepository flightRoutes() {
         return new JpaFlightRouteRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public FlightRouteRepository flightRoutes(final TransactionalContext autoTx) {
+        return new JpaFlightRouteRepository(autoTx);
+    }
+
+    @Override
+    public FlightRepository flights() {
+        return new JpaFlightRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public FlightRepository flights(final TransactionalContext autoTx) {
+        return new JpaFlightRepository(autoTx);
+    }
+
+    @Override
+    public PilotRepository pilots() {
+        return new JpaPilotRepository(Application.settings().getPersistenceUnitName());
+    }
+
+    @Override
+    public PilotRepository pilots(final TransactionalContext autoTx) {
+        return new JpaPilotRepository(autoTx);
     }
 
 }

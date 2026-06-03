@@ -8,90 +8,89 @@ skinparam ParticipantPadding 20
 
 autonumber
 
-actor "Pilot" as actor
+actor "Flight Control Operator" as actor
 participant ":TestFlightPlanController"        as ctrl        <<application>>
 participant "plan:FlightPlan"                  as plan        <<domain>>
-participant ":PilotRepository"                 as pilot_repo  <<persistence>>
-participant "pilot:Pilot"                      as pilot       <<domain>>
-participant ":FlightPlanRunner"                as dsl         <<lprog>>
-participant "runner:SimulationRunner"          as sim         <<scomp>>
+participant ":DslValidator"                    as dsl         <<service>>
+participant ":ProcessBuilderSimulationRunner"  as runner      <<service>>
 participant ":FlightRepository"                as repo        <<persistence>>
 
-== Failure 1 — Pilot Not Certified (R7) ==
+== Failure 1 — FlightPlan not in DRAFT status ==
 
-actor -> ctrl : testFlightPlan(id)
+actor -> ctrl : testFlightPlan("TP1234", "FP001")
 
 ctrl -> plan : status()
 activate plan
-plan --> ctrl : DRAFT
+plan --> ctrl : TEST_PASSED
 deactivate plan
 
-ctrl -> pilot_repo : findBySystemUser(currentUser)
-activate pilot_repo
-pilot_repo --> ctrl : pilot
-deactivate pilot_repo
+note right of ctrl #FFAAAA : Status != DRAFT → immediate failure
 
-ctrl -> pilot : certifications()
-activate pilot
-pilot --> ctrl : Set<AircraftModelCode>
-deactivate pilot
+ctrl --> actor : TestResult(false, "Flight plan is not in DRAFT status")
 
-note right of ctrl #FFAAAA : B738 not in pilot certs → FAIL
+note right of ctrl : C simulator is NEVER invoked\nStatus unchanged
 
-ctrl -> plan : recordTestResult(false, ["Pilot not certified for B738"])
-activate plan
-plan --> ctrl : status = TEST_FAILED
-deactivate plan
+== Failure 2 — DSL Validation Fails (US085.4) ==
 
-ctrl -> repo : save(flight)
-activate repo
-repo --> ctrl : ok
-deactivate repo
-
-ctrl --> actor : ValidationResult(failed, "Pilot not certified")
-
-note right of ctrl : C simulator is NEVER invoked
-
-== Failure 2 — DSL Validation Fails ==
-
-actor -> ctrl : testFlightPlan(id)
+actor -> ctrl : testFlightPlan("TP1234", "FP002")
 
 ctrl -> plan : status()
-ctrl -> pilot : certifications()
-ctrl -> service : validatePilotCertification() // passes
-
 ctrl -> plan : dslContent()
-ctrl -> dsl : run(dslContent)
+ctrl -> dsl : validate(dslContent)
 activate dsl
-dsl --> ctrl : invalid + errors
+dsl --> ctrl : ValidationResult(failed, ["syntax errors"])
 deactivate dsl
 
-note right of ctrl #FFAAAA : DSL syntax/semantic errors → FAIL
+note right of ctrl #FFAAAA : DSL validation failed → US085.4
 
-ctrl -> plan : recordTestResult(false, ["line 24: fuel must be positive"])
+ctrl -> plan : markAsInTest()
+ctrl -> plan : recordTestResult(false, null, "DSL validation failed: ...")
 ctrl -> repo : save(flight)
 
-ctrl --> actor : ValidationResult(failed, DSL errors + line numbers)
+ctrl --> actor : TestResult(false, "DSL validation failed: syntax errors")
 
-note right of ctrl : C simulator is NEVER invoked (C03)
+note right of ctrl : C simulator is NEVER invoked\nStatus → TEST_FAILED
 
-== Failure 3 — C Simulation Reports Violations ==
+== Failure 3 — C Simulator Crashes (Timeout/Exception) ==
 
-actor -> ctrl : testFlightPlan(id)
+actor -> ctrl : testFlightPlan("TP1234", "FP003")
 
-ctrl -> plan : dslContent()
-ctrl -> dsl : run(dslContent) // passes
-
-ctrl -> sim : run(jsonPayload)
-activate sim
-sim --> ctrl : reportFile
-deactivate sim
-
-note right of ctrl #FFAAAA : C simulator report says FAIL
-
-ctrl -> plan : recordTestResult(false, ["Fuel exhaustion at step 42"])
+ctrl -> plan : status() // DRAFT
+ctrl -> dsl : validate(dslContent) // passes
+ctrl -> plan : markAsInTest()
 ctrl -> repo : save(flight)
 
-ctrl --> actor : ValidationResult(failed, violations from C)
+ctrl -> runner : run(jsonPayload)
+activate runner
+note right of runner #FFAAAA : Simulator crashes or timeout
+runner --> ctrl : SimulationRunnerException("Simulator crashed")
+deactivate runner
+
+note right of ctrl #FFAAAA : Runner failure → reset to DRAFT
+
+ctrl -> plan : resetToDraft()
+activate plan
+plan --> ctrl : status = DRAFT
+deactivate plan
+ctrl -> repo : save(flight)
+
+ctrl --> actor : TestResult(false, "Simulation execution failed")
+
+== Failure 4 — C Simulator Reports Violations (Physics Fail) ==
+
+actor -> ctrl : testFlightPlan("TP1234", "FP004")
+
+ctrl -> plan : status() // DRAFT
+ctrl -> dsl : validate(dslContent) // passes
+ctrl -> plan : markAsInTest()
+ctrl -> repo : save(flight)
+ctrl -> runner : run(jsonPayload)
+ctrl -> parser : parse(reportContent) // result = FAILED, viol=3
+ctrl -> plan : recordTestResult(false, null, reportContent)
+ctrl -> repo : save(flight)
+
+note right of ctrl #FFAAAA : Physics simulation detects violations
+
+ctrl --> actor : TestResult(false, "FP004 FAILED (violations: 3)")
 
 @enduml

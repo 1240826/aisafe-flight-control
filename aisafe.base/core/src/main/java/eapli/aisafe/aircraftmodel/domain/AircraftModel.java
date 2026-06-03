@@ -154,6 +154,6 @@ public class AircraftModel implements AggregateRoot<AircraftModelCode> {
 
     @Override
     public String toString() {
-        return code + " — " + name + " (" + manufacturerName + ", " + aircraftType + ")";
+        return code + " - " + name + " (" + manufacturerName + ", " + aircraftType + ")";
     }
 }

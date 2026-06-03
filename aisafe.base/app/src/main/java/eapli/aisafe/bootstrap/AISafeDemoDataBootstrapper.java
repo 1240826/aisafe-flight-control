@@ -41,9 +41,18 @@ import eapli.aisafe.aircraft.domain.Aircraft;
 import eapli.aisafe.aircraft.domain.CabinConfiguration;
 import eapli.aisafe.aircraft.domain.RegistrationNumber;
 import eapli.aisafe.aircraft.domain.SeatClass;
+import eapli.aisafe.flight.domain.Flight;
+import eapli.aisafe.flight.domain.FlightDesignator;
+import eapli.aisafe.flightplan.domain.FlightPlanId;
+import eapli.aisafe.flightroute.domain.FlightRoute;
+import eapli.aisafe.flightroute.domain.FlightRouteName;
+import eapli.aisafe.pilot.domain.Pilot;
+import eapli.aisafe.pilot.domain.PilotId;
+import eapli.aisafe.pilot.repositories.PilotRepository;
 
 import java.util.List;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
@@ -67,6 +76,154 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
      */
     private static final LocalDate ASSESSMENT_DATE = LocalDate.now().minusMonths(6);
 
+    // ─── Demo DSL flight plans (valid ANTLR grammar) ─────────────────
+
+    private static final String DSL_TP1234 =
+            "flight TP1234 : regular {\n" +
+            "    route { origin: LIS; destination: CDG; }\n" +
+            "    aircraft: CS-TUB;\n" +
+            "    pilot: P12345;\n" +
+            "    leg {\n" +
+            "        departure { airport: LIS; day: Monday;   datetime: 2026-06-02T10:00+01:00; }\n" +
+            "        arrival   { airport: MAD; datetime: 2026-06-02T12:30+02:00; }\n" +
+            "        fuel      { quantity: 8000 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (38.7813, -9.1359);\n" +
+            "            to        : (40.4983, -3.5676);\n" +
+            "            altitudes : [10000 m WIDTH 60 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "    leg {\n" +
+            "        departure { airport: MAD; day: Monday;   datetime: 2026-06-02T14:00+02:00; }\n" +
+            "        arrival   { airport: CDG; datetime: 2026-06-02T16:30+02:00; }\n" +
+            "        fuel      { quantity: 9000 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (40.4983, -3.5676);\n" +
+            "            to        : (49.0097, 2.5479);\n" +
+            "            altitudes : [11000 m WIDTH 60 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+
+    private static final String DSL_TP5678 =
+            "flight TP5678 : charter {\n" +
+            "    route { origin: OPO; destination: WAW; }\n" +
+            "    aircraft: CS-TUB;\n" +
+            "    pilot: P12345;\n" +
+            "    leg {\n" +
+            "        departure { airport: OPO; datetime: 2026-06-02T14:30+01:00; }\n" +
+            "        arrival   { airport: EDDF; datetime: 2026-06-02T18:00+02:00; }\n" +
+            "        fuel      { quantity: 18500 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (41.2481, -8.6814);\n" +
+            "            to        : (50.0333, 8.5706);\n" +
+            "            altitudes : [11000 m WIDTH 80 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "    leg {\n" +
+            "        departure { airport: EDDF; datetime: 2026-06-02T19:30+02:00; }\n" +
+            "        arrival   { airport: WAW; datetime: 2026-06-02T21:45+02:00; }\n" +
+            "        fuel      { quantity: 12000 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (50.0333, 8.5706);\n" +
+            "            to        : (52.1657, 20.9671);\n" +
+            "            altitudes : [10000 m WIDTH 60 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+
+    private static final String DSL_TP9012 =
+            "flight TP9012 : charter {\n" +
+            "    route { origin: LIS; destination: OPO; }\n" +
+            "    aircraft: CS-TAC;\n" +
+            "    pilot: P12345;\n" +
+            "    leg {\n" +
+            "        departure { airport: LIS; datetime: 2026-06-02T08:00+01:00; }\n" +
+            "        arrival   { airport: OPO; datetime: 2026-06-02T09:00+01:00; }\n" +
+            "        fuel      { quantity: 5000 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (38.7813, -9.1359);\n" +
+            "            to        : (41.2481, -8.6814);\n" +
+            "            altitudes : [9000 m WIDTH 50 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+
+    // ── Crossing conflict flights (same airspace, close times) ──────
+
+    private static final String DSL_TP3000 =
+            "flight TP3000 : regular {\n" +
+            "    route { origin: LIS; destination: CDG; }\n" +
+            "    aircraft: CS-TUB;\n" +
+            "    pilot: P12345;\n" +
+            "    leg {\n" +
+            "        departure { airport: LIS; day: Monday;   datetime: 2026-06-02T10:00+01:00; }\n" +
+            "        arrival   { airport: MAD; datetime: 2026-06-02T12:30+02:00; }\n" +
+            "        fuel      { quantity: 8000 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (38.7813, -9.1359);\n" +
+            "            to        : (40.4983, -3.5676);\n" +
+            "            altitudes : [10000 m WIDTH 60 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "    leg {\n" +
+            "        departure { airport: MAD; day: Monday;   datetime: 2026-06-02T14:00+02:00; }\n" +
+            "        arrival   { airport: CDG; datetime: 2026-06-02T16:30+02:00; }\n" +
+            "        fuel      { quantity: 9000 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (40.4983, -3.5676);\n" +
+            "            to        : (49.0097, 2.5479);\n" +
+            "            altitudes : [11000 m WIDTH 60 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+
+    // TP4000: OPO->WAW — departing same time as TP3000 but crossing path over central Portugal
+    private static final String DSL_TP4000 =
+            "flight TP4000 : charter {\n" +
+            "    route { origin: OPO; destination: WAW; }\n" +
+            "    aircraft: CS-TUB;\n" +
+            "    pilot: P12345;\n" +
+            "    leg {\n" +
+            "        departure { airport: OPO; datetime: 2026-06-02T10:05+01:00; }\n" +
+            "        arrival   { airport: EDDF; datetime: 2026-06-02T13:35+02:00; }\n" +
+            "        fuel      { quantity: 18500 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (41.2481, -8.6814);\n" +
+            "            to        : (50.0333, 8.5706);\n" +
+            "            altitudes : [10000 m WIDTH 80 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "    leg {\n" +
+            "        departure { airport: EDDF; datetime: 2026-06-02T15:05+02:00; }\n" +
+            "        arrival   { airport: WAW; datetime: 2026-06-02T17:20+02:00; }\n" +
+            "        fuel      { quantity: 12000 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (50.0333, 8.5706);\n" +
+            "            to        : (52.1657, 20.9671);\n" +
+            "            altitudes : [10000 m WIDTH 60 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+
+    // TP5000: LIS->OPO — departs 5 min after TP9012 (same route) = conflict
+    private static final String DSL_TP5000 =
+            "flight TP5000 : charter {\n" +
+            "    route { origin: LIS; destination: OPO; }\n" +
+            "    aircraft: CS-TAC;\n" +
+            "    pilot: P12345;\n" +
+            "    leg {\n" +
+            "        departure { airport: LIS; datetime: 2026-06-02T08:05+01:00; }\n" +
+            "        arrival   { airport: OPO; datetime: 2026-06-02T09:05+01:00; }\n" +
+            "        fuel      { quantity: 5000 kg; }\n" +
+            "        segment {\n" +
+            "            from      : (38.7813, -9.1359);\n" +
+            "            to        : (41.2481, -8.6814);\n" +
+            "            altitudes : [9000 m WIDTH 50 m];\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+
     @Override
     public boolean execute() {
         bootstrapManufacturers();
@@ -77,6 +234,9 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         bootstrapAirTransportCompanies();
         bootstrapDemoCollaborators();
         bootstrapAircrafts();
+        bootstrapFlightRoutes();
+        bootstrapPilots();
+        bootstrapFlightPlans();
         return true;
     }
 
@@ -367,6 +527,9 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         saveAirport("FRA", "EDDF", "Frankfurt Airport", "Frankfurt", "Germany", 50.0379, 8.5622, 111, "WEFIR");
         saveAirport("BER", "EDDB", "Berlin Brandenburg Airport", "Berlin", "Germany", 52.3667, 13.5033, 37, "WEFIR");
 
+        // ── Poland ────────────────────────────────────────────────────────────
+        saveAirport("WAW", "EPWA", "Warsaw Chopin Airport", "Warsaw", "Poland", 52.1657, 20.9671, 110, "WEFIR");
+
         // ── United Kingdom ─────────────────────────────────────────────────────
         saveAirport("LHR", "EGLL", "Heathrow Airport", "London", "United Kingdom", 51.4775, -0.4614, 25, "EGTT");
         saveAirport("GLA", "EGPF", "Glasgow International Airport", "Glasgow", "United Kingdom", 55.8719, -4.4331, 8, "EGTT");
@@ -635,6 +798,13 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         saveAircraft("CSTNL", "Portugal", "B77W", "TP", 2,
                 List.of(new SeatClass("FIRST", 8), new SeatClass("BUSINESS", 48), new SeatClass("ECONOMY", 276)),
                 LocalDate.of(2015, 6, 10));
+        // US080 — Aircraft referenced by DSL flight plans
+        saveAircraft("CS-TUB", "Portugal", "B738", "TP", 2,
+                List.of(new SeatClass("ECONOMY", 189)),
+                LocalDate.of(2020, 1, 15));
+        saveAircraft("CS-TAC", "Portugal", "A320", "TP", 2,
+                List.of(new SeatClass("BUSINESS", 8), new SeatClass("ECONOMY", 162)),
+                LocalDate.of(2021, 6, 1));
 
         // Ryanair — B738
         saveAircraft("EIRKI", "Ireland", "B738", "FR", 2,
@@ -683,6 +853,120 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
             LOGGER.debug("Bootstrapped aircraft: {}", regNumber);
         } catch (final IntegrityViolationException | ConcurrencyException e) {
             LOGGER.warn("Aircraft concurrency conflict (skipping): {}", regNumber);
+        }
+    }
+
+    // ─── Pilots (US075) ──────────────────────────────────────────────
+
+    private void bootstrapPilots() {
+        // TAP pilots
+        savePilot("P12345", "TP", Set.of("B738", "A320"), LocalDate.of(2020, 1, 15));
+        savePilot("P54321", "TP", Set.of("B77W"), LocalDate.of(2019, 6, 1));
+        // Ryanair pilots
+        savePilot("P99999", "FR", Set.of("B738"), LocalDate.of(2021, 3, 10));
+    }
+
+    private void savePilot(final String licenseNumber, final String companyIata,
+                            final Set<String> modelCodes, final LocalDate certDate) {
+        final var pilotId = PilotId.valueOf(licenseNumber);
+        if (PersistenceContext.repositories().pilots()
+                .ofIdentity(pilotId).isPresent()) {
+            LOGGER.debug("Pilot already exists (skipping): {}", licenseNumber);
+            return;
+        }
+        try {
+            final var models = new java.util.HashSet<AircraftModelCode>();
+            for (final var code : modelCodes) {
+                models.add(AircraftModelCode.valueOf(code));
+            }
+            PersistenceContext.repositories().pilots().save(
+                    new Pilot(pilotId, CompanyIATA.valueOf(companyIata),
+                            models, certDate));
+            LOGGER.debug("Bootstrapped pilot: {}", licenseNumber);
+        } catch (final IntegrityViolationException | ConcurrencyException e) {
+            LOGGER.warn("Pilot concurrency conflict (skipping): {}", licenseNumber);
+        }
+    }
+
+    // ─── Flight Routes (US080) ───────────────────────────────────────
+
+    private void bootstrapFlightRoutes() {
+        saveRoute("TP123", CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("LIS"), AirportIATA.valueOf("CDG"));
+        saveRoute("TP456", CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("OPO"), AirportIATA.valueOf("WAW"));
+        saveRoute("TP901", CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("LIS"), AirportIATA.valueOf("OPO"));
+    }
+
+    private void saveRoute(final String routeName, final CompanyIATA company,
+                           final AirportIATA origin, final AirportIATA destination) {
+        final var name = FlightRouteName.valueOf(routeName);
+        if (PersistenceContext.repositories().flightRoutes()
+                .existsByName(name)) {
+            LOGGER.debug("FlightRoute already exists (skipping): {}", routeName);
+            return;
+        }
+        try {
+            PersistenceContext.repositories().flightRoutes().save(
+                    new FlightRoute(name, company, origin, destination));
+            LOGGER.debug("Bootstrapped FlightRoute: {} ({} → {})",
+                    routeName, origin, destination);
+        } catch (final IntegrityViolationException | ConcurrencyException e) {
+            LOGGER.warn("FlightRoute concurrency conflict (skipping): {}", routeName);
+        }
+    }
+
+    // ─── Flight Plans ───────────────────────────────────────────────
+
+    private void bootstrapFlightPlans() {
+        saveFlight("TP1234", "FP001",
+                LocalDateTime.of(2026, 6, 2, 10, 0),
+                FlightRouteName.valueOf("TP123"),
+                "CS-TUB", PilotId.valueOf("P12345"), DSL_TP1234);
+        saveFlight("TP5678", "FP002",
+                LocalDateTime.of(2026, 6, 2, 14, 30),
+                FlightRouteName.valueOf("TP456"),
+                "CS-TUB", PilotId.valueOf("P12345"), DSL_TP5678);
+        saveFlight("TP9012", "FP003",
+                LocalDateTime.of(2026, 6, 2, 8, 0),
+                FlightRouteName.valueOf("TP901"),
+                "CS-TAC", PilotId.valueOf("P12345"), DSL_TP9012);
+        // ── Crossing / conflict flights ──────────────────────────
+        saveFlight("TP3000", "FP004",
+                LocalDateTime.of(2026, 6, 2, 10, 0),
+                FlightRouteName.valueOf("TP123"),
+                "CS-TUB", PilotId.valueOf("P12345"), DSL_TP3000);
+        saveFlight("TP4000", "FP005",
+                LocalDateTime.of(2026, 6, 2, 14, 30),
+                FlightRouteName.valueOf("TP456"),
+                "CS-TUB", PilotId.valueOf("P12345"), DSL_TP4000);
+        saveFlight("TP5000", "FP006",
+                LocalDateTime.of(2026, 6, 2, 8, 0),
+                FlightRouteName.valueOf("TP901"),
+                "CS-TAC", PilotId.valueOf("P12345"), DSL_TP5000);
+    }
+
+    private void saveFlight(final String flightDesig, final String planId,
+                            final LocalDateTime departureTime,
+                            final FlightRouteName routeName,
+                            final String aircraftRegistration,
+                            final PilotId pilotLicense,
+                            final String dslContent) {
+        final FlightDesignator designator = FlightDesignator.valueOf(flightDesig);
+        if (PersistenceContext.repositories().flights()
+                .ofIdentity(designator).isPresent()) {
+            LOGGER.debug("Flight already exists (skipping): {}", flightDesig);
+            return;
+        }
+        try {
+            final Flight flight = new Flight(designator, departureTime,
+                    routeName, aircraftRegistration, pilotLicense);
+            flight.addFlightPlan(FlightPlanId.valueOf(planId), dslContent);
+            PersistenceContext.repositories().flights().save(flight);
+            LOGGER.debug("Bootstrapped flight {} with plan {}", flightDesig, planId);
+        } catch (final IntegrityViolationException | ConcurrencyException e) {
+            LOGGER.warn("Flight concurrency conflict (skipping): {}", flightDesig);
         }
     }
 }
