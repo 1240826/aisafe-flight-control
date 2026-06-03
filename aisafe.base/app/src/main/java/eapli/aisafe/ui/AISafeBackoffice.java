@@ -23,6 +23,7 @@
  */
 package eapli.aisafe.ui;
 
+import eapli.aisafe.server.WeatherServerDaemon;
 import eapli.aisafe.ui.authz.LoginUI;
 import eapli.aisafe.infrastructure.Application;
 import eapli.aisafe.infrastructure.authz.AuthenticationCredentialHandler;
@@ -57,7 +58,26 @@ public final class AISafeBackoffice extends BaseApp {
 		AuthzRegistry.configure(PersistenceContext.repositories().users(), new AISafePasswordPolicy(),
 				new PlainTextEncoder());
 
+		// ── RCOMP: start embedded TCP servers (US044, US078, US086) ──────────────
+		// The TCP server and UDP client are embedded in the Main Application
+		// as required by the deployment diagram (Figure 1, RCOMP Project 2).
+		startRemoteServices();
+
 		new AISafeBackoffice().run(args);
+	}
+
+	/**
+	 * Starts the three TCP server daemons as background threads.
+	 * Each daemon handles one remote service (US044/US078/US086) and sends
+	 * UDP access events to the Remote Accesses Logging Server (US090).
+	 */
+	private static void startRemoteServices() {
+		// US044 — Weather Person remote access (port 1044)
+		final Thread t1 = new Thread(new WeatherServerDaemon(), "daemon-weather-US44");
+		t1.setDaemon(true);
+		t1.start();
+		// US078 and US086 daemons will be added here by the responsible teammates
+		System.out.println("[RCOMP] Remote services started (port 1044).");
 	}
 
 	@Override
