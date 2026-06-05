@@ -8,6 +8,7 @@ import eapli.framework.presentation.console.AbstractListUI;
 import eapli.framework.visitor.Visitor;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -22,7 +23,12 @@ public class ListCollaboratorsUI extends AbstractListUI<Collaborator> {
     @Override
     protected boolean doShow() {
         final List<AirTransportCompany> companies = new ArrayList<>();
-        controller.allCompanies().forEach(companies::add);
+        try {
+            controller.allCompanies().forEach(companies::add);
+        } catch (final Exception e) {
+            System.out.println("  [!] Could not load companies: " + e.getMessage());
+            return false;
+        }
 
         System.out.println("\nFilter by company:");
         System.out.println("  0. All collaborators");
@@ -56,10 +62,15 @@ public class ListCollaboratorsUI extends AbstractListUI<Collaborator> {
 
     @Override
     protected Iterable<Collaborator> elements() {
-        if (selectedCompanyIata == null) {
-            return controller.allActiveCollaborators();
+        try {
+            if (selectedCompanyIata == null) {
+                return controller.allActiveCollaborators();
+            }
+            return controller.collaboratorsOfCompany(selectedCompanyIata);
+        } catch (final Exception e) {
+            System.out.println("  [!] " + e.getMessage());
+            return Collections.emptyList();
         }
-        return controller.collaboratorsOfCompany(selectedCompanyIata);
     }
 
     @Override

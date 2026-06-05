@@ -3,10 +3,9 @@
 ## 1. Context
 
 This task is assigned in **Sprint 3** as part of EAPLI (with cross-cutting dependencies on LPROG and SCOMP).
-It is the first time this feature is being developed. The objective is to allow a Pilot to test/validate
+It is the first time this feature is being developed. The objective is to allow a Pilot (Flight Control Operator) to test/validate
 a flight plan they have created, combining DSL re-validation (LPROG) with physics simulation (SCOMP/C).
 
-**Issue:** #85
 **Assigned to:** Fábio Costa (EAPLI + LAPR4)
 
 ### 1.1 List of Issues
@@ -51,61 +50,55 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 steps: (1) re-validate the stored DSL using an ANTLR-based validator, and (2) export the flight plan
 to JSON and invoke an external C simulator via ProcessBuilder. How should this be structured?"
 
-**LLM suggestions adopted:**
-- `FlightPlanValidationService` orchestrates the two-phase validation pipeline
-- DSL re-validation calls the existing `FlightPlanRunner` from the `aisafe.dsl` module
-- JSON export is handled by a dedicated `FlightPlanExporter` service
-- C simulator invocation is isolated behind a `SimulationRunner` interface (testable with mocks)
-
 **Decisions made by the team:**
 - The C simulator is invoked via `ProcessBuilder` — no JNI or socket integration
-- The C simulator output file path is configurable via application properties
+- The C simulator output file path is configurable via system property
 - The DSL is re-validated every time (not cached) to ensure the latest grammar is applied
+- `TestFlightPlanController` orchestrates the full pipeline; dedicated services handle each concern (DSL validation, JSON export, C invocation, report parsing)
 
 ### 3.1 Key Design Decisions
 
-| Decision | Rationale | Source |
-|----------|-----------|--------|
-| FlightPlan stores raw DSL content as String | Needed for US085 re-validation and export | C03 |
-| DSL re-validation uses existing LPROG `FlightPlanRunner` | Reuses proven validation pipeline, avoids duplication | C03 |
-| FlightPlan → JSON export for C simulator | C simulator reads JSON, not DSL | C14 |
-| C invocation via `ProcessBuilder` | Looser coupling than JNI; matches file-based handoff | C14 |
-| Two-phase validation: DSL first, then C | Fail fast: don't run C simulator if DSL is invalid | C03 |
-| `SimulationRunner` interface | Enables unit testing of the controller without a real C binary | C14 |
-| Pilot certification validated as part of US085 | Pilot must be certified for assigned aircraft model | C07 |
-| Report file stored permanently in filesystem + content in DB | Not transient per client | C14 |
-| Use PostgreSQL with PostGIS for final deployment | Simplifies coordinate queries | C01 |
+| Decision | Rationale |
+|----------|-----------|
+| FlightPlan is an `@Entity` inside Flight aggregate (per Sprint 3 domain model) | FlightPlan is not a standalone aggregate root; Flight owns FlightPlan lifecycle |
+| Flight aggregate is minimal for US085 | Only `FlightDesignator` + `@OneToMany FlightPlan`; US080 adds Pilot, Aircraft, Route later |
+| FlightPlan stores raw DSL content as String | Needed for US085 re-validation and export |
+| DSL validation uses ANTLR grammar (`FlightPlan.g4`) in a **3-phase pipeline** (lexical, syntactic, semantic) | Matches LPROG US083/US120 specification; integrated from `aisafe.dsl` module |
+| Import UI uses `ImportFlightPlanController` for ANTLR-based validation at import time | US081/121: only valid DSL may be imported into the system |
+| FlightPlan → structured JSON export via `FlightPlanToScenarioConverter` | C simulator expects detailed scenario JSON with coordinates, segments, flight profile |
+| `FlightPlanExporter` falls back to simple `{ID, FlightPlanDSL}` for non-ANTLR DSL | Backwards compatibility with existing test plans |
+| C invocation via `ProcessBuilder` | Looser coupling than JNI; matches file-based handoff |
+| Two-phase validation: DSL first, then C | Fail fast: don't run C simulator if DSL is invalid |
+| `FlightPlanExporter` dedicated to JSON serialization | Isolates format changes |
+| `ProcessBuilderSimulationRunner` uses configurable timeout | Prevents hanging if simulator crashes |
+| Role-gated to `FLIGHT_CONTROL_OPERATOR` | Follows US030 authorization infrastructure |
+| FlightPlan status machine: DRAFT → IN_TEST → TEST_PASSED/TEST_FAILED | Clear lifecycle for validation workflow |
+| Controller dual API (flightDesignator+flightPlanId / flightPlanId only) | UI lists flights first, then flight plans; remote API may only have flightPlanId |
 
 ### 3.2 Validation Pipeline
 
 ```
-FlightPlanValidationService.validate(flightPlan, pilotCertifications)
+TestFlightPlanController.testFlightPlan(flightPlanId)
     │
-    ├── Phase 0 — Pilot Certification Check (C07)
-    │   ├── Verify pilot is certified for FlightPlan.aircraftModel
-    │   ├── If NOT certified → abort with certification error (status remains DRAFT)
-    │   └── If certified → proceed to Phase 1
+    ├── 1. Authorize — ensure user has FLIGHT_CONTROL_OPERATOR role
     │
-    ├── Phase 1 — DSL Re-validation (LPROG)
-    │   ├── Call FlightPlanRunner.run(dslContent)
-    │   ├── If INVALID → return TEST_FAILED with DSL errors
-    │   └── If VALID → proceed to Phase 2
+    ├── 2. Load FlightPlan from repository (or throw if not found)
     │
-    ├── Phase 2 — JSON Export + C Simulation (EAPLI + SCOMP)
-    │   ├── FlightPlanExporter.toJson(flightPlan) → scenario.json
-    │   ├── SimulationRunner.run(scenario.json) → report file
-    │   ├── Parse report file → extract pass/fail + violation details
-    │   └── Return TEST_PASSED or TEST_FAILED
+    ├── 3. Check status == DRAFT (or return failure)
     │
-    ├── Phase 3 — Report Persistence (C14)
-    │   ├── Store report file permanently in filesystem
-    │   ├── Persist filePath + content in Simulation aggregate (DB)
-    │   └── Report is NOT transient — available for historical consultation
+    ├── 4. DSL Validation (DslValidator.validate)
+    │   ├── If INVALID → markAsInTest() + recordTestResult(false) → save → return failure
+    │   └── If VALID → proceed
     │
-    └── Record result on FlightPlan
-        ├── Update status (TEST_PASSED / TEST_FAILED)
-        ├── Store ValidationResult with reasons
-        └── Save to repository
+    ├── 5. JSON Export (FlightPlanExporter.exportForSimulator)
+    │
+    ├── 6. C Simulation (ProcessBuilderSimulationRunner.run)
+    │   ├── If fails → resetToDraft() + save → return failure
+    │   └── If succeeds → proceed
+    │
+    ├── 7. Parse Report (ReportParser.parse)
+    │
+    └── 8. Record Result (FlightPlan.recordTestResult) + save → return result
 ```
 
 ---
@@ -114,36 +107,37 @@ FlightPlanValidationService.validate(flightPlan, pilotCertifications)
 
 ### 4.1 Sequence Diagrams
 
-- **Happy path:** `sd_us085_test_flight_plan.puml` — pilot certified → DSL passes → JSON export → C simulator → report parsed → TEST_PASSED
-- **Failure paths:** `sd_us085_validation_failures.puml` — pilot not certified, DSL fails, C simulator reports violations
+- **Happy path:** `sd_us085_test_flight_plan.puml` — DSL passes → JSON export → C simulator → report parsed → TEST_PASSED
+- **Failure paths:** `sd_us085_validation_failures.puml` — DSL fails, C simulator reports violations
 
 ### 4.2 Realization
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `Flight` | `eapli.aisafe.flight.domain` | Aggregate root — identity: `FlightDesignator`. Contains flight plans (Sprint 2 domain model) |
-| `FlightPlan` | `eapli.aisafe.flightplan.domain` | **Entity** inside Flight aggregate — stores DSL, status, validation result |
+| `Flight` | `eapli.aisafe.flight.domain` | Aggregate root `@Entity` — holds `@OneToMany FlightPlan`, identity `FlightDesignator` |
+| `FlightDesignator` | `eapli.aisafe.flight.domain` | `@Embeddable` Value Object — format `xxn(n)(n)(n)(a)` (e.g. TP1234) |
+| `FlightPlan` | `eapli.aisafe.flightplan.domain` | `@Entity` inside Flight aggregate — stores DSL, status, validation result |
 | `FlightPlanStatus` | `eapli.aisafe.flightplan.domain` | Enum: DRAFT, IN_TEST, TEST_PASSED, TEST_FAILED |
-| `FlightPlanId` | `eapli.aisafe.flightplan.domain` | Value Object — flight designator |
-| `FuelQuantity` | `eapli.aisafe.flightplan.domain` | Value Object — amount + unit |
+| `FlightPlanId` | `eapli.aisafe.flightplan.domain` | `@Embeddable` Value Object — alphanumeric ID (max 20 chars) |
 | `ValidationResult` | `eapli.aisafe.flightplan.domain` | Value Object — pass/fail + reasons list |
-| `FlightPlanValidationService` | `eapli.aisafe.flightplan.application` | Orchestrates multi-phase validation (R1-R7) |
-| `FlightPlanExporter` | `eapli.aisafe.flightplan.application` | Converts FlightPlan → JSON for C simulator |
-| `SimulationRunner` | `eapli.aisafe.flightplan.application` | Interface for invoking C simulator (real or mock) |
-| `ProcessBuilderSimulationRunner` | `eapli.aisafe.flightplan.application` | Real implementation using ProcessBuilder |
-| `SimulationReport` | `eapli.aisafe.simulation.domain` | Value Object — path, rawOutput, isPassed, violationCount (exists in domain model) |
-| `ReportParser` | `eapli.aisafe.flightplan.application` | Parses C simulator report file → SimulationReport |
-| `TestFlightPlanController` | `eapli.aisafe.flightplan.application` | Auth + orchestration |
-| `FlightRepository` | `eapli.aisafe.flight.repositories` | Repository interface for Flight aggregate |
-| `JpaRepositoryFactory` | `eapli.aisafe.persistence.jpa` | Add `flightRepository()` method |
-| `InMemoryRepositoryFactory` | `eapli.aisafe.persistence.inmemory` | Add `flightRepository()` method |
-| `PilotRepository` | `eapli.aisafe.pilot.repositories` | For loading pilot certifications (R7) |
+| `FlightRepository` | `eapli.aisafe.flight.repositories` | Domain repository interface (with `findByFlightPlanId`) |
+| `JpaFlightRepository` | `eapli.aisafe.persistence.jpa` | JPA implementation |
+| `InMemoryFlightRepository` | `eapli.aisafe.persistence.inmemory` | In-memory implementation |
+| `ImportFlightPlanController` | `eapli.aisafe.flightplan.application` | `@UseCaseController` — ANTLR 3-phase pipeline at import time; creates FlightPlan with DRAFT status |
+| `TestFlightPlanController` | `eapli.aisafe.flightplan.application` | `@UseCaseController` — auth + orchestration (DSL re-validate, export, C simulator, report parse) |
+| `FlightPlanExporter` | `eapli.aisafe.flightplan.application` | Converts FlightPlan → JSON for C simulator; uses `FlightPlanToScenarioConverter` with legacy fallback |
+| `FlightPlanToScenarioConverter` | `eapli.aisafe.flightplan.application` | Parses DSL with ANTLR; outputs structured scenario JSON (legs, coordinates, flight profile) for C simulator |
+| `ProcessBuilderSimulationRunner` | `eapli.aisafe.flightplan.application` | Invokes external C simulator as subprocess with timeout |
+| `ReportParser` | `eapli.aisafe.flightplan.application` | Parses C simulator text output (PASS/FAIL + violation count + EXECUTED/SIMULATED report type) |
+| `DslValidator` | `eapli.aisafe.flightplan.application` | Validates DSL content rules (altitude, speed, waypoint, engine, wake, passengers, non-ASCII) |
+| `ImportFlightPlanUI` | `eapli.aisafe.ui.flightplan` | Console UI — file path + Flight Plan ID input; displays per-phase (lexer/parser/semantic) error feedback |
+| `TestFlightPlanUI` | `eapli.aisafe.ui.flightplan` | Console UI — extends `AbstractUI`, role-gated to FLIGHT_CONTROL_OPERATOR |
 
 ### 4.3 Acceptance Tests
 
 **AT1 — Valid flight plan passes both validation phases (US085.1, US085.2)**
 
-Given a flight plan with valid DSL content, valid fuel quantity, and valid altitude,
+Given a flight plan with valid DSL content,
 When the Pilot requests validation,
 Then the DSL is re-validated successfully, the C simulator runs, and the final status is TEST_PASSED.
 
@@ -154,93 +148,131 @@ When the Pilot requests validation,
 Then the DSL re-validation fails, the C simulator is NOT invoked, and the status is TEST_FAILED
 with DSL error messages.
 
-**AT3 — Insufficient fuel detected by C simulator (US085.5)**
+**AT3 — Insufficient fuel / physics failure detected by C simulator (US085.5)**
 
-Given a flight plan with valid DSL but insufficient fuel for the route,
+Given a flight plan with valid DSL but that fails the physics simulation,
 When the Pilot requests validation,
 Then the DSL passes, the C simulator runs, and the report indicates failure → status TEST_FAILED.
 
 **AT4 — Unauthorized user is rejected (US030)**
 
-Given a user without the PILOT role,
+Given a user without the FLIGHT_CONTROL_OPERATOR role,
 When they attempt to validate a flight plan,
 Then the system denies access with an authorization error.
-
-**AT5 — Pilot not certified for aircraft model is rejected (C07)**
-
-Given a flight plan assigned to a pilot who is NOT certified for the aircraft model,
-When the Pilot requests validation,
-Then the validation fails before DSL/C simulation with a certification error,
-and the status remains DRAFT.
-
-**AT6 — Report is persisted for historical consultation (C14)**
-
-Given a validated flight plan that passed the C simulator,
-When the validation completes,
-Then the C simulator's report is stored both in the filesystem and in the database
-(file path + content as CLOB) for future reference.
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
+**All files (24 source files):**
 
-- `eapli.aisafe.flight.domain.Flight` — aggregate root (may already exist from Sprint 2)
-- `eapli.aisafe.flightplan.domain.FlightPlan` — entity inside Flight aggregate
-- `eapli.aisafe.flightplan.domain.FlightPlanStatus` — enum
-- `eapli.aisafe.flightplan.domain.FlightPlanId` — value object
-- `eapli.aisafe.flightplan.domain.FuelQuantity` — value object
-- `eapli.aisafe.flightplan.domain.ValidationResult` — value object
-- `eapli.aisafe.flightplan.application.FlightPlanValidationService` — validation orchestrator
-- `eapli.aisafe.flightplan.application.FlightPlanExporter` — JSON export
-- `eapli.aisafe.flightplan.application.SimulationRunner` — C invocation interface
-- `eapli.aisafe.flightplan.application.ProcessBuilderSimulationRunner` — real implementation
-- `eapli.aisafe.flightplan.application.ReportParser` — parses C report
-- `eapli.aisafe.flightplan.application.TestFlightPlanController` — application controller
-- `eapli.aisafe.pilot.domain.Pilot` — aggregate root (add `Set<AircraftModelCode> certifications`)
-- `eapli.aisafe.pilot.repositories.PilotRepository` — repository interface
-- `eapli.aisafe.flight.repositories.FlightRepository` — repository interface (add query for flight plans by pilot)
+| Package | Files |
+|---------|-------|
+| `eapli.aisafe.flight.domain` | `Flight`, `FlightDesignator` |
+| `eapli.aisafe.flight.repositories` | `FlightRepository` |
+| `eapli.aisafe.flightplan.domain` | `FlightPlan`, `FlightPlanId`, `FlightPlanStatus`, `ValidationResult` |
+| `eapli.aisafe.flightplan.application` | `ImportFlightPlanController`, `TestFlightPlanController`, `FlightPlanExporter`, `FlightPlanToScenarioConverter`, `ProcessBuilderSimulationRunner`, `ReportParser`, `DslValidator` |
+| `eapli.aisafe.persistence.jpa` | `JpaFlightRepository` |
+| `eapli.aisafe.persistence.inmemory` | `InMemoryFlightRepository` |
+| `eapli.aisafe.ui.flightplan` | `ImportFlightPlanUI`, `TestFlightPlanUI` |
+| `eapli.aisafe.ui` | `MainMenu` (updated) |
+| `eapli.aisafe.bootstrap` | `AISafeDemoDataBootstrapper` (updated) |
+| `eapli.aisafe.infrastructure.persistence` | `RepositoryFactory` (updated) |
+| `eapli.aisafe.persistence.jpa` | `JpaRepositoryFactory` (updated) |
+| `eapli.aisafe.persistence.inmemory` | `InMemoryRepositoryFactory` (updated) |
+| `persistence.xml` | `META-INF/persistence.xml` (updated) |
+
+**Unit tests (14 test classes, 147 tests):**
+
+| Test Class | Tests |
+|------------|-------|
+| `FlightDesignatorTest` | 13 |
+| `FlightTest` | 9 |
+| `FlightPlanIdTest` | 8 |
+| `FlightPlanTest` | 14 |
+| `ValidationResultTest` | 9 |
+| `FlightPlanDataValidationTest` | 25 |
+| `FlightPlanExporterTest` | 4 |
+| `ImportFlightPlanControllerTest` | 4 |
+| `TestFlightPlanControllerTest` | 12 |
+| `ReportParserTest` | 13 |
+| `ReportParserParameterizedTest` | 10 |
+| `ProcessBuilderSimulationRunnerTest` | 3 |
+| `PilotCertificationDataValidationTest` | 8 |
+| `DslValidatorParameterizedTest` | 15 |
 
 ---
 
 ## 6. Integration/Demonstration
 
 ```
-┌──────────┐   DSL text   ┌──────────────┐   JSON file   ┌────────────┐
-│  US080/  │─────────────>│  US085 Java  │──────────────>│  C Sim     │
-│  US081   │  (stored)    │  Validation  │  (export)     │  (SCOMP)   │
-└──────────┘              └──────────────┘               └────────────┘
-                                   │                            │
-                                   │ report file                │ report file
-                                   │ (parsed)                   │ (written)
-                                   v                            v
-                           ┌──────────────┐
-                           │  FlightPlan  │
-                           │  status +    │
-                           │  result      │
-                           └──────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Backoffice Console (Flight Control Operator)                           │
+│                                                                          │
+│  MainMenu > Flights                                                     │
+│       │                                                                  │
+│       ├── 1. Import Flight Plan                                          │
+│       │      │                                                          │
+│       │      v                                                          │
+│       │  ImportFlightPlanUI                                              │
+│       │      │  enter file path + FlightPlan ID                         │
+│       │      │  ImportFlightPlanController.importFlightPlan(dsl, id)    │
+│       │      v                                                          │
+│       │  ImportFlightPlanController                                      │
+│       │      │                                                          │
+│       │      ├── ANTLR Lexer (FlightPlanLexer)                          │
+│       │      ├── ANTLR Parser (FlightPlanParser)                        │
+│       │      ├── Semantic Validation (SemanticValidationListener)       │
+│       │      ├── Extract FlightDesignator from parse tree               │
+│       │      └── FlightRepository.save(flight) ──→ DB                   │
+│       │                                                                  │
+│       └── 2. Test Flight Plan                                            │
+│              │                                                          │
+│              v                                                          │
+│          TestFlightPlanUI                                                │
+│              │  allFlights() → list flights                             │
+│              │  select flight → list its flight plans                   │
+│              │  controller.testFlightPlan(flightDesig, planId)          │
+│              v                                                          │
+│          TestFlightPlanController                                        │
+│              │                                                          │
+│              ├── FlightRepository.findByDesignator(flight)              │
+│              ├── Flight.flightPlan(flightPlanId) → FlightPlan           │
+│              ├── DslValidator.validate(dslContent)                      │
+│              ├── FlightPlanExporter.exportForSimulator(flightPlan)      │
+│              │     ├── FlightPlanToScenarioConverter.convert() (ANTLR)  │
+│              │     └── fallback: {ID, FlightPlanDSL} (legacy)           │
+│              ├── ProcessBuilderSimulationRunner.run(json) ──→ C Sim     │
+│              ├── ReportParser.parse(reportContent)                      │
+│              └── FlightRepository.save(flight) ──→ DB (cascade to plans)│
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. Bootstrap or create a flight plan via US080 (DRAFT status).
-2. Log in as the Pilot assigned to the flight.
-3. Select "Test/Validate Flight Plan" and choose the flight.
-4. System re-validates the DSL → exports to JSON → invokes C simulator.
-5. C simulator runs physics and produces report.
-6. System parses the report and updates the flight plan status.
-7. Pilot sees the validation result (PASS/FAIL with reasons).
+1. Bootstrap data creates 3 demo flights (TP1234, TP5678, TP9012), each with one flight plan using valid ANTLR grammar DSL content.
+2. Log in as `fco1` / `Password1` (Flight Control Operator role).
+3. Navigate: **Flights > 1. Import Flight Plan**.
+4. Enter the path to a `.flightplan` file and a Flight Plan ID.
+5. System runs ANTLR 3-phase validation: lexical → syntactic → semantic. Per-phase errors are displayed with line:column details.
+6. On success, the flight plan is created with DRAFT status and a summary is shown.
+7. Navigate: **Flights > 2. Test Flight Plan**.
+8. Select a flight, then select its flight plan from the list.
+9. System re-validates the DSL → exports to structured JSON (via converter or legacy fallback) → invokes C simulator (if configured).
+10. If C simulator is not available, the runner throws (handled gracefully).
+11. Result is displayed (PASS/FAIL with details) and the flight plan status is updated.
 
 ---
 
 ## 7. Observations
 
-- The C simulator binary path should be configurable (application.properties).
-- The JSON export format must match what the C simulator's `json_parser.h` expects.
-- The `SimulationRunner` interface allows unit testing without a real C binary.
-- DSL re-validation depends on the `aisafe.dsl` module — ensure it is a Maven dependency.
-- Pilot certification check (R7, from C07) requires FlightPlan to expose the assigned pilot's certifications.
-- The C simulator report file is stored permanently (not transient) — both filesystem path and content are persisted (C14).
-- PostgreSQL with PostGIS is recommended for the final deployment to simplify coordinate queries (C01).
-- The FlightPlan aggregate must store `dslContent` as a raw String (from US080/US081) for re-validation in Phase 1.
-- Weather data changes (US082) void the previous test result — the flight plan returns to DRAFT status.
-- Team coordination: Jaime (US080) creates FlightPlan with DSL; Cláudio (US082) adds weather data; LPROG team (US120) provides `FlightPlanRunner`; SCOMP team provides the C simulator binary.
+- The C simulator binary path is configurable via system property `aisafe.simulator.executable` (default: `"aisafe-simulator"`).
+- The `ProcessBuilderSimulationRunner` applies a timeout (default 30s, configurable via `aisafe.simulator.timeout`).
+- DSL validation at import time uses the **full ANTLR 3-phase pipeline** (`FlightPlanRunner` from `aisafe.dsl`): `FlightPlanErrorListener` (lexer+parser errors with line:column), `SemanticValidationListener` (R2–R11 semantic rules), `FlightPlanPrinterVisitor` (summary).
+- The `aisafe.dsl` dependency is declared in `aisafe.base/core/pom.xml` for access to `FlightPlanRunner`, ANTLR listeners, and visitors.
+- `ImportFlightPlanController` returns a `DslValidationResult` record (record type) containing per-phase error lists, the `FlightDesignator`, and the created `FlightPlan` (or null on failure).
+- `FlightPlanToScenarioConverter` produces structured JSON for the C simulator: `[{ID, Type, Route, DepartureTime, DepartureTZ, Leg[{Departure, Arrival, Fuel, Flight Profile {Climb[], Descend[], Cruise}, Segments[]}]}]`. It has a `canConvert()` predicate to gracefully fall back.
+- `FlightPlanExporter.exportForSimulator()` tries `FlightPlanToScenarioConverter.convert()` first; falls back to legacy `{ID, FlightPlanDSL}` format if DSL doesn't parse.
+- `FlightPlan` is an `@Entity` **inside** the `Flight` aggregate root (per Sprint 3 domain model). All persistence goes through `FlightRepository` with `CascadeType.ALL`. This was refactored from an earlier design where FlightPlan was a standalone aggregate root.
+- The Flight aggregate for US085 is **minimal** — only `FlightDesignator` identity + `@OneToMany FlightPlan`. When US080 is implemented, the full Flight aggregate (with `FlightType`, `DepartureSchedule`, `Pilot`, `Aircraft`, `Route`) extends this class.
+- `ValidationResult` in `eapli.aisafe.flightplan.domain` is a separate class from `eapli.aisafe.simulation.domain.ValidationResult` (which is an enum).
+- Team coordination: Jaime (US080) creates FlightPlan with DSL; Cláudio (US082) adds weather data; LPROG team (US120) provides `FlightPlanRunner` + ANTLR grammar; SCOMP team provides the C simulator binary.

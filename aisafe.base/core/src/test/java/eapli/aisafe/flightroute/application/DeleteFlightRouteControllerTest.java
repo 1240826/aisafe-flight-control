@@ -2,6 +2,7 @@ package eapli.aisafe.flightroute.application;
 
 import eapli.aisafe.airport.domain.AirportIATA;
 import eapli.aisafe.company.domain.CompanyIATA;
+import eapli.aisafe.flight.repositories.FlightRepository;
 import eapli.aisafe.flightroute.domain.FlightRoute;
 import eapli.aisafe.flightroute.domain.FlightRouteName;
 import eapli.aisafe.flightroute.repositories.FlightRouteRepository;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,15 +35,18 @@ class DeleteFlightRouteControllerTest {
 
     private AuthorizationService authz;
     private FlightRouteRepository routeRepo;
+    private FlightRepository flightRepo;
     private DeleteFlightRouteController controller;
 
     private static final LocalDate FUTURE_DATE = LocalDate.now().plusDays(30);
+    private static final LocalDateTime FUTURE_DATETIME = FUTURE_DATE.atStartOfDay();
 
     @BeforeEach
     void setUp() {
-        authz     = mock(AuthorizationService.class);
-        routeRepo = mock(FlightRouteRepository.class);
-        controller = new DeleteFlightRouteController(authz, routeRepo);
+        authz      = mock(AuthorizationService.class);
+        routeRepo  = mock(FlightRouteRepository.class);
+        flightRepo = mock(FlightRepository.class);
+        controller = new DeleteFlightRouteController(authz, routeRepo, flightRepo);
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
@@ -62,7 +67,8 @@ class DeleteFlightRouteControllerTest {
         // AT1: no planned flights after date → deactivation persisted
         final var route = activeRoute();
         when(routeRepo.ofIdentity(FlightRouteName.valueOf("TP123"))).thenReturn(Optional.of(route));
-        when(routeRepo.hasPlannedFlightsAfter(FlightRouteName.valueOf("TP123"), FUTURE_DATE)).thenReturn(false);
+        when(flightRepo.existsByRouteNameAndDepartureTimeAfter(
+                FlightRouteName.valueOf("TP123"), FUTURE_DATETIME)).thenReturn(false);
         when(routeRepo.save(route)).thenReturn(route);
 
         final var result = controller.deactivateRoute("TP123", FUTURE_DATE);
@@ -76,7 +82,7 @@ class DeleteFlightRouteControllerTest {
         // AT1/AT5: authorization must always be checked
         final var route = activeRoute();
         when(routeRepo.ofIdentity(FlightRouteName.valueOf("TP123"))).thenReturn(Optional.of(route));
-        when(routeRepo.hasPlannedFlightsAfter(any(), any())).thenReturn(false);
+        when(flightRepo.existsByRouteNameAndDepartureTimeAfter(any(), any())).thenReturn(false);
         when(routeRepo.save(route)).thenReturn(route);
 
         controller.deactivateRoute("TP123", FUTURE_DATE);
@@ -111,7 +117,8 @@ class DeleteFlightRouteControllerTest {
         // AT2: planned flights after the date → operation must be rejected
         final var route = activeRoute();
         when(routeRepo.ofIdentity(FlightRouteName.valueOf("TP123"))).thenReturn(Optional.of(route));
-        when(routeRepo.hasPlannedFlightsAfter(FlightRouteName.valueOf("TP123"), FUTURE_DATE)).thenReturn(true);
+        when(flightRepo.existsByRouteNameAndDepartureTimeAfter(
+                FlightRouteName.valueOf("TP123"), FUTURE_DATETIME)).thenReturn(true);
 
         assertThrows(IllegalStateException.class,
                 () -> controller.deactivateRoute("TP123", FUTURE_DATE),
@@ -123,7 +130,7 @@ class DeleteFlightRouteControllerTest {
         // AT2: repo.save must NOT be called if business rule blocks deactivation
         final var route = activeRoute();
         when(routeRepo.ofIdentity(FlightRouteName.valueOf("TP123"))).thenReturn(Optional.of(route));
-        when(routeRepo.hasPlannedFlightsAfter(any(), any())).thenReturn(true);
+        when(flightRepo.existsByRouteNameAndDepartureTimeAfter(any(), any())).thenReturn(true);
 
         try {
             controller.deactivateRoute("TP123", FUTURE_DATE);

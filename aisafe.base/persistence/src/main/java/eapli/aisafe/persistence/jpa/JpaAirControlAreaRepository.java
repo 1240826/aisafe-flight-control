@@ -7,6 +7,8 @@ import eapli.aisafe.infrastructure.Application;
 import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.repositories.impl.jpa.JpaAutoTxRepository;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -26,13 +28,20 @@ public class JpaAirControlAreaRepository
 
     @Override
     public Optional<AirControlArea> findByName(final String name) {
-        return matchOne("UPPER(e.name.name) = UPPER('" + name.replace("'", "''") + "')");
+        final Map<String, Object> params = new HashMap<>();
+        params.put("name", name);
+        return matchOne("UPPER(e.name.name) = UPPER(:name)", params);
     }
 
     @Override
     public Iterable<AirControlArea> findOverlapping(final double minLat, final double maxLat,
                                                      final double minLon, final double maxLon) {
-        return match("e.boundary.maxLat >= " + minLat + " AND e.boundary.minLat <= " + maxLat
-                + " AND e.boundary.maxLon >= " + minLon + " AND e.boundary.minLon <= " + maxLon);
+        final Map<String, Object> params = new HashMap<>();
+        params.put("minLat", minLat);
+        params.put("maxLat", maxLat);
+        params.put("minLon", minLon);
+        params.put("maxLon", maxLon);
+        return match("e.boundary.maxLat >= :maxLat AND e.boundary.minLat <= :minLat"
+                + " AND e.boundary.maxLon >= :maxLon AND e.boundary.minLon <= :minLon", params);
     }
 }

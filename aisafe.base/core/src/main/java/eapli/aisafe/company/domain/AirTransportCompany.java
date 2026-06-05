@@ -78,6 +78,6 @@ public class AirTransportCompany implements AggregateRoot<CompanyIATA> {
 
     @Override
     public String toString() {
-        return iata + "/" + icao + " — " + name;
+        return iata + "/" + icao + " - " + name;
     }
 }

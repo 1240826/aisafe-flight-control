@@ -1,0 +1,44 @@
+# US085 — Flight Plan Validation Test Data
+# Columns:
+#   testCaseId      - unique identifier for the test case
+#   flightDesignator - flight identifier (e.g. TP0123)
+#   flightType       - REGULAR or CHARTER
+#   aircraftModel    - model code of the aircraft (e.g. B738)
+#   fuelAmount       - fuel loaded (kg)
+#   maxFuelCapacity  - maximum fuel capacity of the model (kg)
+#   serviceCeiling   - service ceiling of the model (m)
+#   cruiseAltitude   - planned cruise altitude (m)
+#   mzfw             - max zero fuel weight (kg)
+#   mtow             - max take-off weight (kg)
+#   emptyWeight      - empty weight of the aircraft (kg)
+#   payloadWeight    - payload weight: passengers + cargo (kg)
+#   expectedStatus   - expected validation result: PASS or FAIL
+#   invariant        - which business invariant is being tested
+#
+# Header row is skipped by the test parser.
+testCaseId,flightDesignator,flightType,aircraftModel,fuelAmount,maxFuelCapacity,serviceCeiling,cruiseAltitude,mzfw,mtow,emptyWeight,payloadWeight,expectedStatus,invariant
+TC01,TP0123,REGULAR,B738,15000,20000,12500,10668,58000,70000,41413,15000,PASS,happy_path_valid_flight
+TC02,FR0456,CHARTER,A320,12000,18000,11887,10668,62000,73500,42200,16000,PASS,happy_path_valid_charter
+TC03,TP0789,REGULAR,B738,21000,20000,12500,10668,58000,70000,41413,15000,FAIL,fuel_exceeds_max_capacity
+TC04,FR1122,CHARTER,A320,500,18000,11887,10668,62000,73500,42200,16000,FAIL,fuel_below_minimum_required
+TC05,TP3344,REGULAR,B738,15000,20000,12500,13716,58000,70000,41413,15000,FAIL,altitude_exceeds_service_ceiling
+TC06,FR5566,CHARTER,A320,12000,18000,11887,10000,62000,73500,42200,16000,PASS,altitude_within_limits
+TC07,TP7788,REGULAR,B738,15000,20000,12500,10668,58000,70000,41413,18000,FAIL,takeoff_weight_exceeds_mtow
+TC08,FR9900,CHARTER,A320,12000,18000,11887,10668,62000,73500,42200,16000,PASS,weight_within_limits
+TC09,TP0101,REGULAR,B738,8000,20000,12500,10668,58000,70000,41413,15000,PASS,fuel_sufficient_for_range
+TC10,FR0202,CHARTER,A320,2000,18000,11887,10668,62000,73500,42200,16000,FAIL,fuel_insufficient_for_route_distance
+TC11,TP0303,REGULAR,B738,15000,20000,12500,0,58000,70000,41413,15000,FAIL,cruise_altitude_must_be_positive
+TC12,FR0404,CHARTER,A320,12000,18000,11887,-500,62000,73500,42200,16000,FAIL,cruise_altitude_must_be_positive
+TC13,TP0505,REGULAR,B738,15000,20000,12500,10668,58000,70000,41413,15000,PASS,zero_payload_still_valid
+TC14,TP0606,REGULAR,B738,20000,20000,12500,10668,58000,70000,41413,15000,PASS,fuel_exactly_at_max_capacity_boundary
+TC15,FR0707,CHARTER,A320,18000,18000,11887,10000,62000,73500,42200,16000,PASS,fuel_and_ceiling_exactly_at_limits
+TC16,TP0808,REGULAR,B738,15000,20000,12500,12500,58000,70000,41413,15000,PASS,altitude_exactly_at_service_ceiling
+TC17,FR0909,CHARTER,A320,12000,18000,11887,500,62000,73500,42200,16000,PASS,very_low_cruise_altitude_positive
+TC18,TP1010,REGULAR,B738,5000,20000,12500,10668,58000,70000,41413,13000,PASS,minimum_fuel_with_reduced_payload
+TC19,FR1111,CHARTER,A320,15000,18000,11887,10668,62000,73500,42200,20000,PASS,high_payload_under_mtow
+TC20,TP1212,REGULAR,B738,500,20000,12500,10668,58000,70000,41413,5000,FAIL,fuel_below_minimum_flight_operations
+TC21,FR1313,CHARTER,A320,12000,18000,11887,10668,62000,73500,42200,18000,FAIL,payload_weight_exceeds_mzfw
+TC22,TP1414,REGULAR,B738,0,20000,12500,10668,58000,70000,41413,15000,FAIL,zero_fuel_rejected
+TC23,FR1515,CHARTER,B738,25000,20000,12500,10668,58000,70000,41413,15000,FAIL,fuel_exceeds_capacity_and_weight_exceeds_mtow
+TC24,TP1616,REGULAR,A380,250000,320000,13100,11000,361000,575000,277000,80000,PASS,large_aircraft_a380_within_all_limits
+TC25,FR1717,CHARTER,E190,12000,15000,11887,10000,42000,50000,28000,12000,PASS,regional_jet_e190_valid

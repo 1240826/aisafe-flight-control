@@ -95,15 +95,20 @@ public class ListCompanyFleetUI extends AbstractListUI<Aircraft> {
 
     @Override
     protected Iterable<Aircraft> elements() {
-        if (selectedCompanyIata == null) {
-            return controller.allActiveAircraft();
-        }
-        switch (filterMode) {
-            case 1: return controller.fleetByModel(selectedCompanyIata, filterModel);
-            case 2: return controller.fleetByMaker(selectedCompanyIata, filterMaker);
-            case 3: return controller.fleetByCapacity(selectedCompanyIata, filterNumber);
-            case 4: return controller.fleetByAge(selectedCompanyIata, filterNumber);
-            default: return controller.fleetOfCompany(selectedCompanyIata);
+        try {
+            if (selectedCompanyIata == null) {
+                return controller.allActiveAircraft();
+            }
+            switch (filterMode) {
+                case 1: return controller.fleetByModel(selectedCompanyIata, filterModel);
+                case 2: return controller.fleetByMaker(selectedCompanyIata, filterMaker);
+                case 3: return controller.fleetByCapacity(selectedCompanyIata, filterNumber);
+                case 4: return controller.fleetByAge(selectedCompanyIata, filterNumber);
+                default: return controller.fleetOfCompany(selectedCompanyIata);
+            }
+        } catch (final Exception e) {
+            System.out.println("  [!] " + e.getMessage());
+            return List.of();
         }
     }
 

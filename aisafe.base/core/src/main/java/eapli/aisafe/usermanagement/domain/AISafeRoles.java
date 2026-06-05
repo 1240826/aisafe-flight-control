@@ -13,6 +13,7 @@ public final class AISafeRoles {
     public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
     public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
     public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+    public static final Role PILOT = Role.valueOf("PILOT");
     /** Internal bootstrap role — used by AISafeBootstrapper to circumvent auth. */
     public static final Role POWER_USER = Role.valueOf("POWER_USER");
 
@@ -21,6 +22,6 @@ public final class AISafeRoles {
     }
 
     public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR, FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
+        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR, FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON, PILOT};
     }
 }

@@ -37,7 +37,9 @@ import eapli.aisafe.infrastructure.persistence.RepositoryFactory;
 import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.authz.domain.repositories.UserRepository;
 import eapli.framework.infrastructure.authz.repositories.impl.inmemory.InMemoryUserRepository;
+import eapli.aisafe.flight.repositories.FlightRepository;
 import eapli.aisafe.flightroute.repositories.FlightRouteRepository;
+import eapli.aisafe.pilot.repositories.PilotRepository;
 
 /**
  *
@@ -130,10 +132,39 @@ public class InMemoryRepositoryFactory implements RepositoryFactory {
 		// In-memory has no real transactions; ignore the context
 		return new InMemoryUserSecurityProfileRepository();
 	}
-	@Override
-	public FlightRouteRepository flightRoutes() {
-		return new InMemoryFlightRouteRepository();
-	}
+    @Override
+    public FlightRouteRepository flightRoutes() {
+        return new InMemoryFlightRouteRepository();
+    }
 
+    @Override
+    public FlightRouteRepository flightRoutes(final TransactionalContext autoTx) {
+        return new InMemoryFlightRouteRepository();
+    }
+
+    @Override
+    public FlightRepository flights() {
+        return new InMemoryFlightRepository();
+    }
+
+    @Override
+    public FlightRepository flights(final TransactionalContext autoTx) {
+        return new InMemoryFlightRepository();
+    }
+
+    @Override
+    public PilotRepository pilots() {
+        return new InMemoryPilotRepository();
+    }
+
+    @Override
+    public PilotRepository pilots(final TransactionalContext autoTx) {
+        return new InMemoryPilotRepository();
+    }
+
+    @Override
+    public AircraftRepository aircraft(final TransactionalContext autoTx) {
+        return new InMemoryAircraftRepository();
+    }
 
 }

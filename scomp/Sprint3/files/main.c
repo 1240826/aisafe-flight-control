@@ -14,6 +14,13 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <stdint.h>
 
 static SharedData *shm = NULL;
 static FlightPlan plans[MAX_FLIGHTS];
@@ -348,6 +355,160 @@ static int run_simulation(void)
     return 0;
 }
 
+static int read_all(int fd, void *buf, size_t len) {
+    size_t total = 0;
+    ssize_t n;
+    while (total < len) {
+        n = read(fd, (char *)buf + total, len - total);
+        if (n <= 0) return -1;
+        total += n;
+    }
+    return 0;
+}
+
+static int write_all(int fd, const void *buf, size_t len) {
+    size_t total = 0;
+    ssize_t n;
+    while (total < len) {
+        n = write(fd, (const char *)buf + total, len - total);
+        if (n <= 0) return -1;
+        total += n;
+    }
+    return 0;
+}
+
+static int run_server(int port) {
+    int server_fd, client_fd;
+    struct sockaddr_in addr;
+    int opt = 1;
+
+    mkdir("temp", 0755);
+
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0) { perror("socket"); return 1; }
+
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(port);
+
+    if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("bind"); close(server_fd); return 1;
+    }
+    if (listen(server_fd, 5) < 0) {
+        perror("listen"); close(server_fd); return 1;
+    }
+
+    printf("[SERVER] Listening on port %d (PID %d)\n", port, getpid());
+    fflush(stdout);
+
+    while (!stop_sim) {
+        client_fd = accept(server_fd, NULL, NULL);
+        if (client_fd < 0) {
+            if (errno == EINTR) continue;
+            perror("accept"); break;
+        }
+
+        printf("[SERVER] Connection accepted\n");
+        fflush(stdout);
+
+        uint32_t json_len_net;
+        if (read_all(client_fd, &json_len_net, sizeof(json_len_net)) < 0) {
+            perror("read length"); close(client_fd); continue;
+        }
+        uint32_t json_len = ntohl(json_len_net);
+        if (json_len == 0 || json_len > 10 * 1024 * 1024) {
+            fprintf(stderr, "[SERVER] Invalid length %u\n", json_len);
+            close(client_fd); continue;
+        }
+
+        char *json_buf = malloc(json_len + 1);
+        if (!json_buf) { close(client_fd); continue; }
+        if (read_all(client_fd, json_buf, json_len) < 0) {
+            free(json_buf); close(client_fd); continue;
+        }
+        json_buf[json_len] = '\0';
+
+        char input_path[512], output_path[512];
+        snprintf(input_path, sizeof(input_path),
+                 "temp/server_input_%d.json", client_fd);
+        snprintf(output_path, sizeof(output_path),
+                 "temp/server_output_%d.txt", client_fd);
+
+        FILE *f = fopen(input_path, "w");
+        if (!f) { free(json_buf); close(client_fd); continue; }
+        fwrite(json_buf, 1, json_len, f);
+        fclose(f);
+        free(json_buf);
+
+        snprintf(scenario_path, sizeof(scenario_path), "%s", input_path);
+        n_plans = load_plans(scenario_path, plans, MAX_FLIGHTS);
+        if (n_plans <= 0) {
+            const char *err = "Error: no valid flight plans\n";
+            uint32_t elen = htonl(strlen(err));
+            write_all(client_fd, &elen, sizeof(elen));
+            write_all(client_fd, err, strlen(err));
+            close(client_fd); remove(input_path); continue;
+        }
+
+        sim_start_sec = 8 * 3600 + 30 * 60;
+        print_interval = PRINT_INTERVAL_DEFAULT;
+        weather_path[0] = '\0';
+        extern void set_report_output_path(const char *);
+        set_report_output_path(output_path);
+
+        printf("[SERVER] Running %d flight(s)...\n", n_plans);
+        fflush(stdout);
+
+        int ret = run_simulation();
+
+        if (ret != 0) {
+            const char *err = "Error: simulation failed\n";
+            uint32_t elen = htonl(strlen(err));
+            write_all(client_fd, &elen, sizeof(elen));
+            write_all(client_fd, err, strlen(err));
+            close(client_fd); remove(input_path); remove(output_path);
+            continue;
+        }
+
+        FILE *rf = fopen(output_path, "r");
+        if (!rf) {
+            const char *err = "Error: report not found\n";
+            uint32_t elen = htonl(strlen(err));
+            write_all(client_fd, &elen, sizeof(elen));
+            write_all(client_fd, err, strlen(err));
+            close(client_fd); remove(input_path); continue;
+        }
+
+        fseek(rf, 0, SEEK_END);
+        long rlen = ftell(rf);
+        rewind(rf);
+        char *rbuf = malloc(rlen + 1);
+        if (rbuf) { fread(rbuf, 1, rlen, rf); rbuf[rlen] = '\0'; }
+        fclose(rf);
+
+        uint32_t rlen_net = htonl(rlen);
+        write_all(client_fd, &rlen_net, sizeof(rlen_net));
+        if (rbuf) { write_all(client_fd, rbuf, rlen); free(rbuf); }
+
+        printf("[SERVER] Report sent (%ld bytes)\n", rlen);
+        fflush(stdout);
+
+        close(client_fd);
+        remove(input_path);
+        remove(output_path);
+
+        printf("[SERVER] Ready for next request\n");
+        fflush(stdout);
+    }
+
+    close(server_fd);
+    printf("[SERVER] Shutdown\n");
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     int choice, running = 1;
@@ -359,6 +520,12 @@ int main(int argc, char *argv[])
         act.sa_handler = handle_sigint;
         act.sa_flags = SA_RESTART;
         sigaction(SIGINT, &act, NULL);
+    }
+
+    if (argc >= 2 && strcmp(argv[1], "--server") == 0) {
+        int port = 9999;
+        if (argc >= 3) { port = atoi(argv[2]); if (port <= 0) port = 9999; }
+        return run_server(port);
     }
 
     if (argc >= 2) {
@@ -377,6 +544,10 @@ int main(int argc, char *argv[])
     if (argc >= 4) {
         int val = atoi(argv[3]);
         if (val > 0) print_interval = val;
+    }
+    if (argc >= 5) {
+        extern void set_report_output_path(const char *);
+        set_report_output_path(argv[4]);
     }
     if (argc >= 2) {
         return run_simulation();

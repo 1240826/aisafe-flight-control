@@ -33,7 +33,9 @@ import eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository;
 import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.authz.domain.repositories.UserRepository;
+import eapli.aisafe.flight.repositories.FlightRepository;
 import eapli.aisafe.flightroute.repositories.FlightRouteRepository;
+import eapli.aisafe.pilot.repositories.PilotRepository;
 /**
  * @author Paulo Gandra Sousa
  *
@@ -70,6 +72,8 @@ public interface RepositoryFactory {
 
     AircraftRepository aircraft();
 
+    AircraftRepository aircraft(TransactionalContext autoTx);
+
     AircraftModelRepository aircraftModels();
 
     AirportRepository airports();
@@ -94,4 +98,14 @@ public interface RepositoryFactory {
     UserSecurityProfileRepository userSecurityProfiles(TransactionalContext autoTx);
 
     FlightRouteRepository flightRoutes();
+
+    FlightRouteRepository flightRoutes(TransactionalContext autoTx);
+
+    FlightRepository flights();
+
+    FlightRepository flights(TransactionalContext autoTx);
+
+    PilotRepository pilots();
+
+    PilotRepository pilots(TransactionalContext autoTx);
 }

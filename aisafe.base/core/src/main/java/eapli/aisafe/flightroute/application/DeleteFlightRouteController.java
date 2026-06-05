@@ -1,5 +1,6 @@
 package eapli.aisafe.flightroute.application;
 
+import eapli.aisafe.flight.repositories.FlightRepository;
 import eapli.aisafe.flightroute.domain.FlightRoute;
 import eapli.aisafe.flightroute.domain.FlightRouteName;
 import eapli.aisafe.flightroute.repositories.FlightRouteRepository;
@@ -21,18 +22,22 @@ public class DeleteFlightRouteController {
 
     private final AuthorizationService authz;
     private final FlightRouteRepository repo;
+    private final FlightRepository flightRepo;
 
     /** Production constructor — uses framework registries. */
     public DeleteFlightRouteController() {
         this(AuthzRegistry.authorizationService(),
-                PersistenceContext.repositories().flightRoutes());
+                PersistenceContext.repositories().flightRoutes(),
+                PersistenceContext.repositories().flights());
     }
 
     /** Testing constructor — allows injecting mocks. */
     DeleteFlightRouteController(final AuthorizationService authz,
-                                final FlightRouteRepository repo) {
+                                final FlightRouteRepository repo,
+                                final FlightRepository flightRepo) {
         this.authz = authz;
         this.repo = repo;
+        this.flightRepo = flightRepo;
     }
 
     /**
@@ -62,7 +67,8 @@ public class DeleteFlightRouteController {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Flight route not found: " + routeName));
 
-        if (repo.hasPlannedFlightsAfter(name, deactivationDate)) {
+        if (flightRepo.existsByRouteNameAndDepartureTimeAfter(name,
+                deactivationDate.atStartOfDay())) {
             throw new IllegalStateException(
                     "Cannot deactivate route " + routeName
                             + ": planned flights exist on or after " + deactivationDate);

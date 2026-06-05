@@ -39,6 +39,16 @@ import eapli.aisafe.ui.company.RegisterAirTransportCompanyUI;
 import eapli.aisafe.ui.enginemodel.CreateEngineModelUI;
 import eapli.aisafe.ui.manufacturer.RegisterManufacturerUI;
 import eapli.aisafe.ui.weatherdata.RegisterWeatherDataUI;
+import eapli.aisafe.ui.weatherdata.ImportBulkWeatherDataUI;
+import eapli.aisafe.ui.flightplan.ImportFlightPlanUI;
+import eapli.aisafe.ui.flightplan.TestFlightPlanUI;
+import eapli.aisafe.ui.flightroute.CreateFlightRouteUI;
+import eapli.aisafe.ui.flightroute.DeactivateFlightRouteUI;
+import eapli.aisafe.ui.pilot.AddPilotUI;
+import eapli.aisafe.ui.pilot.ListPilotRosterUI;
+import eapli.aisafe.ui.pilot.RemovePilotUI;
+import eapli.aisafe.ui.flight.AddWeatherToFlightUI;
+import eapli.aisafe.ui.report.GenerateMonthlyReportUI;
 import eapli.aisafe.infrastructure.Application;
 import eapli.aisafe.ui.authz.ActivateUserUI;
 import eapli.aisafe.ui.authz.AddUserUI;
@@ -113,6 +123,26 @@ public class MainMenu extends AbstractUI {
 
 	// WEATHER DATA submenu
 	private static final int REGISTER_WEATHER_DATA_OPTION = 1;
+	private static final int IMPORT_BULK_WEATHER_DATA_OPTION = 2;
+
+	// PILOT ACTOR submenu
+	private static final int ADD_WEATHER_TO_FLIGHT_OPTION = 1;
+
+	// REPORTS submenu
+	private static final int GENERATE_MONTHLY_REPORT_OPTION = 1;
+
+	// FLIGHT PLANS submenu
+	private static final int IMPORT_FLIGHT_PLAN_OPTION = 1;
+	private static final int TEST_FLIGHT_PLAN_OPTION = 2;
+
+	// FLIGHT ROUTES submenu
+	private static final int CREATE_FLIGHT_ROUTE_OPTION = 1;
+	private static final int DEACTIVATE_FLIGHT_ROUTE_OPTION = 2;
+
+	// PILOTS submenu
+	private static final int ADD_PILOT_OPTION = 1;
+	private static final int LIST_PILOTS_OPTION = 2;
+	private static final int REMOVE_PILOT_OPTION = 3;
 
 	// MAIN MENU slots
 	private static final int MY_USER_OPTION = 1;
@@ -125,8 +155,13 @@ public class MainMenu extends AbstractUI {
 	private static final int COMPANIES_OPTION = 8;
 	private static final int COLLABORATORS_OPTION = 9;
 	private static final int AIRCRAFT_OPTION = 10;
-	private static final int WEATHER_DATA_OPTION = 11;
-	private static final int SETTINGS_OPTION = 12;
+	private static final int FLIGHT_ROUTES_OPTION = 11;
+	private static final int PILOTS_OPTION = 12;
+	private static final int WEATHER_DATA_OPTION = 13;
+	private static final int FLIGHT_PLANS_OPTION = 14;
+	private static final int SETTINGS_OPTION = 15;
+	private static final int PILOT_ACTOR_OPTION = 16;
+	private static final int REPORTS_OPTION = 17;
 
 	private static final String SEPARATOR_LABEL = "--------------";
 
@@ -213,11 +248,30 @@ public class MainMenu extends AbstractUI {
 		// UC21 — Aircraft management: Air Transport Company Collaborator
 		if (hasAnyRole(AISafeRoles.ATC_COLLABORATOR)) {
 			mainMenu.addItem(AIRCRAFT_OPTION, "Aircraft >", () -> runSubMenu(buildAircraftMenu()));
+			// US073-074 — Flight Routes
+			mainMenu.addItem(FLIGHT_ROUTES_OPTION, "Flight Routes >", () -> runSubMenu(buildFlightRouteMenu()));
+			// US075-077 — Pilots
+			mainMenu.addItem(PILOTS_OPTION, "Pilots >", () -> runSubMenu(buildPilotMenu()));
 		}
 
 		// UC30 — Weather data: Weather Person only
 		if (hasAnyRole(AISafeRoles.WEATHER_PERSON)) {
 			mainMenu.addItem(WEATHER_DATA_OPTION, "Weather Data >", () -> runSubMenu(buildWeatherDataMenu()));
+		}
+
+		// US085 — Flights / Flight Plans: Flight Control Operator only
+		if (hasAnyRole(AISafeRoles.FLIGHT_CONTROL_OPERATOR)) {
+			mainMenu.addItem(FLIGHT_PLANS_OPTION, "Flights >", () -> runSubMenu(buildFlightPlanMenu()));
+		}
+
+		// US082 — Pilot actor: can add weather data to flights
+		if (hasAnyRole(AISafeRoles.PILOT)) {
+			mainMenu.addItem(PILOT_ACTOR_OPTION, "My Flights >", () -> runSubMenu(buildPilotActorMenu()));
+		}
+
+		// US112 — Monthly reports: Flight Control Operator only
+		if (hasAnyRole(AISafeRoles.FLIGHT_CONTROL_OPERATOR)) {
+			mainMenu.addItem(REPORTS_OPTION, "Reports >", () -> runSubMenu(buildReportsMenu()));
 		}
 
 		// Settings: Admin only
@@ -308,9 +362,49 @@ public class MainMenu extends AbstractUI {
 		return menu;
 	}
 
+	private Menu buildFlightRouteMenu() {
+		final var menu = new Menu("Flight Routes >");
+		menu.addItem(CREATE_FLIGHT_ROUTE_OPTION, "Create Flight Route (US073)", () -> { new CreateFlightRouteUI().show(); return false; });
+		menu.addItem(DEACTIVATE_FLIGHT_ROUTE_OPTION, "Deactivate Flight Route (US074)", () -> { new DeactivateFlightRouteUI().show(); return false; });
+		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
+		return menu;
+	}
+
+	private Menu buildPilotMenu() {
+		final var menu = new Menu("Pilots >");
+		menu.addItem(ADD_PILOT_OPTION, "Add Pilot (US075)", () -> { new AddPilotUI().show(); return false; });
+		menu.addItem(LIST_PILOTS_OPTION, "List Pilot Roster (US076)", () -> { new ListPilotRosterUI().show(); return false; });
+		menu.addItem(REMOVE_PILOT_OPTION, "Remove Pilot (US077)", () -> { new RemovePilotUI().show(); return false; });
+		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
+		return menu;
+	}
+
 	private Menu buildWeatherDataMenu() {
 		final var menu = new Menu("Weather Data >");
-		menu.addItem(REGISTER_WEATHER_DATA_OPTION, "Register Weather Data", () -> { new RegisterWeatherDataUI().show(); return false; });
+		menu.addItem(REGISTER_WEATHER_DATA_OPTION, "Register Weather Data (US041)", () -> { new RegisterWeatherDataUI().show(); return false; });
+		menu.addItem(IMPORT_BULK_WEATHER_DATA_OPTION, "Import Bulk Weather Data from CSV (US042)", () -> { new ImportBulkWeatherDataUI().show(); return false; });
+		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
+		return menu;
+	}
+
+	private Menu buildFlightPlanMenu() {
+		final var menu = new Menu("Flights >");
+		menu.addItem(IMPORT_FLIGHT_PLAN_OPTION, "Import Flight Plan (from DSL file)", () -> { new ImportFlightPlanUI().show(); return false; });
+		menu.addItem(TEST_FLIGHT_PLAN_OPTION, "Test Flight Plan", () -> { new TestFlightPlanUI().show(); return false; });
+		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
+		return menu;
+	}
+
+	private Menu buildPilotActorMenu() {
+		final var menu = new Menu("My Flights >");
+		menu.addItem(ADD_WEATHER_TO_FLIGHT_OPTION, "Add Weather Data to Flight (US082)", () -> { new AddWeatherToFlightUI().show(); return false; });
+		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
+		return menu;
+	}
+
+	private Menu buildReportsMenu() {
+		final var menu = new Menu("Reports >");
+		menu.addItem(GENERATE_MONTHLY_REPORT_OPTION, "Generate Monthly Report (US112)", () -> { new GenerateMonthlyReportUI().show(); return false; });
 		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
 		return menu;
 	}

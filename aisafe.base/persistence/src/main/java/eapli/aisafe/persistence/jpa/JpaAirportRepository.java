@@ -8,6 +8,8 @@ import eapli.aisafe.infrastructure.Application;
 import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.repositories.impl.jpa.JpaAutoTxRepository;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -27,6 +29,8 @@ public class JpaAirportRepository
 
     @Override
     public Optional<Airport> findByIcao(final AirportICAO icao) {
-        return matchOne("e.icao.icaoCode = '" + icao.toString() + "'");
+        final Map<String, Object> params = new HashMap<>();
+        params.put("icao", icao.toString());
+        return matchOne("e.icao.icaoCode = :icao", params);
     }
 }

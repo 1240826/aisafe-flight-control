@@ -11,5 +11,11 @@
     <artifactId>aisafe.core</artifactId>
     <packaging>jar</packaging>
     <name>aisafe.core</name>
-    <dependencies></dependencies>
+    <dependencies>
+        <dependency>
+            <groupId>eapli</groupId>
+            <artifactId>aisafe.dsl</artifactId>
+            <version>1.4.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
 </project>

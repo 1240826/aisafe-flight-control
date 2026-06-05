@@ -138,7 +138,7 @@ public class EngineModel implements AggregateRoot<EngineModelCode> {
 
     @Override
     public String toString() {
-        return code + " — " + engineName + " by " + manufacturerName
+        return code + " - " + engineName + " by " + manufacturerName
                 + " (" + motorizationType + ", " + fuelType + ")";
     }
 }
