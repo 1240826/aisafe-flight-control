@@ -1,8 +1,10 @@
 package eapli.aisafe.server;
 
+import eapli.aisafe.infrastructure.persistence.PersistenceContext;
 import eapli.aisafe.remote.RemoteProtocol;
 import eapli.aisafe.remote.UdpAccessLogger;
-import eapli.aisafe.usermanagement.domain.AISafeRoles;
+import eapli.aisafe.usermanagement.domain.UserSecurityProfile;
+import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.authz.application.Authenticator;
 import eapli.framework.infrastructure.authz.application.AuthzRegistry;
 import eapli.framework.infrastructure.authz.application.UserSession;
@@ -53,7 +55,6 @@ public abstract class AbstractClientHandler implements Runnable {
         try (clientSocket;
              final BufferedReader in  = new BufferedReader(
                      new InputStreamReader(clientSocket.getInputStream(), StandardCharsets.UTF_8));
-             // autoFlush=false — we call flush() explicitly after every write
              final PrintWriter    out = new PrintWriter(
                      new OutputStreamWriter(clientSocket.getOutputStream(), StandardCharsets.UTF_8), false)) {
 
@@ -89,18 +90,32 @@ public abstract class AbstractClientHandler implements Runnable {
                     final String password = fields[2];
 
                     final Authenticator auth = AuthzRegistry.authenticationService();
+
+                    // Step 1 — full authentication (credentials + required role)
                     final java.util.Optional<UserSession> session =
                             auth.authenticate(username, password, requiredRole);
 
-                    if (session.isPresent()) {
-                        authenticatedUsername = username;
-                        logger.loginOk(username, clientIp, clientPort, serviceId);
-                        out.print(RemoteProtocol.RESP_AUTH_OK + "\n");
-                    } else {
-                        logger.loginFail(username, clientIp, clientPort, serviceId);
-                        out.print(RemoteProtocol.RESP_AUTH_FAIL + RemoteProtocol.SEP
-                                + "Invalid credentials or insufficient role\n");
+                    if (session.isEmpty()) {
+                        // Step 2 — differentiate: wrong credentials vs. wrong role
+                        final var credOnly = auth.authenticate(username, password);
+                        if (credOnly.isPresent()) {
+                            authFail(out, username, "INSUFFICIENT_ROLE");
+                        } else {
+                            authFail(out, username, "Invalid credentials");
+                        }
+                        continue;
                     }
+
+                    // Step 3 — check security clearance expiry (US030.4)
+                    if (!isClearanceValid(username)) {
+                        authFail(out, username, "SECURITY_CLEARANCE_EXPIRED");
+                        continue;
+                    }
+
+                    // All checks passed
+                    authenticatedUsername = username;
+                    logger.loginOk(username, clientIp, clientPort, serviceId);
+                    out.print(RemoteProtocol.RESP_AUTH_OK + "\n");
                     out.flush();
                     continue;
                 }
@@ -129,6 +144,30 @@ public abstract class AbstractClientHandler implements Runnable {
             }
             System.err.printf("[%s] Connection error from %s:%d — %s%n",
                     serviceId, clientIp, clientPort, e.getMessage());
+        }
+    }
+
+    private void authFail(final PrintWriter out, final String username, final String reason) {
+        logger.loginFail(username,
+                clientSocket.getInetAddress().getHostAddress(),
+                clientSocket.getPort(), serviceId);
+        out.print(RemoteProtocol.RESP_AUTH_FAIL + RemoteProtocol.SEP + reason + "\n");
+        out.flush();
+    }
+
+    private boolean isClearanceValid(final String username) {
+        final TransactionalContext tx = PersistenceContext.repositories().newTransactionalContext();
+        tx.beginTransaction();
+        try {
+            final java.util.Optional<UserSecurityProfile> profile =
+                    PersistenceContext.repositories().userSecurityProfiles(tx).findByUsername(username);
+            tx.commit();
+            return profile.map(UserSecurityProfile::isClearanceValid).orElse(true);
+        } catch (final Exception e) {
+            try { tx.rollback(); } catch (final Exception ignored) { }
+            return true; // fail-open: if check fails, allow login
+        } finally {
+            try { tx.close(); } catch (final Exception ignored) { }
         }
     }
 

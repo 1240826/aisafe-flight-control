@@ -6,7 +6,6 @@ This task is assigned in **Sprint 3** as part of EAPLI (with cross-cutting depen
 It is the first time this feature is being developed. The objective is to allow a Pilot (Flight Control Operator) to test/validate
 a flight plan they have created, combining DSL re-validation (LPROG) with physics simulation (SCOMP/C).
 
-**Issue:** #85
 **Assigned to:** Fábio Costa (EAPLI + LAPR4)
 
 ### 1.1 List of Issues
