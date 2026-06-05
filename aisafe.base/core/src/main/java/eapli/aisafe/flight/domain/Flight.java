@@ -142,6 +142,23 @@ public class Flight implements AggregateRoot<FlightDesignator> {
                 .findFirst();
     }
 
+    /**
+     * Replaces the DSL content of an existing flight plan.
+     * If the flight plan does not exist, it is added.
+     *
+     * @param flightPlanId the ID of the flight plan to update
+     * @param newDslContent the new DSL content
+     * @return the updated (or new) flight plan
+     */
+    public FlightPlan updateFlightPlan(final FlightPlanId flightPlanId, final String newDslContent) {
+        final var existing = flightPlan(flightPlanId);
+        if (existing.isPresent()) {
+            existing.get().updateDslContent(newDslContent);
+            return existing.get();
+        }
+        return addFlightPlan(flightPlanId, newDslContent);
+    }
+
     public List<FlightPlan> flightPlans() {
         return Collections.unmodifiableList(flightPlans);
     }

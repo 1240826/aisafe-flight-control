@@ -1,5 +1,9 @@
 package eapli.aisafe.flightplan.application;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ReportParser {
@@ -25,12 +29,16 @@ public class ReportParser {
     private static final Pattern REPORT_TYPE_PATTERN = Pattern.compile(
             "Report type:\\s*(EXECUTED|SIMULATED)", Pattern.CASE_INSENSITIVE);
 
+    private static final Pattern FLIGHT_SUMMARY_LINE = Pattern.compile(
+            "^\\s+(\\w+):\\s+n_viol=(\\d+)\\s+ever_in_area=(\\w+)\\s+completed=(\\w+)",
+            Pattern.MULTILINE);
+
     private ReportParser() {
     }
 
     public static ReportParseResult parse(final String reportContent) {
         if (reportContent == null || reportContent.isBlank()) {
-            return new ReportParseResult(false, 0, reportContent, 0, 0, 0, false, "SIMULATED");
+            return new ReportParseResult(false, 0, reportContent, 0, 0, 0, false, "SIMULATED", List.of());
         }
 
         final var resultMatcher = RESULT_PATTERN.matcher(reportContent);
@@ -66,18 +74,53 @@ public class ReportParser {
                 ? reportTypeMatcher.group(1).toUpperCase()
                 : "SIMULATED";
 
+        final var perFlightResults = parsePerFlightResults(reportContent);
+
         return new ReportParseResult(isPassed, violationCount, reportContent,
                 criticalViolations, majorViolations, minorViolations,
-                hasUnresolvedConflicts, reportType);
+                hasUnresolvedConflicts, reportType, perFlightResults);
+    }
+
+    public static List<PerFlightResult> parsePerFlightResults(final String reportContent) {
+        if (reportContent == null || reportContent.isBlank()) {
+            return List.of();
+        }
+
+        final List<PerFlightResult> results = new ArrayList<>();
+        final Matcher matcher = FLIGHT_SUMMARY_LINE.matcher(reportContent);
+        while (matcher.find()) {
+            final String flightId = matcher.group(1);
+            final int violations = Integer.parseInt(matcher.group(2));
+            final boolean everInArea = "yes".equalsIgnoreCase(matcher.group(3));
+            final boolean completed = "yes".equalsIgnoreCase(matcher.group(4));
+            results.add(new PerFlightResult(flightId, violations, everInArea, completed));
+        }
+        return Collections.unmodifiableList(results);
     }
 
     public record ReportParseResult(boolean isPassed, int violationCount, String rawOutput,
                                     int criticalViolations, int majorViolations,
                                     int minorViolations, boolean hasUnresolvedConflicts,
-                                    String reportType) {
+                                    String reportType, List<PerFlightResult> perFlightResults) {
         public ReportParseResult {
             if (rawOutput == null) rawOutput = "";
             if (reportType == null) reportType = "SIMULATED";
+            if (perFlightResults == null) perFlightResults = List.of();
+        }
+
+        public ReportParseResult(boolean isPassed, int violationCount, String rawOutput,
+                                  int criticalViolations, int majorViolations,
+                                  int minorViolations, boolean hasUnresolvedConflicts,
+                                  String reportType) {
+            this(isPassed, violationCount, rawOutput, criticalViolations, majorViolations,
+                    minorViolations, hasUnresolvedConflicts, reportType, List.of());
+        }
+    }
+
+    public record PerFlightResult(String flightId, int violations,
+                                   boolean everInArea, boolean completed) {
+        public boolean isPassed() {
+            return violations == 0 && completed;
         }
     }
 }

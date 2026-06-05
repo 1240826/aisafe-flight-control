@@ -147,18 +147,38 @@ public class TestFlightPlanController {
         }
 
         final var parsed = ReportParser.parse(reportContent);
+        final var perFlight = parsed.perFlightResults();
+
+        int passedCount = 0;
+        int failedCount = 0;
         for (final var entry : tested) {
-            entry.flightPlan().recordTestResult(parsed.isPassed(), null, reportContent);
+            final String flightId = entry.flight().identity().toString();
+            final boolean flightPassed;
+
+            if (!perFlight.isEmpty()) {
+                flightPassed = perFlight.stream()
+                        .filter(r -> r.flightId().equals(flightId))
+                        .findFirst()
+                        .map(ReportParser.PerFlightResult::isPassed)
+                        .orElse(parsed.isPassed());
+            } else {
+                flightPassed = parsed.isPassed();
+            }
+
+            entry.flightPlan().recordTestResult(flightPassed, null, reportContent);
             flightRepo.save(entry.flight());
+
+            if (flightPassed) passedCount++; else failedCount++;
         }
 
         final var skippedMsg = errors.isEmpty() ? ""
                 : " [" + String.join("; ", errors) + "]";
-        final var msg = parsed.isPassed()
+        final boolean allPassed = failedCount == 0;
+        final var msg = allPassed
                 ? "Scenario PASSED - " + tested.size() + " flight(s) tested"
-                : "Scenario FAILED - " + tested.size() + " flight(s) tested (violations: "
-                + parsed.violationCount() + ")";
-        return new ScenarioResult(parsed.isPassed(), msg + skippedMsg, reportContent, tested);
+                : "Scenario FAILED - " + tested.size() + " flight(s) tested ("
+                + passedCount + " passed, " + failedCount + " failed)";
+        return new ScenarioResult(allPassed, msg + skippedMsg, reportContent, tested);
     }
 
     public TestResult testFlightPlan(final String flightDesignatorStr,
