@@ -127,7 +127,7 @@ Each message is terminated with `\n`. Fields are separated by `|`.
 
 | Concept | Responsibility |
 |---------|---------------|
-| `TcpPilotServer` | Listens on the Pilot-dedicated TCP port; accepts connections and spawns one handler thread per client |
+| `PilotServerDaemon` (extends `AbstractTcpServer`) | Listens on the Pilot-dedicated TCP port; accepts connections and spawns one `PilotClientHandler` per client |
 | `PilotClientHandler` | Manages one client session: reads requests, dispatches to services, writes responses |
 | `PilotRemoteSessionState` | Tracks authentication state and the authenticated Pilot |
 | `ProtocolParser` | Parses raw text messages into structured request objects |
