@@ -10,9 +10,11 @@ autonumber
 
 actor "Flight Control Operator" as actor
 participant ":TestFlightPlanController"        as ctrl        <<application>>
+participant "flight:Flight"                    as flight      <<domain>>
 participant "plan:FlightPlan"                  as plan        <<domain>>
 participant ":DslValidator"                    as dsl         <<service>>
-participant ":ProcessBuilderSimulationRunner"  as runner      <<service>>
+participant ":SimulationRunner"                as runner      <<service>>
+participant "ReportParser"                     as parser      <<service>>
 participant ":FlightRepository"                as repo        <<persistence>>
 
 == Failure 1 — FlightPlan not in DRAFT status ==
@@ -30,7 +32,29 @@ ctrl --> actor : TestResult(false, "Flight plan is not in DRAFT status")
 
 note right of ctrl : C simulator is NEVER invoked\nStatus unchanged
 
-== Failure 2 — DSL Validation Fails (US085.4) ==
+== Failure 2 — Departure Time Mismatch ==
+
+actor -> ctrl : testFlightPlan("TP1234", "FP005")
+
+ctrl -> plan : status() // DRAFT
+ctrl -> plan : dslContent()
+ctrl -> flight : departureTime()
+activate flight
+flight --> ctrl : 10:00 UTC+1
+deactivate flight
+ctrl -> ctrl : checkDepartureTime(flight, dslContent)
+
+note right of ctrl #FFAAAA : DSL says 09:00 but Flight says 10:00
+
+ctrl -> plan : markAsInTest()
+ctrl -> plan : recordTestResult(false, null, "Departure time mismatch: ...")
+ctrl -> repo : save(flight)
+
+ctrl --> actor : TestResult(false, "Departure time mismatch")
+
+note right of ctrl : C simulator is NEVER invoked\nStatus → TEST_FAILED
+
+== Failure 3 — DSL Validation Fails (US085.4) ==
 
 actor -> ctrl : testFlightPlan("TP1234", "FP002")
 
@@ -51,7 +75,7 @@ ctrl --> actor : TestResult(false, "DSL validation failed: syntax errors")
 
 note right of ctrl : C simulator is NEVER invoked\nStatus → TEST_FAILED
 
-== Failure 3 — C Simulator Crashes (Timeout/Exception) ==
+== Failure 4 — C Simulator Crashes (Timeout/Exception) ==
 
 actor -> ctrl : testFlightPlan("TP1234", "FP003")
 
@@ -60,7 +84,7 @@ ctrl -> dsl : validate(dslContent) // passes
 ctrl -> plan : markAsInTest()
 ctrl -> repo : save(flight)
 
-ctrl -> runner : run(jsonPayload)
+ctrl -> runner : run(jsonPayload, weatherFilePath)
 activate runner
 note right of runner #FFAAAA : Simulator crashes or timeout
 runner --> ctrl : SimulationRunnerException("Simulator crashed")
@@ -76,7 +100,7 @@ ctrl -> repo : save(flight)
 
 ctrl --> actor : TestResult(false, "Simulation execution failed")
 
-== Failure 4 — C Simulator Reports Violations (Physics Fail) ==
+== Failure 5 — C Simulator Reports Violations (Physics Fail) ==
 
 actor -> ctrl : testFlightPlan("TP1234", "FP004")
 
@@ -84,7 +108,7 @@ ctrl -> plan : status() // DRAFT
 ctrl -> dsl : validate(dslContent) // passes
 ctrl -> plan : markAsInTest()
 ctrl -> repo : save(flight)
-ctrl -> runner : run(jsonPayload)
+ctrl -> runner : run(jsonPayload, weatherFilePath)
 ctrl -> parser : parse(reportContent) // result = FAILED, viol=3
 ctrl -> plan : recordTestResult(false, null, reportContent)
 ctrl -> repo : save(flight)
