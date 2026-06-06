@@ -36,7 +36,7 @@
 #define SHM_NAME         "/aisafe_sim_v3"
 #define SEM_START_NAME   "/aisafe_start"
 #define SEM_DONE_NAME    "/aisafe_done"
-#define SAFETY_CAP_S     10800
+#define SAFETY_CAP_S     28800  // 8h — covers full flight duration for demo scenarios (LIS-CDG ~5.5h)
 #define PRINT_INTERVAL_DEFAULT 10
 
 #define ANSI_RED     "\033[31m"
