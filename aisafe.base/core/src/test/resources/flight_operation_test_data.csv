@@ -1,0 +1,13 @@
+testCaseId,operation,flightId,dsl,scenario,expectedOutcome
+FO01,CREATE_FLIGHT_PLAN,FL001,"departure LIS 10:00; arrival OPO 11:00;",Valid minimal DSL,SUCCESS
+FO02,CREATE_FLIGHT_PLAN,FL002,"departure LIS 10:00; arrival OPO 11:00; aircraft B738; fuel 15000;",Valid full DSL,SUCCESS
+FO03,CREATE_FLIGHT_PLAN,FL003,"",Empty DSL content,FAILURE
+FO04,IMPORT_FLIGHT_PLAN,FP001,"departure OPO 10:00; arrival LIS 11:00;",Valid import DSL,SUCCESS
+FO05,IMPORT_FLIGHT_PLAN,FP002,"departure OPO 10:00; arrival LIS 11:00; aircraft A320; fuel 8000;",Valid import full DSL,SUCCESS
+FO06,IMPORT_FLIGHT_PLAN,FP003,"",Empty import DSL,FAILURE
+FO07,VALIDATE_FLIGHT_PLAN,FP001,,Valid flight plan ID,SUCCESS
+FO08,VALIDATE_FLIGHT_PLAN,FP002,,Valid flight plan ID,SUCCESS
+FO09,VALIDATE_FLIGHT_PLAN,UNKNOWN,,Unknown flight plan ID,FAILURE
+FO10,CREATE_FLIGHT_PLAN,FL004,"invalid DSL without departure",Minimal invalid DSL,FAILURE
+FO11,IMPORT_FLIGHT_PLAN,FP004,"invalid DSL without departure",Invalid import DSL,FAILURE
+FO12,VALIDATE_FLIGHT_PLAN,INVALID,,Invalid flight plan ID format,FAILURE

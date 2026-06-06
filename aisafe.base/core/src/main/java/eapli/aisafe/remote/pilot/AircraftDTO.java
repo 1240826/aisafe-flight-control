@@ -10,7 +10,7 @@ public record AircraftDTO(
 ) {
     public static AircraftDTO from(final Aircraft a) {
         return new AircraftDTO(
-                a.registrationNumber().toString(),
+                a.registrationNumber().number(),
                 a.aircraftModelCode().toString(),
                 a.operationalStatus().name(),
                 a.totalCapacity()

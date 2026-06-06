@@ -1,0 +1,11 @@
+testCaseId,registration,modelCode,operationalStatus,totalCapacity,description
+FL01,CS-TUI,A320,ACTIVE,180,Single-class narrow-body active
+FL02,CS-TPJ,A320,ACTIVE,180,Single-class active variant
+FL03,CS-TPW,B738,ACTIVE,189,737-800 active single-class
+FL04,CS-TTA,E190,ACTIVE,114,E190 regional jet active
+FL05,CS-TVA,B738,ACTIVE,160,B738 active with business class
+FL06,CS-TVB,A330,ACTIVE,280,A330 wide-body active
+FL07,CS-TVC,A330,ACTIVE,320,A330 higher-density config
+FL08,CS-TVD,E190,ACTIVE,110,E190 lower-density active
+FL09,CS-GLB,G650,ACTIVE,19,Gulfstream G650 active
+FL10,CS-TUI,A320,DECOMMISSIONED,180,Single-class decommissioned

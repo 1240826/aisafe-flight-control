@@ -28,6 +28,18 @@ public class RemotePilotService {
         this.monthlyController = new GenerateMonthlyReportController();
     }
 
+    RemotePilotService(final ListCompanyFleetController fleetController,
+                        final ImportFlightPlanController importController,
+                        final TestFlightPlanController testController,
+                        final GenerateSimulationReportController reportController,
+                        final GenerateMonthlyReportController monthlyController) {
+        this.fleetController = fleetController;
+        this.importController = importController;
+        this.testController = testController;
+        this.reportController = reportController;
+        this.monthlyController = monthlyController;
+    }
+
     public List<AircraftDTO> listFleet() {
         return StreamSupport.stream(fleetController.allActiveAircraft().spliterator(), false)
                 .map(AircraftDTO::from)

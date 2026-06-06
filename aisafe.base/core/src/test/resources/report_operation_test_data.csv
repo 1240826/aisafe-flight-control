@@ -1,0 +1,9 @@
+testCaseId,operation,areaCodeOrYear,monthOrEmpty,scenario,expectedOutcome
+RO01,GENERATE_REPORT,LPPC,,Known area code,SUCCESS
+RO02,GENERATE_REPORT,LISB,,Valid area code,SUCCESS
+RO03,GENERATE_REPORT,UNKN,,Unknown area code,FAILURE
+RO04,GENERATE_REPORT,,,Null area code,FAILURE
+RO05,MONTHLY_REPORT,2026,5,Valid year and month,SUCCESS
+RO06,MONTHLY_REPORT,2026,1,Valid year January,SUCCESS
+RO07,MONTHLY_REPORT,1899,5,Year out of range,FAILURE
+RO08,MONTHLY_REPORT,2026,13,Month out of range,FAILURE
