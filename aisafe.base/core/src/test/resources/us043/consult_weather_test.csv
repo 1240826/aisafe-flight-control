@@ -1,0 +1,7 @@
+role,areaCode,date,mockHasData,expectAuthPass,expectEmptyList
+WEATHER_PERSON,LPPC,2026-06-01,true,true,false
+PILOT,LPPC,2026-06-01,true,true,false
+FLIGHT_CONTROL_OPERATOR,LPPC,2026-06-01,true,true,false
+BACKOFFICE_OPERATOR,LPPC,2026-06-01,true,false,false
+WEATHER_PERSON,XXXX,2026-06-01,true,true,false
+WEATHER_PERSON,LPPC,2025-01-01,false,true,true

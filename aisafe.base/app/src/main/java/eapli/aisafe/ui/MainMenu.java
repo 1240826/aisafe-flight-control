@@ -69,6 +69,8 @@ import eapli.framework.presentation.console.menu.HorizontalMenuRenderer;
 import eapli.framework.presentation.console.menu.MenuItemRenderer;
 import eapli.framework.presentation.console.menu.MenuRenderer;
 import eapli.framework.presentation.console.menu.VerticalMenuRenderer;
+import eapli.aisafe.ui.weatherdata.ConsultWeatherDataUI;
+
 
 /**
  * Main backoffice menu.
@@ -126,6 +128,8 @@ public class MainMenu extends AbstractUI {
 	// WEATHER DATA submenu
 	private static final int REGISTER_WEATHER_DATA_OPTION = 1;
 	private static final int IMPORT_BULK_WEATHER_DATA_OPTION = 2;
+	private static final int CONSULT_WEATHER_DATA_OPTION = 3;
+
 
 	// PILOT ACTOR submenu
 	private static final int ADD_WEATHER_TO_FLIGHT_OPTION = 1;
@@ -259,7 +263,7 @@ public class MainMenu extends AbstractUI {
 		}
 
 		// UC30 — Weather data: Weather Person only
-		if (hasAnyRole(AISafeRoles.WEATHER_PERSON)) {
+		if (hasAnyRole(AISafeRoles.WEATHER_PERSON, AISafeRoles.PILOT, AISafeRoles.FLIGHT_CONTROL_OPERATOR)) {
 			mainMenu.addItem(WEATHER_DATA_OPTION, "Weather Data >", () -> runSubMenu(buildWeatherDataMenu()));
 		}
 
@@ -385,8 +389,11 @@ public class MainMenu extends AbstractUI {
 
 	private Menu buildWeatherDataMenu() {
 		final var menu = new Menu("Weather Data >");
-		menu.addItem(REGISTER_WEATHER_DATA_OPTION, "Register Weather Data (US041)", () -> { new RegisterWeatherDataUI().show(); return false; });
+		if (hasAnyRole(AISafeRoles.WEATHER_PERSON)) {
+			menu.addItem(REGISTER_WEATHER_DATA_OPTION, "Register Weather Data (US041)", () -> { new RegisterWeatherDataUI().show(); return false; });
+		}
 		menu.addItem(IMPORT_BULK_WEATHER_DATA_OPTION, "Import Bulk Weather Data from CSV (US042)", () -> { new ImportBulkWeatherDataUI().show(); return false; });
+		menu.addItem(CONSULT_WEATHER_DATA_OPTION, "Consult Weather Data (US043)", () -> { new ConsultWeatherDataUI().show(); return false; });
 		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
 		return menu;
 	}
