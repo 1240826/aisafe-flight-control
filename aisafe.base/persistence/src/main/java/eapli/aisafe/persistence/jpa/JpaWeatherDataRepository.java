@@ -7,6 +7,9 @@ import eapli.aisafe.infrastructure.Application;
 import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.repositories.impl.jpa.JpaAutoTxRepository;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 /**
  * JPA implementation of WeatherDataRepository.
  */
@@ -25,5 +28,12 @@ public class JpaWeatherDataRepository
     @Override
     public Iterable<WeatherData> findByAreaCode(final AreaCode areaCode) {
         return match("e.areaCode.code = '" + areaCode.toString() + "'");
+    }
+
+    @Override
+    public Iterable<WeatherData> findByAreaCodeAndDate(final AreaCode areaCode, final LocalDate date){
+        final String start = date.atStartOfDay().toString();
+        final String end = date.atTime(LocalTime.MAX).toString();
+        return match("e.areaCode.code = '" + areaCode.toString() + "' AND e.recordedDateTime BETWEEN '" + start + "' AND '" + end + "'");
     }
 }
