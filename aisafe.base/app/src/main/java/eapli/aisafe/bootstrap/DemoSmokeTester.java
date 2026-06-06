@@ -8,11 +8,16 @@ import eapli.aisafe.flightplan.application.FlightPlanToScenarioConverter;
 import eapli.aisafe.flightplan.application.ReportParser;
 import eapli.aisafe.flightplan.domain.FlightPlan;
 import eapli.aisafe.flightplan.domain.FlightPlanId;
+import eapli.aisafe.weatherdata.application.WeatherApiService;
+import eapli.aisafe.weatherdata.application.WeatherDataToSimulatorExporter;
+import eapli.aisafe.weatherdata.domain.WeatherData;
+import eapli.aisafe.weatherdata.domain.WindCondition;
 import eapli.framework.actions.Action;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @SuppressWarnings("squid:S1126")
 public class DemoSmokeTester implements Action {
@@ -69,6 +74,8 @@ public class DemoSmokeTester implements Action {
         test("FlightPlanExporter - export", this::testExporter);
         test("FlightPlanToScenarioConverter - valid", this::testConverter);
         test("Flight domain - add flight plan", this::testFlightDomain);
+        test("WeatherDataToSimulatorExporter - export", this::testWeatherExporter);
+        test("WeatherApiService - JSON parsing", this::testWeatherApiJson);
 
         LOGGER.info("──────────────────────────────────────");
         LOGGER.info("Smoke tests: {} passed, {} failed", passed, failed);
@@ -170,5 +177,40 @@ public class DemoSmokeTester implements Action {
         final var fp3 = flight.updateFlightPlan(FlightPlanId.valueOf("FP002"), "departure LIS 14:00; arrival OPO 15:00");
         assert fp3 != null : "updateFlightPlan should create new plan if missing";
         assert flight.flightPlans().size() == 2 : "Should have 2 flight plans now";
+    }
+
+    private void testWeatherExporter() {
+        final var areaCode = new eapli.aisafe.aircontrolarea.domain.AreaCode("LIS_ACA");
+        final var wind = new WindCondition(15.5, 270, 38.78, -9.14, 10000);
+        final var wd = new WeatherData(areaCode, wind, 22.0, "Open-Meteo API",
+                LocalDateTime.of(2026, 6, 5, 12, 0));
+        final var exporter = new WeatherDataToSimulatorExporter();
+        final var json = exporter.export(List.of(wd));
+        assert json != null && !json.isBlank() : "Exporter should produce non-blank JSON";
+        assert json.contains("\"provider\"") : "JSON should contain provider";
+        assert json.contains("\"zones\"") : "JSON should contain zones";
+        assert json.contains("\"lat_north\"") : "JSON should contain lat_north";
+        assert json.contains("\"lat_south\"") : "JSON should contain lat_south";
+        assert json.contains("\"lon_west\"") : "JSON should contain lon_west";
+        assert json.contains("\"lon_east\"") : "JSON should contain lon_east";
+        assert json.contains("\"alt_ft_lo\"") : "JSON should contain alt_ft_lo";
+        assert json.contains("\"alt_ft_hi\"") : "JSON should contain alt_ft_hi";
+        assert json.contains("\"dir_deg\": 270") : "JSON should contain dir_deg 270";
+        assert json.contains("\"speed_kt\": 15.5") : "JSON should contain speed_kt 15.5";
+    }
+
+    private void testWeatherApiJson() {
+        final var sampleJson = """
+                {"latitude":38.78,"longitude":-9.14,"generationtime_ms":0.3,"utc_offset_seconds":0,"timezone":"GMT","timezone_abbreviation":"GMT","elevation":114.0,"current_units":{"time":"iso8601","interval":"seconds","temperature_2m":"°C","wind_speed_10m":"km/h","wind_direction_10m":"°"},"current":{"time":"2026-06-05T12:00","interval":900,"temperature_2m":22.5,"wind_speed_10m":15.3,"wind_direction_10m":270}}
+                """;
+
+        final double speed = WeatherApiService.extractWindSpeed(sampleJson);
+        assert speed > 0 : "Wind speed should be positive, got " + speed;
+
+        final int dir = WeatherApiService.extractWindDirection(sampleJson);
+        assert dir >= 0 && dir < 360 : "Direction should be valid, got " + dir;
+
+        final double temp = WeatherApiService.extractTemperature(sampleJson);
+        assert temp > -50 && temp < 60 : "Temperature should be realistic, got " + temp;
     }
 }

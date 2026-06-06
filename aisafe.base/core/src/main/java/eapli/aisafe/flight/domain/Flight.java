@@ -150,6 +150,20 @@ public class Flight implements AggregateRoot<FlightDesignator> {
      * @param newDslContent the new DSL content
      * @return the updated (or new) flight plan
      */
+    /**
+     * Updates flight-level fields from DSL import data (used when the Flight already exists
+     * but the DSL content has changed — e.g. different departure time, route, etc.).
+     */
+    public void updateFromDsl(final LocalDateTime departureTime,
+                               final FlightRouteName routeName,
+                               final String aircraftRegistration,
+                               final PilotId pilotLicense) {
+        this.departureTime = departureTime;
+        this.routeName = routeName;
+        this.aircraftRegistration = aircraftRegistration;
+        this.pilotLicense = pilotLicense;
+    }
+
     public FlightPlan updateFlightPlan(final FlightPlanId flightPlanId, final String newDslContent) {
         final var existing = flightPlan(flightPlanId);
         if (existing.isPresent()) {

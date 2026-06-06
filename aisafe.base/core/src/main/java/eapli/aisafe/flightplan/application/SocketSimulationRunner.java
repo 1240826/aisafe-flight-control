@@ -20,6 +20,11 @@ public class SocketSimulationRunner implements SimulationRunner {
 
     @Override
     public String run(final String jsonInput) throws SimulationRunnerException {
+        return run(jsonInput, null);
+    }
+
+    @Override
+    public String run(final String jsonInput, final String weatherFilePath) throws SimulationRunnerException {
         if (jsonInput == null) {
             throw new SimulationRunnerException("JSON input must not be null");
         }
@@ -27,10 +32,22 @@ public class SocketSimulationRunner implements SimulationRunner {
         try (Socket socket = new Socket(host, port)) {
             socket.setSoTimeout(timeoutSeconds * 1000);
 
-            final byte[] jsonBytes = jsonInput.getBytes(StandardCharsets.UTF_8);
             final var out = new DataOutputStream(socket.getOutputStream());
+
+            // Send scenario JSON (length-prefixed)
+            final byte[] jsonBytes = jsonInput.getBytes(StandardCharsets.UTF_8);
             out.writeInt(jsonBytes.length);
             out.write(jsonBytes);
+
+            // Send weather JSON if provided (length-prefixed, 0 = no weather)
+            if (weatherFilePath != null && !weatherFilePath.isBlank()) {
+                final byte[] weatherBytes = java.nio.file.Files.readAllBytes(
+                        java.nio.file.Path.of(weatherFilePath));
+                out.writeInt(weatherBytes.length);
+                out.write(weatherBytes);
+            } else {
+                out.writeInt(0);
+            }
             out.flush();
 
             final var in = new DataInputStream(socket.getInputStream());

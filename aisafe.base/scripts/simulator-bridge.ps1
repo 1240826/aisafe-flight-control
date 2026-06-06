@@ -2,7 +2,9 @@ param(
     [Parameter(Mandatory=$true, Position=0)]
     [string]$InputJson,
     [Parameter(Mandatory=$true, Position=1)]
-    [string]$OutputReport
+    [string]$OutputReport,
+    [Parameter(Mandatory=$false, Position=2)]
+    [string]$WeatherJson = ""
 )
 
 $SharedFolder = "C:\ARQCP\partilha\SCOMP\SPRINT3"
@@ -34,7 +36,17 @@ Copy-Item -LiteralPath $InputJson -Destination $localInput -Force
 $linuxInput = "$LinuxShared/temp/sim_input_${timestamp}${ext}"
 $linuxOutput = "$LinuxShared/temp/sim_output_${timestamp}.txt"
 
-$wslCmd = "cd $LinuxShared && if [ -x ./simulation ]; then ./simulation '$linuxInput' 0 1 '$linuxOutput'; else echo 'Simulator not found or not executable'; exit 1; fi"
+$weatherArg = ""
+if (-not [string]::IsNullOrEmpty($WeatherJson)) {
+    $weatherExt = [System.IO.Path]::GetExtension($WeatherJson)
+    if ([string]::IsNullOrEmpty($weatherExt)) { $weatherExt = ".json" }
+    $localWeather = Join-Path -Path $TempDir -ChildPath "sim_weather_${timestamp}${weatherExt}"
+    Copy-Item -LiteralPath $WeatherJson -Destination $localWeather -Force
+    $linuxWeather = "$LinuxShared/temp/sim_weather_${timestamp}${weatherExt}"
+    $weatherArg = " '$linuxWeather'"
+}
+
+$wslCmd = "cd $LinuxShared && if [ -x ./simulation ]; then ./simulation '$linuxInput' 0 1 '$linuxOutput'$weatherArg; else echo 'Simulator not found or not executable'; exit 1; fi"
 Write-Host "[BRIDGE] Running: wsl $wslCmd"
 
 $proc = Start-Process -FilePath "wsl.exe" -ArgumentList @("bash", "-c", $wslCmd) -NoNewWindow -Wait -PassThru
@@ -51,7 +63,7 @@ if (Test-Path -LiteralPath $localOutput) {
     Write-Host "[BRIDGE] Report copied to $OutputReport"
     Remove-Item -LiteralPath $localOutput -Force -ErrorAction SilentlyContinue
 } else {
-    Write-Warning "[BRIDGE] Output not found at $localOutput — looking for report_${timestamp}_*.txt..."
+    Write-Warning "[BRIDGE] Output not found at $localOutput - looking for report_${timestamp}_*.txt..."
     $reportFiles = Get-ChildItem -LiteralPath $SharedFolder -Filter "report_${timestamp}_*.txt" | Sort-Object LastWriteTime -Descending
     if ($reportFiles.Count -eq 0) {
         $reportFiles = Get-ChildItem -LiteralPath $SharedFolder -Filter "report_*.txt" | Sort-Object LastWriteTime -Descending

@@ -33,7 +33,8 @@ public class AISafeMasterUsersBootstrapper extends AbstractUserBootstrapper impl
                        AISafeRoles.BACKOFFICE_OPERATOR,
                        AISafeRoles.ATC_COLLABORATOR,
                        AISafeRoles.FLIGHT_CONTROL_OPERATOR,
-                       AISafeRoles.WEATHER_PERSON));
+                       AISafeRoles.WEATHER_PERSON,
+                       AISafeRoles.PILOT));
 
         // ── Role-specific users ───────────────────────────────────────────────
         registerUser("admin1", TestDataConstants.PASSWORD1, "Admin", "AISafe",

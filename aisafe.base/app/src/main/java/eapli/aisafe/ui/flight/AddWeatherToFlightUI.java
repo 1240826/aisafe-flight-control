@@ -17,28 +17,34 @@ public class AddWeatherToFlightUI extends AbstractUI {
 
     @Override
     protected boolean doShow() {
-        final List<Flight> flights = new ArrayList<>();
+        final List<Flight> allFlights = new ArrayList<>();
         try {
-            controller.allFlights().forEach(flights::add);
+            controller.allFlights().forEach(allFlights::add);
         } catch (final IllegalStateException e) {
             System.out.println("  [!] " + e.getMessage());
             return false;
         }
 
+        // Show only user-imported flights (those with a flight plan matching the flight designator)
+        final List<Flight> flights = allFlights.stream()
+                .filter(f -> f.flightPlans().stream()
+                        .anyMatch(fp -> fp.identity().toString().equals(f.identity().toString())))
+                .toList();
+
         if (flights.isEmpty()) {
-            System.out.println("  [!] No flights registered.");
+            System.out.println("  [!] No imported flights available. Import a flight plan first.");
             return false;
         }
 
         System.out.println("\n-- Available Flights --");
         for (int i = 0; i < flights.size(); i++) {
             final Flight f = flights.get(i);
-            System.out.printf("  %d. %s | %s | Route: %s | Pilot: %s%n",
+            final String hasWeather = f.weatherDataId() != null
+                    ? " [weather assigned]"
+                    : "";
+            System.out.printf("  %d. %s | %s | Route: %s | Pilot: %s%s%n",
                     i + 1, f.identity(), f.departureTime(),
-                    f.routeName(), f.pilotLicense());
-            if (f.weatherDataId() != null) {
-                System.out.printf("        (weather data #%d already assigned)%n", f.weatherDataId());
-            }
+                    f.routeName(), f.pilotLicense(), hasWeather);
         }
 
         Flight selectedFlight = null;
@@ -52,21 +58,28 @@ public class AddWeatherToFlightUI extends AbstractUI {
         }
         System.out.println("  >> Flight: " + selectedFlight.identity());
 
-        final List<WeatherData> weatherList = new ArrayList<>();
+        if (selectedFlight.weatherDataId() != null) {
+            System.out.println("     (weather data #" + selectedFlight.weatherDataId()
+                    + " already assigned)");
+        }
+
+        final List<WeatherData> weatherList;
         try {
-            controller.allWeatherData().forEach(weatherList::add);
+            weatherList = controller.weatherDataForFlight(selectedFlight);
         } catch (final IllegalStateException e) {
             System.out.println("  [!] " + e.getMessage());
             return false;
         }
 
         if (weatherList.isEmpty()) {
-            System.out.println("  [!] No weather data available. A Weather Person must import data first.");
+            System.out.println("  [!] No weather data available for this flight's route area.");
+            System.out.println("      A Weather Person must import data for the relevant Air Control Area first.");
             return false;
         }
 
-        System.out.println("\n-- Available Weather Data --");
-        System.out.println("  Select the weather forecast to associate with this flight:\n");
+        System.out.println("\n-- Weather Data for this Route Area --");
+        System.out.printf("  Showing %d record(s) relevant to %s route:\n\n",
+                weatherList.size(), selectedFlight.routeName());
         for (int i = 0; i < weatherList.size(); i++) {
             final WeatherData w = weatherList.get(i);
             System.out.printf("  %d. [%d] %s | T=%.1f°C | Wind: %.0f kt @ %d°%n",
@@ -74,10 +87,8 @@ public class AddWeatherToFlightUI extends AbstractUI {
                     w.temperatureCelsius(),
                     w.windCondition().speedKnots(),
                     w.windCondition().directionDegrees());
-            System.out.printf("        Provider: %s | Date: %s | Lat/Lon/Alt: %.4f/%.4f/%dm%n",
+            System.out.printf("        Provider: %s | Date: %s | Alt: %dm%n",
                     w.sourceProvider(), w.recordedDateTime(),
-                    w.windCondition().latitude(),
-                    w.windCondition().longitude(),
                     w.windCondition().altitudeMetres());
         }
 

@@ -235,6 +235,9 @@ public class ImportFlightPlanController {
                             routeName, aircraftRegStr, pilotId);
                 }
 
+                if (!isNewFlight) {
+                    flight.updateFromDsl(departureTime, routeName, aircraftRegStr, pilotId);
+                }
                 final var fpId = FlightPlanId.valueOf(flightPlanIdStr);
                 if (isNewFlight) {
                     flightPlan = flight.addFlightPlan(fpId, dslContent);

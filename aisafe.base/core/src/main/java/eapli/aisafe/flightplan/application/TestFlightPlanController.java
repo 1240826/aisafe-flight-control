@@ -6,10 +6,16 @@ import eapli.aisafe.flightplan.domain.FlightPlan;
 import eapli.aisafe.flightplan.domain.FlightPlanId;
 import eapli.aisafe.infrastructure.persistence.PersistenceContext;
 import eapli.aisafe.usermanagement.domain.AISafeRoles;
+import eapli.aisafe.weatherdata.application.WeatherDataToSimulatorExporter;
+import eapli.aisafe.weatherdata.domain.WeatherData;
+import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.framework.application.UseCaseController;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import eapli.framework.infrastructure.authz.application.AuthzRegistry;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,25 +35,31 @@ public class TestFlightPlanController {
     private final FlightPlanExporter exporter;
     private final SimulationRunner runner;
     private final DslValidator dslValidator;
+    private final WeatherDataRepository weatherRepo;
+    private final WeatherDataToSimulatorExporter weatherExporter;
 
     public TestFlightPlanController() {
         this(AuthzRegistry.authorizationService(),
                 PersistenceContext.repositories().flights(),
                 new FlightPlanExporter(),
                 createRunner(),
-                new DslValidator());
+                new DslValidator(),
+                PersistenceContext.repositories().weatherData());
     }
 
     TestFlightPlanController(final AuthorizationService authz,
                               final FlightRepository flightRepo,
                               final FlightPlanExporter exporter,
                               final SimulationRunner runner,
-                              final DslValidator dslValidator) {
+                              final DslValidator dslValidator,
+                              final WeatherDataRepository weatherRepo) {
         this.authz = authz;
         this.flightRepo = flightRepo;
         this.exporter = exporter;
         this.runner = runner;
         this.dslValidator = dslValidator;
+        this.weatherRepo = weatherRepo;
+        this.weatherExporter = new WeatherDataToSimulatorExporter();
     }
 
     private static SimulationRunner createRunner() {
@@ -134,9 +146,14 @@ public class TestFlightPlanController {
         sb.append("]\n");
         final String json = sb.toString();
 
+        final String weatherFilePath = buildWeatherFile(tested);
         final String reportContent;
         try {
-            reportContent = runner.run(json);
+            if (weatherFilePath != null) {
+                reportContent = runner.run(json, weatherFilePath);
+            } else {
+                reportContent = runner.run(json);
+            }
         } catch (final SimulationRunnerException e) {
             for (final var entry : tested) {
                 entry.flightPlan().resetToDraft();
@@ -144,6 +161,13 @@ public class TestFlightPlanController {
             }
             return new ScenarioResult(false,
                     "Simulation execution failed: " + e.getMessage(), null, tested);
+        } finally {
+            if (weatherFilePath != null) {
+                try {
+                    Files.deleteIfExists(Path.of(weatherFilePath));
+                } catch (final Exception ignored) {
+                }
+            }
         }
 
         final var parsed = ReportParser.parse(reportContent);
@@ -219,46 +243,58 @@ public class TestFlightPlanController {
         return executeTest(flight, flightPlan);
     }
 
-    private TestResult executeTest(final Flight flight, final FlightPlan flightPlan) {
-        if (flightPlan.status() != eapli.aisafe.flightplan.domain.FlightPlanStatus.DRAFT) {
-            return new TestResult(false,
-                    "Flight plan is not in DRAFT status (current: " + flightPlan.status() + ")",
-                    null);
-        }
+	private TestResult executeTest(final Flight flight, final FlightPlan flightPlan) {
+		if (flightPlan.status() != eapli.aisafe.flightplan.domain.FlightPlanStatus.DRAFT) {
+			return new TestResult(false,
+					"Flight plan is not in DRAFT status (current: " + flightPlan.status() + ")",
+					null);
+		}
 
-        final var departureCheck = checkDepartureTime(flight, flightPlan.dslContent());
-        if (!departureCheck.isPassed()) {
-            flightPlan.markAsInTest();
-            flightPlan.recordTestResult(false, null,
-                    departureCheck.message());
-            flightRepo.save(flight);
-            return new TestResult(false, departureCheck.message(), null);
-        }
+		final var departureCheck = checkDepartureTime(flight, flightPlan.dslContent());
+		if (!departureCheck.isPassed()) {
+			flightPlan.markAsInTest();
+			flightPlan.recordTestResult(false, null,
+					departureCheck.message());
+			flightRepo.save(flight);
+			return new TestResult(false, departureCheck.message(), null);
+		}
 
-        final var dslValidation = dslValidator.validate(flightPlan.dslContent());
-        if (!dslValidation.isPassed()) {
-            flightPlan.markAsInTest();
-            flightPlan.recordTestResult(false, null,
-                    "DSL validation failed: " + String.join("; ", dslValidation.reasons()));
-            flightRepo.save(flight);
-            return new TestResult(false,
-                    "DSL validation failed: " + String.join("; ", dslValidation.reasons()),
-                    null);
-        }
+		final var dslValidation = dslValidator.validate(flightPlan.dslContent());
+		if (!dslValidation.isPassed()) {
+			flightPlan.markAsInTest();
+			flightPlan.recordTestResult(false, null,
+					"DSL validation failed: " + String.join("; ", dslValidation.reasons()));
+			flightRepo.save(flight);
+			return new TestResult(false,
+					"DSL validation failed: " + String.join("; ", dslValidation.reasons()),
+					null);
+		}
 
-        flightPlan.markAsInTest();
-        flightRepo.save(flight);
+		flightPlan.markAsInTest();
+		flightRepo.save(flight);
 
-        final var json = exporter.exportForSimulator(flightPlan);
-        final String reportContent;
-        try {
-            reportContent = runner.run(json);
-        } catch (final SimulationRunnerException e) {
-            flightPlan.resetToDraft();
-            flightRepo.save(flight);
-            return new TestResult(false,
-                    "Simulation execution failed: " + e.getMessage(), null);
-        }
+		final var json = exporter.exportForSimulator(flightPlan);
+		final String weatherFilePath = buildWeatherFile(flight);
+		final String reportContent;
+		try {
+			if (weatherFilePath != null) {
+				reportContent = runner.run(json, weatherFilePath);
+			} else {
+				reportContent = runner.run(json);
+			}
+		} catch (final SimulationRunnerException e) {
+			flightPlan.resetToDraft();
+			flightRepo.save(flight);
+			return new TestResult(false,
+					"Simulation execution failed: " + e.getMessage(), null);
+		} finally {
+			if (weatherFilePath != null) {
+				try {
+					Files.deleteIfExists(Path.of(weatherFilePath));
+				} catch (final Exception ignored) {
+				}
+			}
+		}
 
         final var parsed = ReportParser.parse(reportContent);
         flightPlan.recordTestResult(parsed.isPassed(), null, reportContent);
@@ -309,6 +345,24 @@ public class TestFlightPlanController {
         return flightRepo.findAll();
     }
 
+    public java.util.List<FlightPlanEntry> allTestedEntries() {
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.FLIGHT_CONTROL_OPERATOR);
+        final var result = new java.util.ArrayList<FlightPlanEntry>();
+        for (final var flight : flightRepo.findAll()) {
+            for (final var fp : flight.flightPlans()) {
+                final var st = fp.status();
+                if (st != eapli.aisafe.flightplan.domain.FlightPlanStatus.TEST_PASSED
+                        && st != eapli.aisafe.flightplan.domain.FlightPlanStatus.TEST_FAILED) {
+                    continue;
+                }
+                if (fp.reportContent() != null) {
+                    result.add(new FlightPlanEntry(flight, fp));
+                }
+            }
+        }
+        return result;
+    }
+
     public java.util.List<FlightPlanEntry> allDraftEntries() {
         authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.FLIGHT_CONTROL_OPERATOR);
         final var result = new java.util.ArrayList<FlightPlanEntry>();
@@ -329,6 +383,40 @@ public class TestFlightPlanController {
         }
         return result;
     }
+
+	private String buildWeatherFile(final Flight flight) {
+		try {
+			if (flight.weatherDataId() != null) {
+				final var weatherDataList = new java.util.ArrayList<WeatherData>();
+				weatherRepo.findAll().forEach(wd -> {
+					if (wd.identity().equals(flight.weatherDataId())) {
+						weatherDataList.add(wd);
+					}
+				});
+				if (!weatherDataList.isEmpty()) {
+					final var json = weatherExporter.export(weatherDataList);
+					final var tempFile = Files.createTempFile("aisafe_weather_", ".json");
+					Files.writeString(tempFile, json, StandardCharsets.UTF_8);
+					return tempFile.toAbsolutePath().toString();
+				}
+			}
+			return null;
+		} catch (final Exception e) {
+			return null;
+		}
+	}
+
+	private String buildWeatherFile(final List<FlightPlanEntry> entries) {
+		try {
+			for (final var entry : entries) {
+				final String wf = buildWeatherFile(entry.flight());
+				if (wf != null) return wf;
+			}
+			return null;
+		} catch (final Exception e) {
+			return null;
+		}
+	}
 
     private record DepartureCheckResult(String message) {
         DepartureCheckResult() {

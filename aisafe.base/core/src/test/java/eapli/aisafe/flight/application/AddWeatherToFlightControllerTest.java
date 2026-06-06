@@ -1,5 +1,8 @@
 package eapli.aisafe.flight.application;
 
+import eapli.aisafe.aircontrolarea.domain.AirControlArea;
+import eapli.aisafe.aircontrolarea.domain.AreaCode;
+import eapli.aisafe.aircontrolarea.repositories.AirControlAreaRepository;
 import eapli.aisafe.flight.domain.Flight;
 import eapli.aisafe.flight.domain.FlightDesignator;
 import eapli.aisafe.flight.repositories.FlightRepository;
@@ -24,6 +27,7 @@ class AddWeatherToFlightControllerTest {
     private AuthorizationService authz;
     private FlightRepository flightRepo;
     private WeatherDataRepository weatherRepo;
+    private AirControlAreaRepository acaRepo;
     private AddWeatherToFlightController controller;
 
     @BeforeEach
@@ -31,7 +35,8 @@ class AddWeatherToFlightControllerTest {
         authz = mock(AuthorizationService.class);
         flightRepo = mock(FlightRepository.class);
         weatherRepo = mock(WeatherDataRepository.class);
-        controller = new AddWeatherToFlightController(authz, flightRepo, weatherRepo);
+        acaRepo = mock(AirControlAreaRepository.class);
+        controller = new AddWeatherToFlightController(authz, flightRepo, weatherRepo, acaRepo);
     }
 
     // ── allFlights ────────────────────────────────────────────────────────────
@@ -82,25 +87,6 @@ class AddWeatherToFlightControllerTest {
         when(flightRepo.ofIdentity(any())).thenReturn(Optional.of(
                 new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME)));
         controller.flightByDesignator("TP1234");
-        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
-    }
-
-    // ── allWeatherData ────────────────────────────────────────────────────────
-
-    @Test
-    void ensureAllWeatherDataDelegatesToRepo() {
-        when(weatherRepo.findAll()).thenReturn(List.of());
-
-        final var result = controller.allWeatherData();
-
-        verify(weatherRepo).findAll();
-        assertNotNull(result);
-    }
-
-    @Test
-    void ensureAllWeatherDataChecksAuthorization() {
-        when(weatherRepo.findAll()).thenReturn(List.of());
-        controller.allWeatherData();
         verify(authz).ensureAuthenticatedUserHasAnyOf(any());
     }
 

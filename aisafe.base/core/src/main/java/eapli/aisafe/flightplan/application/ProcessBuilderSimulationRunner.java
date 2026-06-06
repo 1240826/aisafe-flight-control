@@ -20,6 +20,11 @@ public class ProcessBuilderSimulationRunner implements SimulationRunner {
 
     @Override
     public String run(final String jsonInput) throws SimulationRunnerException {
+        return run(jsonInput, null);
+    }
+
+    @Override
+    public String run(final String jsonInput, final String weatherFilePath) throws SimulationRunnerException {
         if (jsonInput == null) {
             throw new SimulationRunnerException("JSON input must not be null");
         }
@@ -28,8 +33,16 @@ public class ProcessBuilderSimulationRunner implements SimulationRunner {
             Files.writeString(tempInput, jsonInput, StandardCharsets.UTF_8);
 
             final var tempOutput = Files.createTempFile("sim_output_", ".txt");
-            final var processBuilder = new java.lang.ProcessBuilder(
-                    simulatorExecutable, tempInput.toString(), tempOutput.toString());
+
+            final var args = new java.util.ArrayList<String>();
+            args.add(simulatorExecutable);
+            args.add(tempInput.toString());
+            args.add(tempOutput.toString());
+            if (weatherFilePath != null && !weatherFilePath.isBlank()) {
+                args.add(weatherFilePath);
+            }
+
+            final var processBuilder = new java.lang.ProcessBuilder(args);
             processBuilder.redirectErrorStream(true);
 
             final var process = processBuilder.start();

@@ -7,6 +7,7 @@ import eapli.aisafe.flightplan.domain.FlightPlan;
 import eapli.aisafe.flightplan.domain.FlightPlanId;
 import eapli.aisafe.flightplan.domain.FlightPlanStatus;
 import eapli.aisafe.flightplan.domain.ValidationResult;
+import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ class TestFlightPlanControllerTest {
     private FlightPlanExporter exporter;
     private SimulationRunner runner;
     private DslValidator dslValidator;
+    private WeatherDataRepository weatherRepo;
     private TestFlightPlanController controller;
 
     @BeforeEach
@@ -37,7 +39,8 @@ class TestFlightPlanControllerTest {
         exporter = mock(FlightPlanExporter.class);
         runner = mock(SimulationRunner.class);
         dslValidator = mock(DslValidator.class);
-        controller = new TestFlightPlanController(authz, flightRepo, exporter, runner, dslValidator);
+        weatherRepo = mock(WeatherDataRepository.class);
+        controller = new TestFlightPlanController(authz, flightRepo, exporter, runner, dslValidator, weatherRepo);
     }
 
     @Test
