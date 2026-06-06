@@ -48,13 +48,12 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 **Prompt 1:** "In a DDD Java system, a Pilot wants to validate a flight plan. The validation has two
 steps: (1) re-validate the stored DSL using an ANTLR-based validator, and (2) export the flight plan
-to JSON and invoke an external C simulator via ProcessBuilder. How should this be structured?"
+to JSON and invoke an external C simulator. How should this be structured?"
 
 **Decisions made by the team:**
-- The C simulator is invoked via `ProcessBuilder` — no JNI or socket integration
-- The C simulator output file path is configurable via system property
 - The DSL is re-validated every time (not cached) to ensure the latest grammar is applied
 - `TestFlightPlanController` orchestrates the full pipeline; dedicated services handle each concern (DSL validation, JSON export, C invocation, report parsing)
+- Three communication modes are supported (see `communication-architecture.md`): local `ProcessBuilder`, TCP socket to a remote `sim_server`, and WSL bridge via `aisafe-simulator.cmd`
 
 ### 3.1 Key Design Decisions
 
@@ -67,38 +66,87 @@ to JSON and invoke an external C simulator via ProcessBuilder. How should this b
 | Import UI uses `ImportFlightPlanController` for ANTLR-based validation at import time | US081/121: only valid DSL may be imported into the system |
 | FlightPlan → structured JSON export via `FlightPlanToScenarioConverter` | C simulator expects detailed scenario JSON with coordinates, segments, flight profile |
 | `FlightPlanExporter` falls back to simple `{ID, FlightPlanDSL}` for non-ANTLR DSL | Backwards compatibility with existing test plans |
-| C invocation via `ProcessBuilder` | Looser coupling than JNI; matches file-based handoff |
+| C invocation abstracted via `SimulationRunner` interface | Supports 3 modes: local ProcessBuilder, TCP socket to sim_server, WSL bridge (see `communication-architecture.md`) |
+| `ProcessBuilderSimulationRunner` — local subprocess | Direct simulator execution on same machine (Linux / WSL) |
+| `SocketSimulationRunner` — TCP to remote sim_server | Simulator runs on a separate VM; JSON sent over TCP, report received |
+| Runner selection via `createRunner()` | Checks `aisafe.simulator.host` system property; if set → socket mode, else → ProcessBuilder |
+| Weather file support via `buildWeatherFile()` | US082 weather data is exported to JSON and sent alongside scenario |
+| Departure time mismatch check | Before simulation, validates the DSL departure time matches the Flight entity's departure time |
+| Multi-flight scenario testing via `testScenario()` | Allows testing several flight plans in a single C simulator run |
 | Two-phase validation: DSL first, then C | Fail fast: don't run C simulator if DSL is invalid |
 | `FlightPlanExporter` dedicated to JSON serialization | Isolates format changes |
-| `ProcessBuilderSimulationRunner` uses configurable timeout | Prevents hanging if simulator crashes |
+| `ProcessBuilderSimulationRunner` / `SocketSimulationRunner` use configurable timeout | Prevents hanging if simulator crashes |
 | Role-gated to `FLIGHT_CONTROL_OPERATOR` | Follows US030 authorization infrastructure |
 | FlightPlan status machine: DRAFT → IN_TEST → TEST_PASSED/TEST_FAILED | Clear lifecycle for validation workflow |
 | Controller dual API (flightDesignator+flightPlanId / flightPlanId only) | UI lists flights first, then flight plans; remote API may only have flightPlanId |
+| View past results via `ViewTestResultsUI` | Menu option 3 in Flight Plans — browses flight plans with TEST_PASSED/TEST_FAILED status and non-null report content |
 
-### 3.2 Validation Pipeline
+### 3.2 Validation Pipeline — Single Flight
 
 ```
-TestFlightPlanController.testFlightPlan(flightPlanId)
+TestFlightPlanController.testFlightPlan(flightDesignator, flightPlanId)
     │
     ├── 1. Authorize — ensure user has FLIGHT_CONTROL_OPERATOR role
     │
-    ├── 2. Load FlightPlan from repository (or throw if not found)
+    ├── 2. Load Flight from repository (or throw if not found)
     │
-    ├── 3. Check status == DRAFT (or return failure)
+    ├── 3. Load FlightPlan from Flight (or throw if not found)
     │
-    ├── 4. DSL Validation (DslValidator.validate)
+    ├── 4. Check status == DRAFT (or return failure)
+    │
+    ├── 5. Departure time check (checkDepartureTime)
+    │   ├── Parse departure time from DSL content (regex)
+    │   ├── Compare with Flight.departureTime
+    │   ├── If mismatch → markAsInTest() + recordTestResult(false) → save → return failure
+    │   └── If match → proceed
+    │
+    ├── 6. DSL Validation (DslValidator.validate)
     │   ├── If INVALID → markAsInTest() + recordTestResult(false) → save → return failure
     │   └── If VALID → proceed
     │
-    ├── 5. JSON Export (FlightPlanExporter.exportForSimulator)
+    ├── 7. markAsInTest() + save
     │
-    ├── 6. C Simulation (ProcessBuilderSimulationRunner.run)
+    ├── 8. JSON Export (FlightPlanExporter.exportForSimulator)
+    │
+    ├── 9. Build weather file (buildWeatherFile) if flight has weatherDataId
+    │
+    ├── 10. C Simulation (SimulationRunner.run)
+    │   ├── Chosen mode: SocketSimulationRunner or ProcessBuilderSimulationRunner
     │   ├── If fails → resetToDraft() + save → return failure
     │   └── If succeeds → proceed
     │
-    ├── 7. Parse Report (ReportParser.parse)
+    ├── 11. Parse Report (ReportParser.parse)
     │
-    └── 8. Record Result (FlightPlan.recordTestResult) + save → return result
+    └── 12. Record Result (FlightPlan.recordTestResult) + save → return result
+```
+
+### 3.3 Validation Pipeline — Multi-Flight Scenario
+
+```
+TestFlightPlanController.testScenario(entries)
+    │
+    ├── 1. Authorize — ensure user has FLIGHT_CONTROL_OPERATOR role
+    │
+    ├── 2. For each entry:
+    │   ├── Skip if status is not DRAFT/TEST_PASSED/TEST_FAILED
+    │   ├── resetToDraft() if not DRAFT
+    │   ├── Departure time check (skip if mismatch)
+    │   ├── DSL validation (skip if invalid)
+    │   └── markAsInTest() + save
+    │
+    ├── 3. If no valid entries → return failure
+    │
+    ├── 4. Build combined JSON array (merge individual exports)
+    │
+    ├── 5. Build weather file from first entry's flight (buildWeatherFile)
+    │
+    ├── 6. C Simulation (runner.run(json, weatherFilePath))
+    │   ├── If fails → resetToDraft() for all entries
+    │   └── If succeeds → proceed
+    │
+    ├── 7. Parse per-flight results from report (ReportParser.parse)
+    │
+    └── 8. For each entry: recordTestResult(parsedPerFlight) + save
 ```
 
 ---
@@ -123,15 +171,18 @@ TestFlightPlanController.testFlightPlan(flightPlanId)
 | `FlightRepository` | `eapli.aisafe.flight.repositories` | Domain repository interface (with `findByFlightPlanId`) |
 | `JpaFlightRepository` | `eapli.aisafe.persistence.jpa` | JPA implementation |
 | `InMemoryFlightRepository` | `eapli.aisafe.persistence.inmemory` | In-memory implementation |
+| `SimulationRunner` | `eapli.aisafe.flightplan.application` | Interface — abstracts C simulator invocation (`run(json)` / `run(json, weatherPath)`) |
+| `SocketSimulationRunner` | `eapli.aisafe.flightplan.application` | TCP client — sends JSON to `sim_server` over socket, receives report |
+| `ProcessBuilderSimulationRunner` | `eapli.aisafe.flightplan.application` | Local subprocess — invokes C simulator via `ProcessBuilder` with temp files |
 | `ImportFlightPlanController` | `eapli.aisafe.flightplan.application` | `@UseCaseController` — ANTLR 3-phase pipeline at import time; creates FlightPlan with DRAFT status |
-| `TestFlightPlanController` | `eapli.aisafe.flightplan.application` | `@UseCaseController` — auth + orchestration (DSL re-validate, export, C simulator, report parse) |
+| `TestFlightPlanController` | `eapli.aisafe.flightplan.application` | `@UseCaseController` — auth + orchestration (DSL re-validate, departure check, export, C sim, report parse) |
 | `FlightPlanExporter` | `eapli.aisafe.flightplan.application` | Converts FlightPlan → JSON for C simulator; uses `FlightPlanToScenarioConverter` with legacy fallback |
 | `FlightPlanToScenarioConverter` | `eapli.aisafe.flightplan.application` | Parses DSL with ANTLR; outputs structured scenario JSON (legs, coordinates, flight profile) for C simulator |
-| `ProcessBuilderSimulationRunner` | `eapli.aisafe.flightplan.application` | Invokes external C simulator as subprocess with timeout |
-| `ReportParser` | `eapli.aisafe.flightplan.application` | Parses C simulator text output (PASS/FAIL + violation count + EXECUTED/SIMULATED report type) |
+| `ReportParser` | `eapli.aisafe.flightplan.application` | Parses C simulator text output (PASS/FAIL + violation count + per-flight results) |
 | `DslValidator` | `eapli.aisafe.flightplan.application` | Validates DSL content rules (altitude, speed, waypoint, engine, wake, passengers, non-ASCII) |
 | `ImportFlightPlanUI` | `eapli.aisafe.ui.flightplan` | Console UI — file path + Flight Plan ID input; displays per-phase (lexer/parser/semantic) error feedback |
 | `TestFlightPlanUI` | `eapli.aisafe.ui.flightplan` | Console UI — extends `AbstractUI`, role-gated to FLIGHT_CONTROL_OPERATOR |
+| `ViewTestResultsUI` | `eapli.aisafe.ui.flightplan` | Console UI — browse past test reports (menu option 3 in Flight Plans) |
 
 ### 4.3 Acceptance Tests
 
@@ -242,7 +293,9 @@ Then the system denies access with an authorization error.
 │              ├── FlightPlanExporter.exportForSimulator(flightPlan)      │
 │              │     ├── FlightPlanToScenarioConverter.convert() (ANTLR)  │
 │              │     └── fallback: {ID, FlightPlanDSL} (legacy)           │
-│              ├── ProcessBuilderSimulationRunner.run(json) ──→ C Sim     │
+│              ├── SimulationRunner.run(json, weatherFile) ──→ C Sim     │
+│              │     ├── SocketSimulationRunner — TCP to sim_server      │
+│              │     └── ProcessBuilderSimulationRunner — local subprocess│
 │              ├── ReportParser.parse(reportContent)                      │
 │              └── FlightRepository.save(flight) ──→ DB (cascade to plans)│
 │                                                                          │
@@ -265,8 +318,13 @@ Then the system denies access with an authorization error.
 
 ## 7. Observations
 
-- The C simulator binary path is configurable via system property `aisafe.simulator.executable` (default: `"aisafe-simulator"`).
-- The `ProcessBuilderSimulationRunner` applies a timeout (default 30s, configurable via `aisafe.simulator.timeout`).
+- C simulator invocation is abstracted via the `SimulationRunner` interface with two implementations:
+  - **`ProcessBuilderSimulationRunner`**: local subprocess with temp files. Used when no `aisafe.simulator.host` is set.
+  - **`SocketSimulationRunner`**: TCP client connecting to a remote `sim_server`. Used when `aisafe.simulator.host` is set (default in `run-backoffice.bat`). See `communication-architecture.md`.
+- The `ProcessBuilderSimulationRunner` expects local binary `aisafe-simulator` (or configured via `aisafe.simulator.executable`).
+- The `SocketSimulationRunner` connects to `aisafe.simulator.host:aisafe.simulator.port` (default `localhost:9999`).
+- Both runners apply a configurable timeout (default 120s, set via `aisafe.simulator.timeout`).
+- The `sim_server` is a standalone C executable (built with `make sim_server`) that listens on a TCP port, forks+execs `./simulation` for each request.
 - DSL validation at import time uses the **full ANTLR 3-phase pipeline** (`FlightPlanRunner` from `aisafe.dsl`): `FlightPlanErrorListener` (lexer+parser errors with line:column), `SemanticValidationListener` (R2–R11 semantic rules), `FlightPlanPrinterVisitor` (summary).
 - The `aisafe.dsl` dependency is declared in `aisafe.base/core/pom.xml` for access to `FlightPlanRunner`, ANTLR listeners, and visitors.
 - `ImportFlightPlanController` returns a `DslValidationResult` record (record type) containing per-phase error lists, the `FlightDesignator`, and the created `FlightPlan` (or null on failure).
