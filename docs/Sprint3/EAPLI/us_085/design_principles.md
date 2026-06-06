@@ -79,7 +79,7 @@ public class TestFlightPlanController {
     private final AuthorizationService authz;
     private final FlightRepository flightRepo;
     private final FlightPlanExporter exporter;
-    private final ProcessBuilderSimulationRunner runner;
+    private final SimulationRunner runner;
     private final DslValidator dslValidator;
 
     public TestResult testFlightPlan(final String flightDesignatorStr,
@@ -118,7 +118,9 @@ public class TestFlightPlanController {
 | `FlightPlanToScenarioConverter.convert()` | Parses DSL with ANTLR; outputs structured scenario JSON (legs, coordinates, flight profile) |
 | `DslValidator.validate()` | Checks DSL content rules (altitude, speed, waypoint, engine, wake, passengers, non-ASCII) |
 | `FlightPlanExporter.exportForSimulator()` | Serializes FlightPlan → JSON; uses `FlightPlanToScenarioConverter` with legacy fallback |
-| `ProcessBuilderSimulationRunner.run()` | Invokes external C simulator via `ProcessBuilder` |
+| `SimulationRunner.run()` / `run(json, weatherFile)` | Interface — invokes C simulator (local or remote) |
+| `SocketSimulationRunner.run()` | TCP client — sends JSON to sim_server, receives report |
+| `ProcessBuilderSimulationRunner.run()` | Local subprocess — invokes C simulator via `ProcessBuilder` with temp files |
 | `ReportParser.parse()` | Parses C simulator text output (PASS/FAIL + violation count + report type) |
 | `ValidationResult` | Encapsulates pass/fail outcome with reasons |
 
@@ -283,14 +285,13 @@ public class TestFlightPlanController {
     private final AuthorizationService authz;         // interface (framework)
     private final FlightRepository flightRepo;         // interface (our code)
     private final FlightPlanExporter exporter;          // concrete service (no I/O)
-    private final ProcessBuilderSimulationRunner runner;// concrete service (wraps ProcessBuilder)
-    private final DslValidator dslValidator;            // concrete service (pure logic)
+    private final SimulationRunner runner;              // interface (two implementations)
 
     // Package-private constructor — accepts abstractions
     TestFlightPlanController(final AuthorizationService authz,
                               final FlightRepository flightRepo,
                               final FlightPlanExporter exporter,
-                              final ProcessBuilderSimulationRunner runner,
+                              final SimulationRunner runner,
                               final DslValidator dslValidator) {
         this.authz = authz;
         this.flightRepo = flightRepo;
@@ -304,7 +305,8 @@ public class TestFlightPlanController {
 **Why DIP?**
 - `FlightRepository` is an **interface** — the controller never knows about `JpaFlightRepository` or `InMemoryFlightRepository`
 - `AuthorizationService` is a **framework interface** — the controller doesn't instantiate authz logic
-- Even though `FlightPlanExporter`, `ProcessBuilderSimulationRunner`, and `DslValidator` are concrete classes (not interfaces), they are **stateless services with no I/O dependencies** — the principle of abstraction is maintained because their implementations are decoupled from the controller's orchestration logic
+- `SimulationRunner` is an **interface** (not concrete) — the controller never knows about `SocketSimulationRunner` or `ProcessBuilderSimulationRunner`
+- Even though `FlightPlanExporter` and `DslValidator` are concrete classes (not interfaces), they are **stateless services with no I/O dependencies** — the principle of abstraction is maintained because their implementations are decoupled from the controller's orchestration logic
 
 The **default constructor** uses dependency injection via static factories:
 ```java
@@ -312,7 +314,7 @@ public TestFlightPlanController() {
     this(AuthzRegistry.authorizationService(),
             PersistenceContext.repositories().flights(),  // ← returns FlightRepository
             new FlightPlanExporter(),
-            new ProcessBuilderSimulationRunner(getSimulatorExecutable(), getSimulatorTimeout()),
+            createRunner(),
             new DslValidator());
 }
 ```
@@ -424,12 +426,12 @@ Low Cohesion (bad):                          High Cohesion (our design):
 │  - saveToDatabase()          │
 │  - sendEmail()               │             ┌──────────────────────┐
 └──────────────────────────────┘             │  FlightPlanExporter  │
-                                             │  - exportForSim()    │
+                                              │  - exportForSim()    │
 Each class in our design is cohesive:        │                       │
-                                             └──────────────────────┘
+                                              └──────────────────────┘
 • Domain: FlightPlan, FlightPlanId, etc.     ┌──────────────────────┐
 • Export: FlightPlanExporter                 │  ReportParser        │
-• Process: ProcessBuilderSimulationRunner    │  - parse()           │
+• Process: SimulationRunner implementations │  - parse()           │
 • Parse: ReportParser                        └──────────────────────┘
 • Orchestrate: TestFlightPlanController
 ```
@@ -446,7 +448,7 @@ TestFlightPlanController
     ├──→ FlightRepository        (interface — switchable JPA ↔ InMemory)
     ├──→ AuthorizationService    (interface — framework abstraction)
     ├──→ FlightPlanExporter      (stateless service, no side effects)
-    ├──→ ProcessBuilderSimulationRunner (stateless, configured via constructor)
+    ├──→ SimulationRunner (interface — SocketSimulationRunner or ProcessBuilderSimulationRunner)
     └──→ DslValidator            (stateless, pure function)
 ```
 
@@ -503,7 +505,7 @@ FlightRepository repo = isTestEnvironment()
 | C simulator output format | `ReportParser` | Changes to report delimiters, keywords, or format affect only `ReportParser.parse()` |
 | Structured JSON format for C simulator | `FlightPlanToScenarioConverter` | Changes to the structured scenario JSON schema affect only `convert()` |
 | Legacy fallback JSON format | `FlightPlanExporter` | Changes to the simple `{ID, FlightPlanDSL}` format affect only `exportForSimulator()` |
-| Subprocess execution | `ProcessBuilderSimulationRunner` | Changes to timeout, temp files, or process management affect only `run()` |
+| Subprocess execution | `ProcessBuilderSimulationRunner` / `SocketSimulationRunner` | Changes to local process or TCP protocol affect only each implementation's `run()` |
 | DSL validation rules | `DslValidator` + `ImportFlightPlanController` | Grammar changes, new semantic checks affect only the ANTLR pipeline |
 | ANTLR grammar evolution | `FlightPlan.g4` + `ImportFlightPlanController` | Grammar changes are isolated in the `aisafe.dsl` module; controller only consumes parse results |
 | Persistence technology | `FlightRepository` interface | Switching JPA ↔ file ↔ NoSQL means swapping the implementation class, not touching the controller |
@@ -513,7 +515,7 @@ FlightRepository repo = isTestEnvironment()
 private TestResult executeTest(...) {
     // If the C simulator changes its JSON schema → only FlightPlanExporter changes
     final var json = exporter.exportForSimulator(flightPlan);
-    // If the simulator binary path changes → only ProcessBuilderSimulationRunner config changes
+    // If the simulator mode changes (local → remote TCP) → only the runner implementation changes
     final var report = runner.run(json);
     // If the report format changes → only ReportParser changes
     final var parsed = ReportParser.parse(report);
@@ -536,6 +538,7 @@ These classes have no counterpart in the domain model — they are pure fabricat
 | `FlightPlanToScenarioConverter` | JSON conversion is an infrastructure concern (C simulator format), not a domain concept |
 | `FlightPlanExporter` | Serialization is an infrastructure concern, not a domain concept |
 | `ProcessBuilderSimulationRunner` | OS-level process management is pure infrastructure |
+| `SocketSimulationRunner` | TCP socket communication is pure infrastructure |
 | `ReportParser` | Text parsing is a technical detail, not flight operations |
 | `DslValidator` | DSL validation is a LPROG concern, not a Flight domain concept |
 
@@ -565,31 +568,38 @@ public class FlightPlanExporter {  // ← PURE FABRICATION
 | `ImportFlightPlanController` | Import UI ↔ ANTLR FlightPlanRunner + FlightRepository | UI never knows about ANTLR or repository persistence |
 | `FlightPlanToScenarioConverter` | FlightPlan ↔ structured JSON for C simulator | FlightPlan never knows about C simulator's JSON schema |
 | `FlightPlanExporter` | Controller ↔ JSON string (converter or legacy) | FlightPlan never formats itself |
-| `ProcessBuilderSimulationRunner` | Controller ↔ OS Process | Controller never calls `ProcessBuilder` directly |
+| `SimulationRunner` (interface) | Controller ↔ C simulator (local or remote) | Controller never calls `ProcessBuilder` or `Socket` directly |
+| `ProcessBuilderSimulationRunner` | Controller ↔ OS Process | Concrete subprocess implementation |
+| `SocketSimulationRunner` | Controller ↔ TCP sim_server | Concrete socket implementation |
 | `DslValidator` | Controller ↔ ANTLR grammar | Controller never imports ANTLR directly |
 
 ```java
-// Without Indirection: controller calls ProcessBuilder directly
+// Without Indirection: controller calls ProcessBuilder or Socket directly
 public class TestFlightPlanController {
     public TestResult testFlightPlan(...) {
         var pb = new ProcessBuilder("aisafe-simulator", input.toString());  // ← BAD! tight coupling
         var process = pb.start();
-        // ...
+        // or worse: new Socket("vm-host", 9999) ...
     }
 }
 
 // With Indirection:
-public class ProcessBuilderSimulationRunner {  // ← INDIRECTION
-    public String run(final String jsonInput) {
-        var pb = new ProcessBuilder(simulatorExecutable, input.toString());
-        var process = pb.start();
-        // ... all ProcessBuilder complexity lives here
-    }
+public interface SimulationRunner {               // ← INDIRECTION (interface)
+    String run(String jsonInput);
+    default String run(String jsonInput, String weatherPath) { return run(jsonInput); }
+}
+
+public class ProcessBuilderSimulationRunner implements SimulationRunner {  // ← one impl
+    public String run(final String jsonInput) { ... }
+}
+
+public class SocketSimulationRunner implements SimulationRunner {  // ← another impl
+    public String run(final String jsonInput) { ... }
 }
 
 public class TestFlightPlanController {
     public TestResult testFlightPlan(...) {
-        var report = runner.run(json);  // ← controller never knows about ProcessBuilder
+        var report = runner.run(json);  // ← controller never knows about ProcessBuilder or Socket
     }
 }
 ```
@@ -617,7 +627,9 @@ core/src/main/java/eapli/aisafe/
 │       ├── TestFlightPlanController.java       (@UseCaseController)
 │       ├── FlightPlanExporter.java             (Service)
 │       ├── FlightPlanToScenarioConverter.java  (Service)
-│       ├── ProcessBuilderSimulationRunner.java (Service)
+│       ├── SimulationRunner.java                    (Interface)
+│       ├── SocketSimulationRunner.java             (Service)
+│       ├── ProcessBuilderSimulationRunner.java      (Service)
 │       ├── ReportParser.java                   (Service)
 │       └── DslValidator.java                   (Service)
 ```
