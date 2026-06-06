@@ -23,6 +23,7 @@
  */
 package eapli.aisafe.ui;
 
+import eapli.aisafe.server.PilotServerDaemon;
 import eapli.aisafe.server.WeatherServerDaemon;
 import eapli.aisafe.ui.authz.LoginUI;
 import eapli.aisafe.infrastructure.Application;
@@ -76,8 +77,13 @@ public final class AISafeBackoffice extends BaseApp {
 		final Thread t1 = new Thread(new WeatherServerDaemon(), "daemon-weather-US44");
 		t1.setDaemon(true);
 		t1.start();
-		// US078 and US086 daemons will be added here by the responsible teammates
-		System.out.println("[RCOMP] Remote services started (port 1044).");
+
+		// US086 — Pilot (FCO) remote access (port 1086)
+		final Thread t2 = new Thread(new PilotServerDaemon(), "daemon-pilot-US86");
+		t2.setDaemon(true);
+		t2.start();
+
+		System.out.println("[RCOMP] Remote services started (ports 1044, 1086).");
 	}
 
 	@Override

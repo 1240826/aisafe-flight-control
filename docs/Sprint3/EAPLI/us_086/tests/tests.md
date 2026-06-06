@@ -1,163 +1,161 @@
-# US086 — Pilot Remote Access: Test Plan (TDD)
+# US086 — Pilot Remote Access: Test Plan
 
 ## Table of Contents
 
 1. [Test Overview](#1-test-overview)
-2. [Domain Model & Test Scope](#2-domain-model--test-scope)
+2. [System Architecture & Test Scope](#2-system-architecture--test-scope)
 3. [RemotePilotService Unit Tests](#3-remotepilotservice-unit-tests)
 4. [AircraftDTO Unit Tests](#4-aircraftdto-unit-tests)
-5. [Coverage & Results](#5-coverage--results)
+5. [Parameterized Tests (CSV-Driven)](#5-parameterized-tests-csv-driven)
+6. [Coverage & Results](#6-coverage--results)
 
 ---
 
 ## 1. Test Overview
 
 **Goal:** Verify that `RemotePilotService` correctly wraps existing FCO
-controllers as a remote-access facade, enforcing authentication and delegating
-to the correct application service for each operation.
+controllers as a remote-access facade, delegating to the correct application
+controller for each client operation.
 
 **Testing approach:**
 - Pure unit tests with mocks (Mockito) — no infrastructure or persistence
-- All 6 FCO operations are tested: **happy path**, **authorization failure**,
-  **null/invalid input**, and **delegation verification**
-- `AircraftDTO` value object tested separately for immutability and conversion
+- All 8 remote operations are tested for **correct delegation**, **return type
+  correctness**, and **edge cases**
+- `AircraftDTO` value object tested separately for field mapping, immutability,
+  and constructor behavior
+- Both production (no-arg) and test-friendly (injected) constructors validated
 - **Data-driven (CSV) tests** for each operation group, following the
   professor's requirement for parameterized tests with external files
-- 3 CSV files drive the parameterized tests: `fleet_listing_test_data.csv`,
-  `flight_operation_test_data.csv`, `report_operation_test_data.csv`
+- 3 CSV files drive 30 parameterized test scenarios
 
 **Test classes:**
 
 | Class | Package | Tests |
 |-------|---------|-------|
-| `RemotePilotServiceTest` | `eapli.aisafe.app.remote.pilot` | 22 |
-| `FleetListingParameterizedTest` | `eapli.aisafe.app.remote.pilot` | 10 |
-| `FlightOperationParameterizedTest` | `eapli.aisafe.app.remote.pilot` | 15 |
-| `ReportOperationParameterizedTest` | `eapli.aisafe.app.remote.pilot` | 10 |
-| `AircraftDTOTest` | `eapli.aisafe.app.remote.pilot.dto` | 5 |
-| **Total** | | **62** |
+| `RemotePilotServiceTest` | `eapli.aisafe.remote.pilot` | 15 |
+| `AircraftDTOTest` | `eapli.aisafe.remote.pilot` | 11 |
+| `FleetListingParameterizedTest` | `eapli.aisafe.remote.pilot` | 10 |
+| `FlightOperationParameterizedTest` | `eapli.aisafe.remote.pilot` | 12 |
+| `ReportOperationParameterizedTest` | `eapli.aisafe.remote.pilot` | 8 |
+| **Total** | | **56** |
 
 ---
 
-## 2. Domain Model & Test Scope
+## 2. System Architecture & Test Scope
 
 ### 2.1 System Under Test
 
 ```
-RemotePilotService (FACADE)
-    ├── listFleet()            ──>  ListCompanyFleetController
-    ├── createFlightPlan()     ──>  CreateFlightPlanService (US080)
-    ├── validateFlightPlan()   ──>  ValidateFlightPlanService (US085)
-    ├── generateReport()       ──>  GenerateReportService (US111)
-    ├── monthlyReport()        ──>  MonthlyReportService (US112)
-    └── importFlightPlan()     ──>  ImportFlightPlanService (US121)
+┌────────────────────────┐
+│  PilotClientHandler    │  (TCP server handler)
+│  calls ⋮               │
+└─────────┬──────────────┘
+          │
+┌─────────▼──────────────┐
+│  RemotePilotService    │  (FACADE, package eapli.aisafe.remote.pilot)
+│                        │
+│  listFleet()           ──>  ListCompanyFleetController.allActiveAircraft()
+│  createFlightPlan()    ──>  ImportFlightPlanController.importFlightPlan()
+│  importFlightPlan()    ──>  ImportFlightPlanController.importFlightPlan()
+│  validateFlightPlan()  ──>  TestFlightPlanController.testFlightPlan()
+│  generateReport()      ──>  GenerateSimulationReportController.generateReport()
+│  monthlyReport()       ──>  GenerateMonthlyReportController.generateForMonth()
+│  listFlights()         ──>  TestFlightPlanController.allFlights()
+│  listRoutes()          ──>  PersistenceContext.repositories().flightRoutes()
+└────────────────────────┘
 ```
+
+**Key design notes:**
+- `RemotePilotService` is a **thin facade** — it has no business logic of its
+  own and no authorization checks (those live inside each underlying controller)
+- All controllers are created via no-arg constructors in production, or injected
+  via a package-private constructor for testing
+- `listRoutes()` uses `PersistenceContext` directly and requires integration
+  testing; excluded from unit test scope
 
 ### 2.2 Test Matrix
 
-| # | Operation | Happy Path | Auth Failure | Null Input | Exception Propagation |
-|---|-----------|-----------|--------------|------------|----------------------|
-| 1 | `listFleet` | ✓ | ✓ | N/A | N/A |
-| 2 | `createFlightPlan` | ✓ | ✓ | ✓ | ✓ |
-| 3 | `validateFlightPlan` | ✓ | ✓ | ✓ | ✓ |
-| 4 | `generateReport` | ✓ | ✓ | ✓ | ✓ |
-| 5 | `monthlyReport` | ✓ | ✓ | ✓ | ✓ |
-| 6 | `importFlightPlan` | ✓ | ✓ | ✓ | ✓ |
+| # | Operation | Delegation | Return Type | Edge Cases |
+|---|-----------|-----------|-------------|------------|
+| 1 | `listFleet` | ✓ | `List<AircraftDTO>` | Empty fleet, DTO field mapping |
+| 2 | `createFlightPlan` | ✓ | `DslValidationResult` | Invalid DSL delegation |
+| 3 | `importFlightPlan` | ✓ | `DslValidationResult` | Invalid DSL delegation |
+| 4 | `validateFlightPlan` | ✓ | `TestResult` | Unknown/rejected IDs |
+| 5 | `generateReport` | ✓ | `String` (file path) | Unknown area code |
+| 6 | `monthlyReport` | ✓ | `MonthlyReport` | Year/month validation |
+| 7 | `listFlights` | ✓ | `List<?>` | Empty list |
+| 8 | `listRoutes` | — | `List<?>` | Requires integration test |
 
 ### 2.3 Invariants (Business Rules)
 
 - **IR01** — Every public method must delegate to the correct underlying
-  controller/service.
-- **IR02** — Every public method must enforce authorization before delegating.
-- **IR03** — A non-authenticated (null) user must be rejected at construction
-  time.
-- **IR04** — All exceptions from underlying services must propagate unchanged
-  through the facade.
-- **IR05** — `listFleet` must return DTOs, never domain entities or
-  persistence objects.
+  controller.
+- **IR02** — No business logic is performed by the facade itself; all logic
+  lives in delegated controllers.
+- **IR03** — Constructor injection works; production no-arg constructor does
+  not throw.
+- **IR04** — Exceptions from underlying controllers must propagate unchanged.
+- **IR05** — `listFleet` must return `List<AircraftDTO>`, never domain entities.
 - **IR06** — Every operation must be callable without any UI dependency.
 
 ---
 
 ## 3. RemotePilotService Unit Tests
 
-### 3.1 Constructor Tests
+### 3.1 Constructor and Delegation Tests
 
 ```java
-package eapli.aisafe.app.remote.pilot;
+package eapli.aisafe.remote.pilot;
 
 import eapli.aisafe.aircraft.application.ListCompanyFleetController;
-import eapli.aisafe.flight.application.CreateFlightPlanService;
-import eapli.aisafe.flight.application.ValidateFlightPlanService;
-import eapli.aisafe.flight.application.GenerateReportService;
-import eapli.aisafe.flight.application.MonthlyReportService;
-import eapli.aisafe.flight.application.ImportFlightPlanService;
-import eapli.framework.infrastructure.authz.application.AuthorizationService;
-import eapli.framework.infrastructure.authz.domain.model.SystemUser;
+import eapli.aisafe.aircraft.domain.Aircraft;
+import eapli.aisafe.aircraft.domain.CabinConfiguration;
+import eapli.aisafe.aircraft.domain.RegistrationNumber;
+import eapli.aisafe.aircraft.domain.SeatClass;
+import eapli.aisafe.aircraftmodel.domain.AircraftModelCode;
+import eapli.aisafe.company.domain.CompanyIATA;
+import eapli.aisafe.flightplan.application.ImportFlightPlanController;
+import eapli.aisafe.flightplan.application.TestFlightPlanController;
+import eapli.aisafe.report.application.GenerateMonthlyReportController;
+import eapli.aisafe.report.domain.MonthlyReport;
+import eapli.aisafe.simulation.application.GenerateSimulationReportController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class RemotePilotServiceTest {
 
-    private AuthorizationService authz;
     private ListCompanyFleetController fleetCtrl;
-    private CreateFlightPlanService createSvc;
-    private ValidateFlightPlanService validateSvc;
-    private GenerateReportService reportSvc;
-    private MonthlyReportService monthlySvc;
-    private ImportFlightPlanService importSvc;
-    private SystemUser authenticatedUser;
+    private ImportFlightPlanController importCtrl;
+    private TestFlightPlanController testCtrl;
+    private GenerateSimulationReportController reportCtrl;
+    private GenerateMonthlyReportController monthlyCtrl;
     private RemotePilotService service;
 
     @BeforeEach
     void setUp() {
-        authz = mock(AuthorizationService.class);
         fleetCtrl = mock(ListCompanyFleetController.class);
-        createSvc = mock(CreateFlightPlanService.class);
-        validateSvc = mock(ValidateFlightPlanService.class);
-        reportSvc = mock(GenerateReportService.class);
-        monthlySvc = mock(MonthlyReportService.class);
-        importSvc = mock(ImportFlightPlanService.class);
-        authenticatedUser = mock(SystemUser.class);
-        service = new RemotePilotService(
-                authenticatedUser, authz,
-                fleetCtrl, createSvc, validateSvc, reportSvc, monthlySvc, importSvc);
+        importCtrl = mock(ImportFlightPlanController.class);
+        testCtrl = mock(TestFlightPlanController.class);
+        reportCtrl = mock(GenerateSimulationReportController.class);
+        monthlyCtrl = mock(GenerateMonthlyReportController.class);
+        service = new RemotePilotService(fleetCtrl, importCtrl, testCtrl, reportCtrl, monthlyCtrl);
     }
 
     @Test
-    void constructor_nullUser_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new RemotePilotService(
-                        null, authz,
-                        fleetCtrl, createSvc, validateSvc, reportSvc, monthlySvc, importSvc));
+    void noArgConstructorCreatesService() {
+        assertDoesNotThrow(() -> new RemotePilotService());
     }
 
     @Test
-    void constructor_nullAuthz_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new RemotePilotService(
-                        authenticatedUser, null,
-                        fleetCtrl, createSvc, validateSvc, reportSvc, monthlySvc, importSvc));
-    }
-
-    @Test
-    void constructor_nullController_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new RemotePilotService(
-                        authenticatedUser, authz,
-                        null, createSvc, validateSvc, reportSvc, monthlySvc, importSvc));
-    }
-}
-```
-
-### 3.2 `listFleet` — List Company Fleet (US072)
-
-```java
-    @Test
-    void listFleet_authorized_delegatesToController() {
+    void listFleetDelegatesToController() {
         when(fleetCtrl.allActiveAircraft()).thenReturn(List.of());
         final var result = service.listFleet();
         verify(fleetCtrl).allActiveAircraft();
@@ -165,575 +163,123 @@ class RemotePilotServiceTest {
     }
 
     @Test
-    void listFleet_unauthorized_throwsException() {
-        doThrow(new SecurityException("Not authorized"))
-                .when(authz).ensureAuthenticatedUserHasAnyOf(any());
-        assertThrows(SecurityException.class, () -> service.listFleet());
-    }
-
-    @Test
-    void listFleet_returnsDTOs_notDomainEntities() {
-        final var aircraft = makeAircraft();
-        when(fleetCtrl.allActiveAircraft()).thenReturn(List.of(aircraft));
-        final var result = service.listFleet();
-        assertEquals(1, result.size());
-        assertInstanceOf(AircraftDTO.class, result.get(0));
-    }
-```
-
-### 3.3 `createFlightPlan` — Create Flight Plan (US080)
-
-```java
-    @Test
-    void createFlightPlan_authorized_delegatesToService() {
-        final var flightId = FlightId.valueOf("FL123");
-        final var dsl = "departure LIS 2026-06-15 10:00";
-        final var expected = mock(FlightPlan.class);
-        when(createSvc.createFlightPlan(flightId, dsl)).thenReturn(expected);
-        final var result = service.createFlightPlan(flightId, dsl);
-        verify(createSvc).createFlightPlan(flightId, dsl);
-        assertSame(expected, result);
-    }
-
-    @Test
-    void createFlightPlan_unauthorized_throwsException() {
-        doThrow(new SecurityException("Not authorized"))
-                .when(authz).ensureAuthenticatedUserHasAnyOf(any());
-        assertThrows(SecurityException.class,
-                () -> service.createFlightPlan(FlightId.valueOf("FL123"), "dsl"));
-    }
-
-    @Test
-    void createFlightPlan_nullFlightId_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.createFlightPlan(null, "dsl"));
-    }
-
-    @Test
-    void createFlightPlan_nullDsl_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.createFlightPlan(FlightId.valueOf("FL123"), null));
-    }
-
-    @Test
-    void createFlightPlan_blankDsl_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.createFlightPlan(FlightId.valueOf("FL123"), "   "));
-    }
-```
-
-### 3.4 `validateFlightPlan` — Validate/Test Flight Plan (US085)
-
-```java
-    @Test
-    void validateFlightPlan_authorized_delegatesToService() {
-        final var fpId = FlightPlanId.valueOf("FP001");
-        final var expected = ValidationResult.passed();
-        when(validateSvc.validate(fpId)).thenReturn(expected);
-        final var result = service.validateFlightPlan(fpId);
-        verify(validateSvc).validate(fpId);
-        assertSame(expected, result);
-    }
-
-    @Test
-    void validateFlightPlan_unauthorized_throwsException() {
-        doThrow(new SecurityException("Not authorized"))
-                .when(authz).ensureAuthenticatedUserHasAnyOf(any());
-        assertThrows(SecurityException.class,
-                () -> service.validateFlightPlan(FlightPlanId.valueOf("FP001")));
-    }
-
-    @Test
-    void validateFlightPlan_nullId_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.validateFlightPlan(null));
-    }
-
-    @Test
-    void validateFlightPlan_serviceException_propagates() {
-        final var fpId = FlightPlanId.valueOf("FP001");
-        when(validateSvc.validate(fpId))
-                .thenThrow(new IllegalStateException("Flight plan not in DRAFT status"));
-        final var ex = assertThrows(IllegalStateException.class,
-                () -> service.validateFlightPlan(fpId));
-        assertTrue(ex.getMessage().contains("DRAFT"));
-    }
-```
-
-### 3.5 `generateReport` — Generate Simulation Report (US111)
-
-```java
-    @Test
-    void generateReport_authorized_delegatesToService() {
-        final var flightId = FlightId.valueOf("FL123");
-        final var expected = mock(SimulationReport.class);
-        when(reportSvc.generate(flightId)).thenReturn(expected);
-        final var result = service.generateReport(flightId);
-        verify(reportSvc).generate(flightId);
-        assertSame(expected, result);
-    }
-
-    @Test
-    void generateReport_unauthorized_throwsException() {
-        doThrow(new SecurityException("Not authorized"))
-                .when(authz).ensureAuthenticatedUserHasAnyOf(any());
-        assertThrows(SecurityException.class,
-                () -> service.generateReport(FlightId.valueOf("FL123")));
-    }
-
-    @Test
-    void generateReport_nullFlightId_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.generateReport(null));
-    }
-
-    @Test
-    void generateReport_serviceException_propagates() {
-        final var flightId = FlightId.valueOf("FL123");
-        when(reportSvc.generate(flightId))
-                .thenThrow(new IllegalStateException("No simulation data for flight"));
-        final var ex = assertThrows(IllegalStateException.class,
-                () -> service.generateReport(flightId));
-        assertTrue(ex.getMessage().contains("No simulation"));
-    }
-```
-
-### 3.6 `monthlyReport` — Monthly Report (US112)
-
-```java
-    @Test
-    void monthlyReport_authorized_delegatesToService() {
-        final var expected = mock(MonthlyReport.class);
-        when(monthlySvc.generate(2026, 5)).thenReturn(expected);
-        final var result = service.monthlyReport(2026, 5);
-        verify(monthlySvc).generate(2026, 5);
-        assertSame(expected, result);
-    }
-
-    @Test
-    void monthlyReport_unauthorized_throwsException() {
-        doThrow(new SecurityException("Not authorized"))
-                .when(authz).ensureAuthenticatedUserHasAnyOf(any());
-        assertThrows(SecurityException.class,
-                () -> service.monthlyReport(2026, 5));
-    }
-
-    @Test
-    void monthlyReport_invalidYear_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.monthlyReport(1899, 5));
-    }
-
-    @Test
-    void monthlyReport_invalidMonth_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.monthlyReport(2026, 0));
-    }
-
-    @Test
-    void monthlyReport_monthTooHigh_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.monthlyReport(2026, 13));
-    }
-```
-
-### 3.7 `importFlightPlan` — Import Flight Plan from File (US121)
-
-```java
-    @Test
-    void importFlightPlan_authorized_delegatesToService() {
-        final var filePath = "/home/pilot/flights/flight.flightplan";
-        final var expected = mock(FlightPlan.class);
-        when(importSvc.importFromFile(filePath)).thenReturn(expected);
-        final var result = service.importFlightPlan(filePath);
-        verify(importSvc).importFromFile(filePath);
-        assertSame(expected, result);
-    }
-
-    @Test
-    void importFlightPlan_unauthorized_throwsException() {
-        doThrow(new SecurityException("Not authorized"))
-                .when(authz).ensureAuthenticatedUserHasAnyOf(any());
-        assertThrows(SecurityException.class,
-                () -> service.importFlightPlan("/path/to/file.flightplan"));
-    }
-
-    @Test
-    void importFlightPlan_nullPath_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.importFlightPlan(null));
-    }
-
-    @Test
-    void importFlightPlan_blankPath_throwsException() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.importFlightPlan("   "));
-    }
-
-    @Test
-    void importFlightPlan_fileNotFound_propagatesException() {
-        final var path = "/nonexistent/file.flightplan";
-        when(importSvc.importFromFile(path))
-                .thenThrow(new IllegalArgumentException("File not found: " + path));
-        final var ex = assertThrows(IllegalArgumentException.class,
-                () -> service.importFlightPlan(path));
-        assertTrue(ex.getMessage().contains("File not found"));
-    }
-```
-
-### 3.8 Support Method for Test Setup
-
-```java
-    private Aircraft makeAircraft() {
-        return new Aircraft(
-                RegistrationNumber.valueOf("CS-TUI", "Portugal"),
+    void listFleetReturnsDTOs() {
+        final var ac = new Aircraft(
+                new RegistrationNumber("CS-TUI", "Portugal"),
                 AircraftModelCode.valueOf("A320"),
                 CompanyIATA.valueOf("TP"),
                 2,
                 new CabinConfiguration(List.of(new SeatClass("Economy", 180))),
                 LocalDate.of(2018, 6, 15));
+        when(fleetCtrl.allActiveAircraft()).thenReturn(List.of(ac));
+        final var result = service.listFleet();
+        assertEquals(1, result.size());
+        assertInstanceOf(AircraftDTO.class, result.get(0));
+        assertEquals("CS-TUI", result.get(0).registrationNumber());
+    }
+
+    @Test
+    void listFleetReturnsEmptyWhenNoAircraft() {
+        when(fleetCtrl.allActiveAircraft()).thenReturn(List.of());
+        final var result = service.listFleet();
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void createFlightPlanDelegatesToImportController() {
+        final var expected = mock(ImportFlightPlanController.DslValidationResult.class);
+        when(importCtrl.importFlightPlan("valid DSL", "remote-FL123", "FL123"))
+                .thenReturn(expected);
+        final var result = service.createFlightPlan("FL123", "valid DSL");
+        verify(importCtrl).importFlightPlan("valid DSL", "remote-FL123", "FL123");
+        assertSame(expected, result);
+    }
+
+    @Test
+    void importFlightPlanDelegatesToImportController() {
+        final var expected = mock(ImportFlightPlanController.DslValidationResult.class);
+        when(importCtrl.importFlightPlan("dsl content", "remote-FP002", "FP002"))
+                .thenReturn(expected);
+        final var result = service.importFlightPlan("FP002", "dsl content");
+        verify(importCtrl).importFlightPlan("dsl content", "remote-FP002", "FP002");
+        assertSame(expected, result);
+    }
+
+    @Test
+    void validateFlightPlanDelegatesToTestController() {
+        final var expected = mock(TestFlightPlanController.TestResult.class);
+        when(testCtrl.testFlightPlan("FP001")).thenReturn(expected);
+        final var result = service.validateFlightPlan("FP001");
+        verify(testCtrl).testFlightPlan("FP001");
+        assertSame(expected, result);
+    }
+
+    @Test
+    void generateReportDelegatesToReportController() {
+        when(reportCtrl.generateReport("LPPC")).thenReturn("/tmp/report.txt");
+        final var result = service.generateReport("LPPC");
+        verify(reportCtrl).generateReport("LPPC");
+        assertEquals("/tmp/report.txt", result);
+    }
+
+    @Test
+    void monthlyReportDelegatesToMonthlyController() {
+        final var expected = mock(MonthlyReport.class);
+        when(monthlyCtrl.generateForMonth(YearMonth.of(2026, 5))).thenReturn(expected);
+        final var result = service.monthlyReport(2026, 5);
+        verify(monthlyCtrl).generateForMonth(YearMonth.of(2026, 5));
+        assertSame(expected, result);
+    }
+
+    @Test
+    void listFlightsDelegatesToTestController() {
+        when(testCtrl.allFlights()).thenReturn(List.of());
+        final var result = service.listFlights();
+        verify(testCtrl).allFlights();
+        assertNotNull(result);
     }
 }
 ```
 
----
-
-### 3.9 FleetListing Parameterized Tests (Data-Driven from CSV)
-
-These tests read from `fleet_listing_test_data.csv` to cover **10 fleet
-listing scenarios** (FL01–FL10) with DTO conversion verification.
+### 3.2 Return Type and Edge Case Tests
 
 ```java
-@CsvFileSource(resources = "/fleet_listing_test_data.csv", numLinesToSkip = 1)
-class FleetListingParameterizedTest {
-
-    @ParameterizedTest(name = "{0}: {9}")
-    @CsvFileSource(resources = "/fleet_listing_test_data.csv", numLinesToSkip = 1)
-    void aircraftDtoConversionScenarios(
-            String testCaseId,
-            String registration,
-            String regCountry,
-            String modelCode,
-            String companyIATA,
-            int totalSeats,
-            int crewCount,
-            int manufactureYear,
-            int expectedDtoCount,
-            String invariant) {
-
-        // Arrange
-        final var aircraft = new Aircraft(
-                RegistrationNumber.valueOf(registration, regCountry),
-                AircraftModelCode.valueOf(modelCode),
-                CompanyIATA.valueOf(companyIATA),
-                crewCount,
-                new CabinConfiguration(List.of(new SeatClass("Economy", totalSeats))),
-                LocalDate.of(manufactureYear, 6, 15));
-
-        // Act
-        final var dto = AircraftDTO.from(aircraft);
-
-        // Assert
-        assertAll(
-                () -> assertEquals(registration, dto.registration(),
-                        testCaseId + " registration mismatch"),
-                () -> assertEquals(regCountry, dto.registrationCountry(),
-                        testCaseId + " regCountry mismatch"),
-                () -> assertEquals(modelCode, dto.modelCode(),
-                        testCaseId + " modelCode mismatch"),
-                () -> assertEquals(companyIATA, dto.companyIATA(),
-                        testCaseId + " companyIATA mismatch"),
-                () -> assertEquals(totalSeats, dto.totalSeats(),
-                        testCaseId + " totalSeats mismatch"),
-                () -> assertEquals(crewCount, dto.crewCount(),
-                        testCaseId + " crewCount mismatch"),
-                () -> assertEquals(manufactureYear, dto.manufactureYear(),
-                        testCaseId + " manufactureYear mismatch"));
-    }
-}
-```
-
-### 3.10 FlightOperation Parameterized Tests (Data-Driven from CSV)
-
-These tests read from `flight_operation_test_data.csv` to cover **15
-operation scenarios** (FO01–FO15) for `createFlightPlan`,
-`validateFlightPlan`, and `importFlightPlan`.
-
-```java
-@CsvFileSource(resources = "/flight_operation_test_data.csv", numLinesToSkip = 1)
-class FlightOperationParameterizedTest {
-
-    private AuthorizationService authz;
-    private ListCompanyFleetController fleetCtrl;
-    private CreateFlightPlanService createSvc;
-    private ValidateFlightPlanService validateSvc;
-    private GenerateReportService reportSvc;
-    private MonthlyReportService monthlySvc;
-    private ImportFlightPlanService importSvc;
-    private SystemUser authenticatedUser;
-    private RemotePilotService service;
-
-    @BeforeEach
-    void setUp() {
-        authz = mock(AuthorizationService.class);
-        fleetCtrl = mock(ListCompanyFleetController.class);
-        createSvc = mock(CreateFlightPlanService.class);
-        validateSvc = mock(ValidateFlightPlanService.class);
-        reportSvc = mock(GenerateReportService.class);
-        monthlySvc = mock(MonthlyReportService.class);
-        importSvc = mock(ImportFlightPlanService.class);
-        authenticatedUser = mock(SystemUser.class);
-        service = new RemotePilotService(
-                authenticatedUser, authz,
-                fleetCtrl, createSvc, validateSvc, reportSvc, monthlySvc, importSvc);
+    @Test
+    void createFlightPlanReturnsValidationResult() {
+        when(importCtrl.importFlightPlan(anyString(), anyString(), anyString()))
+                .thenReturn(mock(ImportFlightPlanController.DslValidationResult.class));
+        final var result = service.createFlightPlan("FL001", "valid DSL");
+        assertNotNull(result);
     }
 
-    @ParameterizedTest(name = "{0}: {7}")
-    @CsvFileSource(resources = "/flight_operation_test_data.csv", numLinesToSkip = 1)
-    void flightOperationScenarios(
-            String testCaseId,
-            String operation,
-            String param1,
-            String param2,
-            boolean isValidInput,
-            boolean expectAuthCheck,
-            String mockOutcome,
-            String invariant) {
-
-        if (!isValidInput) {
-            assertInvalidInputThrows(operation, param1, param2);
-            return;
-        }
-
-        setupMock(operation, mockOutcome);
-        if (expectAuthCheck) {
-            verifyAuthChecked(operation, param1, param2);
-        }
+    @Test
+    void validateFlightPlanReturnsTestResult() {
+        when(testCtrl.testFlightPlan(anyString()))
+                .thenReturn(mock(TestFlightPlanController.TestResult.class));
+        final var result = service.validateFlightPlan("FP001");
+        assertNotNull(result);
     }
 
-    private void assertInvalidInputThrows(String op, String p1, String p2) {
-        switch (op) {
-            case "CREATE_FLIGHT_PLAN":
-                assertThrows(IllegalArgumentException.class,
-                        () -> service.createFlightPlan(
-                                p1 != null && !p1.isBlank() ? FlightId.valueOf(p1) : null,
-                                p2));
-                break;
-            case "VALIDATE_FLIGHT_PLAN":
-                assertThrows(IllegalArgumentException.class,
-                        () -> service.validateFlightPlan(
-                                p1 != null && !p1.isBlank() ? FlightPlanId.valueOf(p1) : null));
-                break;
-            case "IMPORT_FLIGHT_PLAN":
-                assertThrows(IllegalArgumentException.class,
-                        () -> service.importFlightPlan(p1));
-                break;
-        }
+    @Test
+    void generateReportReturnsString() {
+        when(reportCtrl.generateReport(anyString())).thenReturn("report-path");
+        final var result = service.generateReport("LPPC");
+        assertInstanceOf(String.class, result);
     }
 
-    private void setupMock(String op, String outcome) {
-        switch (outcome) {
-            case "SUCCESS":
-                switch (op) {
-                    case "CREATE_FLIGHT_PLAN":
-                        when(createSvc.createFlightPlan(any(), any())).thenReturn(mock(FlightPlan.class));
-                        break;
-                    case "VALIDATE_FLIGHT_PLAN":
-                        when(validateSvc.validate(any())).thenReturn(ValidationResult.passed());
-                        break;
-                    case "IMPORT_FLIGHT_PLAN":
-                        when(importSvc.importFromFile(any())).thenReturn(mock(FlightPlan.class));
-                        break;
-                }
-                break;
-            case "BUSINESS_ERROR":
-                switch (op) {
-                    case "VALIDATE_FLIGHT_PLAN":
-                        when(validateSvc.validate(any()))
-                                .thenThrow(new IllegalStateException("Business rule violated"));
-                        break;
-                    case "IMPORT_FLIGHT_PLAN":
-                        when(importSvc.importFromFile(any()))
-                                .thenThrow(new IllegalArgumentException("File not found"));
-                        break;
-                }
-                break;
-            case "SYSTEM_ERROR":
-                switch (op) {
-                    case "VALIDATE_FLIGHT_PLAN":
-                        when(validateSvc.validate(any()))
-                                .thenThrow(new RuntimeException("Simulator unavailable"));
-                        break;
-                }
-                break;
-        }
+    @Test
+    void monthlyReportReturnsMonthlyReport() {
+        when(monthlyCtrl.generateForMonth(any(YearMonth.class)))
+                .thenReturn(mock(MonthlyReport.class));
+        final var result = service.monthlyReport(2026, 5);
+        assertInstanceOf(MonthlyReport.class, result);
     }
 
-    private void verifyAuthChecked(String op, String p1, String p2) {
-        switch (mockOutcome(op)) {
-            case "SUCCESS":
-                assertDoesNotThrow(() -> executeOperation(op, p1, p2));
-                break;
-            case "BUSINESS_ERROR":
-            case "SYSTEM_ERROR":
-                assertThrows(Exception.class, () -> executeOperation(op, p1, p2));
-                break;
-        }
-    }
-
-    private String mockOutcome(String op) {
-        return switch (op) {
-            case "CREATE_FLIGHT_PLAN" -> "SUCCESS";
-            case "VALIDATE_FLIGHT_PLAN" -> "BUSINESS_ERROR";
-            case "IMPORT_FLIGHT_PLAN" -> "BUSINESS_ERROR";
-            default -> "SUCCESS";
-        };
-    }
-
-    private void executeOperation(String op, String p1, String p2) {
-        switch (op) {
-            case "CREATE_FLIGHT_PLAN":
-                service.createFlightPlan(FlightId.valueOf(p1), p2);
-                break;
-            case "VALIDATE_FLIGHT_PLAN":
-                service.validateFlightPlan(FlightPlanId.valueOf(p1));
-                break;
-            case "IMPORT_FLIGHT_PLAN":
-                service.importFlightPlan(p1);
-                break;
-        }
-    }
-}
-```
-
-### 3.11 ReportOperation Parameterized Tests (Data-Driven from CSV)
-
-These tests read from `report_operation_test_data.csv` to cover **10
-operation scenarios** (RO01–RO10) for `generateReport` and `monthlyReport`.
-
-```java
-@CsvFileSource(resources = "/report_operation_test_data.csv", numLinesToSkip = 1)
-class ReportOperationParameterizedTest {
-
-    private AuthorizationService authz;
-    private ListCompanyFleetController fleetCtrl;
-    private CreateFlightPlanService createSvc;
-    private ValidateFlightPlanService validateSvc;
-    private GenerateReportService reportSvc;
-    private MonthlyReportService monthlySvc;
-    private ImportFlightPlanService importSvc;
-    private SystemUser authenticatedUser;
-    private RemotePilotService service;
-
-    @BeforeEach
-    void setUp() {
-        authz = mock(AuthorizationService.class);
-        fleetCtrl = mock(ListCompanyFleetController.class);
-        createSvc = mock(CreateFlightPlanService.class);
-        validateSvc = mock(ValidateFlightPlanService.class);
-        reportSvc = mock(GenerateReportService.class);
-        monthlySvc = mock(MonthlyReportService.class);
-        importSvc = mock(ImportFlightPlanService.class);
-        authenticatedUser = mock(SystemUser.class);
-        service = new RemotePilotService(
-                authenticatedUser, authz,
-                fleetCtrl, createSvc, validateSvc, reportSvc, monthlySvc, importSvc);
-    }
-
-    @ParameterizedTest(name = "{0}: {7}")
-    @CsvFileSource(resources = "/report_operation_test_data.csv", numLinesToSkip = 1)
-    void reportOperationScenarios(
-            String testCaseId,
-            String operation,
-            String param1,
-            String param2,
-            boolean isValidInput,
-            boolean expectAuthCheck,
-            String mockOutcome,
-            String invariant) {
-
-        if (!isValidInput) {
-            assertInvalidInputThrows(operation, param1, param2);
-            return;
-        }
-
-        setupMock(operation, mockOutcome);
-        if (expectAuthCheck) {
-            verifyAuthChecked(operation, param1, param2);
-        }
-    }
-
-    private void assertInvalidInputThrows(String op, String p1, String p2) {
-        switch (op) {
-            case "GENERATE_REPORT":
-                assertThrows(IllegalArgumentException.class,
-                        () -> service.generateReport(
-                                p1 != null && !p1.isBlank() ? FlightId.valueOf(p1) : null));
-                break;
-            case "MONTHLY_REPORT":
-                final int year = Integer.parseInt(p1);
-                final int month = Integer.parseInt(p2);
-                assertThrows(IllegalArgumentException.class,
-                        () -> service.monthlyReport(year, month));
-                break;
-        }
-    }
-
-    private void setupMock(String op, String outcome) {
-        switch (outcome) {
-            case "SUCCESS":
-                switch (op) {
-                    case "GENERATE_REPORT":
-                        when(reportSvc.generate(any())).thenReturn(mock(SimulationReport.class));
-                        break;
-                    case "MONTHLY_REPORT":
-                        when(monthlySvc.generate(anyInt(), anyInt())).thenReturn(mock(MonthlyReport.class));
-                        break;
-                }
-                break;
-            case "BUSINESS_ERROR":
-                switch (op) {
-                    case "GENERATE_REPORT":
-                        when(reportSvc.generate(any()))
-                                .thenThrow(new IllegalStateException("No simulation data"));
-                        break;
-                    case "MONTHLY_REPORT":
-                        when(monthlySvc.generate(anyInt(), anyInt()))
-                                .thenThrow(new IllegalStateException("No data for period"));
-                        break;
-                }
-                break;
-        }
-    }
-
-    private void verifyAuthChecked(String op, String p1, String p2) {
-        switch (mockOutcome(op)) {
-            case "SUCCESS":
-                assertDoesNotThrow(() -> executeOperation(op, p1, p2));
-                break;
-            case "BUSINESS_ERROR":
-                assertThrows(Exception.class, () -> executeOperation(op, p1, p2));
-                break;
-        }
-    }
-
-    private String mockOutcome(String op) {
-        return switch (op) {
-            case "GENERATE_REPORT" -> "BUSINESS_ERROR";
-            case "MONTHLY_REPORT" -> "SUCCESS";
-            default -> "SUCCESS";
-        };
-    }
-
-    private void executeOperation(String op, String p1, String p2) {
-        switch (op) {
-            case "GENERATE_REPORT":
-                service.generateReport(FlightId.valueOf(p1));
-                break;
-            case "MONTHLY_REPORT":
-                service.monthlyReport(Integer.parseInt(p1), Integer.parseInt(p2));
-                break;
-        }
+    @Test
+    void listFlightsReturnsList() {
+        when(testCtrl.allFlights()).thenReturn(List.of("item1", "item2"));
+        final var result = service.listFlights();
+        assertEquals(2, result.size());
     }
 }
 ```
@@ -742,10 +288,10 @@ class ReportOperationParameterizedTest {
 
 ## 4. AircraftDTO Unit Tests
 
-### 4.1 AircraftDTO Immutability and Conversion
+### 4.1 Field Mapping and Immutability
 
 ```java
-package eapli.aisafe.app.remote.pilot.dto;
+package eapli.aisafe.remote.pilot;
 
 import eapli.aisafe.aircraft.domain.Aircraft;
 import eapli.aisafe.aircraft.domain.CabinConfiguration;
@@ -764,7 +310,7 @@ class AircraftDTOTest {
 
     private Aircraft sampleAircraft() {
         return new Aircraft(
-                RegistrationNumber.valueOf("CS-TUI", "Portugal"),
+                new RegistrationNumber("CS-TUI", "Portugal"),
                 AircraftModelCode.valueOf("A320"),
                 CompanyIATA.valueOf("TP"),
                 2,
@@ -773,39 +319,39 @@ class AircraftDTOTest {
     }
 
     @Test
-    void fromAircraft_mapsAllFields() {
-        final var ac = sampleAircraft();
-        final var dto = AircraftDTO.from(ac);
-        assertEquals("CS-TUI", dto.registration());
-        assertEquals("Portugal", dto.registrationCountry());
-        assertEquals("A320", dto.modelCode());
-        assertEquals("TP", dto.companyIATA());
-        assertEquals(180, dto.totalSeats());
-        assertEquals(2018, dto.manufactureYear());
-    }
-
-    @Test
-    void fromAircraft_returnsCorrectCrewCount() {
-        final var ac = sampleAircraft();
-        final var dto = AircraftDTO.from(ac);
-        assertEquals(2, dto.crewCount());
-    }
-
-    @Test
-    void dto_immutable_noSetters() {
+    void fromMapsRegistrationNumber() {
         final var dto = AircraftDTO.from(sampleAircraft());
-        // Verify all fields are accessible via getters only
-        assertDoesNotThrow(dto::registration);
-        assertDoesNotThrow(dto::modelCode);
-        // Ensure the class has no public mutators (compile-time check)
-        assertAll(
-                () -> assertNotNull(dto.registration()),
-                () -> assertNotNull(dto.modelCode()),
-                () -> assertNotNull(dto.companyIATA()));
+        assertEquals("CS-TUI", dto.registrationNumber());
     }
 
     @Test
-    void dto_equalsAndHashCode() {
+    void fromMapsAircraftModelCode() {
+        final var dto = AircraftDTO.from(sampleAircraft());
+        assertEquals("A320", dto.aircraftModelCode());
+    }
+
+    @Test
+    void fromMapsOperationalStatus() {
+        final var dto = AircraftDTO.from(sampleAircraft());
+        assertEquals("ACTIVE", dto.operationalStatus());
+    }
+
+    @Test
+    void fromMapsTotalCapacity() {
+        final var dto = AircraftDTO.from(sampleAircraft());
+        assertEquals(180, dto.totalCapacity());
+    }
+
+    @Test
+    void fromMapsDecommissionedStatus() {
+        final var ac = sampleAircraft();
+        ac.decommission();
+        final var dto = AircraftDTO.from(ac);
+        assertEquals("DECOMMISSIONED", dto.operationalStatus());
+    }
+
+    @Test
+    void equalsAndHashCode() {
         final var ac = sampleAircraft();
         final var dto1 = AircraftDTO.from(ac);
         final var dto2 = AircraftDTO.from(sampleAircraft());
@@ -814,53 +360,174 @@ class AircraftDTOTest {
     }
 
     @Test
-    void dto_toString_containsKeyFields() {
+    void notEqualsDifferentRegistration() {
+        final var ac1 = sampleAircraft();
+        final var ac2 = new Aircraft(
+                new RegistrationNumber("CS-TPJ", "Portugal"),
+                AircraftModelCode.valueOf("A320"),
+                CompanyIATA.valueOf("TP"),
+                2,
+                new CabinConfiguration(List.of(new SeatClass("Economy", 180))),
+                LocalDate.of(2018, 6, 15));
+        final var dto1 = AircraftDTO.from(ac1);
+        final var dto2 = AircraftDTO.from(ac2);
+        assertNotEquals(dto1, dto2);
+    }
+
+    @Test
+    void toStringContainsRegistration() {
         final var dto = AircraftDTO.from(sampleAircraft());
         final var str = dto.toString();
         assertTrue(str.contains("CS-TUI"));
-        assertTrue(str.contains("A320"));
-        assertTrue(str.contains("TP"));
+    }
+
+    @Test
+    void recordIsImmutable() {
+        final var dto = AircraftDTO.from(sampleAircraft());
+        assertAll(
+                () -> assertNotNull(dto.registrationNumber()),
+                () -> assertNotNull(dto.aircraftModelCode()),
+                () -> assertNotNull(dto.operationalStatus()));
     }
 }
 ```
 
 ---
 
-## 5. Coverage & Results
+## 5. Parameterized Tests (CSV-Driven)
 
-### 5.1 Test Summary
+### 5.1 FleetListingParameterizedTest (10 tests)
 
-| Test Class | Tests | Verified Invariants |
-|-----------|-------|---------------------|
-| `RemotePilotServiceTest` — constructor | 3 | IR03 (null user, null authz, null controller) |
-| `RemotePilotServiceTest` — listFleet | 3 | IR01, IR02, IR05 |
-| `RemotePilotServiceTest` — createFlightPlan | 5 | IR01, IR02, IR04, null/blank validation |
-| `RemotePilotServiceTest` — validateFlightPlan | 4 | IR01, IR02, IR04, null validation |
-| `RemotePilotServiceTest` — generateReport | 4 | IR01, IR02, IR04, null validation |
-| `RemotePilotServiceTest` — monthlyReport | 5 | IR01, IR02, IR04, year/month validation |
-| `RemotePilotServiceTest` — importFlightPlan | 5 | IR01, IR02, IR04, null/blank validation |
-| `FleetListingParameterizedTest` (CSV) | 10 | IR05 — DTO field mapping (10 aircraft variants) |
-| `FlightOperationParameterizedTest` (CSV) | 15 | IR01, IR02, IR04 — 3 operations × input/auth/error |
-| `ReportOperationParameterizedTest` (CSV) | 10 | IR01, IR02, IR04 — 2 operations × input/auth/error |
-| `AircraftDTOTest` | 5 | IR05 & value object invariants |
-| **Total** | **69** | All 6 IRs covered |
+Driven by `fleet_listing_test_data.csv` (rows FL01–FL10). Each row constructs an
+`Aircraft` with the specified fields, converts via `AircraftDTO.from()`, and
+verifies all four DTO fields match.
 
-### 5.2 CSV Test Data Summary
+| Test Case | Registration | Model | Status | Capacity | Description |
+|-----------|-------------|-------|--------|----------|-------------|
+| FL01 | CS-TUI | A320 | ACTIVE | 180 | Single-class narrow-body |
+| FL02 | CS-TPJ | A320 | ACTIVE | 180 | Single-class narrow-body variant |
+| FL03 | CS-TPW | B738 | ACTIVE | 189 | 737-800 single-class |
+| FL04 | CS-TTA | E190 | ACTIVE | 114 | E190 regional jet |
+| FL05 | CS-TVA | B738 | ACTIVE | 160 | B738 with business class |
+| FL06 | CS-TVB | A330 | ACTIVE | 280 | A330 wide-body |
+| FL07 | CS-TVC | A330 | ACTIVE | 320 | A330 higher-density |
+| FL08 | CS-TVD | E190 | ACTIVE | 110 | E190 lower-density |
+| FL09 | CS-GLB | G650 | ACTIVE | 19 | Gulfstream G650 |
+| FL10 | CS-TUI | A320 | DECOMMISSIONED | 180 | Decommissioned status |
+
+```java
+@ParameterizedTest(name = "{0}: {5}")
+@MethodSource("csvTestData")
+void aircraftDtoConversionScenarios(
+        final String testCaseId,
+        final String registration,
+        final String modelCode,
+        final String operationalStatus,
+        final int totalCapacity,
+        final String description) {
+
+    final var isDecommissioned = "DECOMMISSIONED".equalsIgnoreCase(operationalStatus);
+    final var ac = new Aircraft(
+            new RegistrationNumber(registration, "Portugal"),
+            AircraftModelCode.valueOf(modelCode),
+            eapli.aisafe.company.domain.CompanyIATA.valueOf("TP"),
+            2,
+            new CabinConfiguration(List.of(new SeatClass("Economy", totalCapacity))),
+            LocalDate.of(2020, 1, 15));
+
+    if (isDecommissioned) {
+        ac.decommission();
+    }
+
+    final var dto = AircraftDTO.from(ac);
+
+    assertAll(
+            () -> assertEquals(registration, dto.registrationNumber(),
+                    testCaseId + " registration mismatch"),
+            () -> assertEquals(modelCode, dto.aircraftModelCode(),
+                    testCaseId + " modelCode mismatch"),
+            () -> assertEquals(operationalStatus.toUpperCase(), dto.operationalStatus(),
+                    testCaseId + " operationalStatus mismatch"),
+            () -> assertEquals(totalCapacity, dto.totalCapacity(),
+                    testCaseId + " totalCapacity mismatch"));
+}
+```
+
+### 5.2 FlightOperationParameterizedTest (12 tests)
+
+Driven by `flight_operation_test_data.csv` (rows FO01–FO12). Each row tests one
+operation (`CREATE_FLIGHT_PLAN`, `IMPORT_FLIGHT_PLAN`, or `VALIDATE_FLIGHT_PLAN`)
+with specific input parameters, verifying delegation and expected outcome.
+
+| Test Case | Operation | Flight ID | DSL | Scenario | Outcome |
+|-----------|-----------|-----------|-----|----------|---------|
+| FO01 | CREATE_FLIGHT_PLAN | FL001 | `departure LIS 10:00; arrival OPO 11:00;` | Valid minimal DSL | SUCCESS |
+| FO02 | CREATE_FLIGHT_PLAN | FL002 | Full valid DSL | Valid full DSL | SUCCESS |
+| FO03 | CREATE_FLIGHT_PLAN | FL003 | *(empty)* | Empty DSL content | FAILURE |
+| FO04 | IMPORT_FLIGHT_PLAN | FP001 | `departure OPO 10:00; arrival LIS 11:00;` | Valid import DSL | SUCCESS |
+| FO05 | IMPORT_FLIGHT_PLAN | FP002 | Full import DSL | Valid import full DSL | SUCCESS |
+| FO06 | IMPORT_FLIGHT_PLAN | FP003 | *(empty)* | Empty import DSL | FAILURE |
+| FO07 | VALIDATE_FLIGHT_PLAN | FP001 | — | Valid flight plan ID | SUCCESS |
+| FO08 | VALIDATE_FLIGHT_PLAN | FP002 | — | Valid flight plan ID | SUCCESS |
+| FO09 | VALIDATE_FLIGHT_PLAN | UNKNOWN | — | Unknown flight plan ID | FAILURE |
+| FO10 | CREATE_FLIGHT_PLAN | FL004 | `invalid DSL without departure` | Minimal invalid DSL | FAILURE |
+| FO11 | IMPORT_FLIGHT_PLAN | FP004 | `invalid DSL without departure` | Invalid import DSL | FAILURE |
+| FO12 | VALIDATE_FLIGHT_PLAN | INVALID | — | Invalid flight plan ID format | FAILURE |
+
+### 5.3 ReportOperationParameterizedTest (8 tests)
+
+Driven by `report_operation_test_data.csv` (rows RO01–RO08). Each row tests
+`GENERATE_REPORT` or `MONTHLY_REPORT` with specific parameters.
+
+| Test Case | Operation | Param1 | Param2 | Scenario | Outcome |
+|-----------|-----------|--------|--------|----------|---------|
+| RO01 | GENERATE_REPORT | LPPC | — | Known area code | SUCCESS |
+| RO02 | GENERATE_REPORT | LISB | — | Valid area code | SUCCESS |
+| RO03 | GENERATE_REPORT | UNKN | — | Unknown area code | FAILURE |
+| RO04 | GENERATE_REPORT | *(null)* | — | Null area code | FAILURE |
+| RO05 | MONTHLY_REPORT | 2026 | 5 | Valid year and month | SUCCESS |
+| RO06 | MONTHLY_REPORT | 2026 | 1 | Valid year January | SUCCESS |
+| RO07 | MONTHLY_REPORT | 1899 | 5 | Year out of range | FAILURE |
+| RO08 | MONTHLY_REPORT | 2026 | 13 | Month out of range | FAILURE |
+
+---
+
+## 6. Coverage & Results
+
+### 6.1 Test Summary
+
+| Test Class | Tests | Description |
+|-----------|------:|-------------|
+| `RemotePilotServiceTest` — constructor | 1 | IR03: no-arg constructor does not throw |
+| `RemotePilotServiceTest` — listFleet | 3 | IR01 delegation, IR05 DTO return, empty fleet |
+| `RemotePilotServiceTest` — createFlightPlan | 2 | IR01 delegation, return type |
+| `RemotePilotServiceTest` — importFlightPlan | 1 | IR01 delegation |
+| `RemotePilotServiceTest` — validateFlightPlan | 2 | IR01 delegation, return type |
+| `RemotePilotServiceTest` — generateReport | 2 | IR01 delegation, return type |
+| `RemotePilotServiceTest` — monthlyReport | 2 | IR01 delegation, return type |
+| `RemotePilotServiceTest` — listFlights | 2 | IR01 delegation, non-null list |
+| `AircraftDTOTest` | 11 | Field mapping (5), equality (2), toString (1), immutability (1), decommissioned status (1), multi-class capacity (1) |
+| `FleetListingParameterizedTest` (CSV) | 10 | IR05 — DTO field mapping across 10 aircraft variants |
+| `FlightOperationParameterizedTest` (CSV) | 12 | IR01, IR04 — 3 operations × SUCCESS/FAILURE |
+| `ReportOperationParameterizedTest` (CSV) | 8 | IR01, IR04 — 2 operations × SUCCESS/FAILURE |
+| **Total** | **56** | |
+
+### 6.2 CSV Test Data Summary
 
 | CSV File | Scenarios | Covered Operations |
 |----------|-----------|-------------------|
 | `fleet_listing_test_data.csv` | 10 (FL01–FL10) | `listFleet` DTO conversion |
-| `flight_operation_test_data.csv` | 15 (FO01–FO15) | `createFlightPlan`, `validateFlightPlan`, `importFlightPlan` |
-| `report_operation_test_data.csv` | 10 (RO01–RO10) | `generateReport`, `monthlyReport` |
-| **Total** | **35** | All 6 RemotePilotService operations |
+| `flight_operation_test_data.csv` | 12 (FO01–FO12) | `createFlightPlan`, `validateFlightPlan`, `importFlightPlan` |
+| `report_operation_test_data.csv` | 8 (RO01–RO08) | `generateReport`, `monthlyReport` |
+| **Total** | **30** | All 7 unit-testable RemotePilotService operations |
 
-### 5.3 Invariant Coverage
+### 6.3 Invariant Coverage
 
 | Invariant | Covered By |
 |-----------|-----------|
-| IR01 — correct delegation | 6 unit tests + 25 CSV scenarios (one per operation) |
-| IR02 — authorization | 6 unit tests + 25 CSV scenarios (auth verified before delegation) |
-| IR03 — non-null user at construction | 3 constructor tests |
-| IR04 — exception propagation | 4 unit tests + 8 CSV scenarios (BUSINESS_ERROR / SYSTEM_ERROR outcomes) |
+| IR01 — correct delegation | 7 delegation tests + 22 CSV scenarios |
+| IR02 — no business logic in facade | Verified by design (no business logic in service) |
+| IR03 — construction does not throw | 1 constructor test |
+| IR04 — exception propagation | 7 CSV FAILURE scenarios |
 | IR05 — DTOs not entities | 3 unit tests + 10 CSV scenarios (DTO field mapping × 10 aircraft variants) |
-| IR06 — no UI dependency | Verified by design (no UI imports in test) |
+| IR06 — no UI dependency | Verified by design (no UI imports in service or tests) |

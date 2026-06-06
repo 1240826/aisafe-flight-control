@@ -229,13 +229,21 @@ public class ImportFlightPlanController {
                 // ── Create or get Flight ─────────────────────────────────
                 final FlightRouteName routeName = route.identity();
                 Flight flight = flightRepo.ofIdentity(designator).orElse(null);
-                if (flight == null) {
+                final boolean isNewFlight = flight == null;
+                if (isNewFlight) {
                     flight = new Flight(designator, departureTime,
                             routeName, aircraftRegStr, pilotId);
                 }
 
+                if (!isNewFlight) {
+                    flight.updateFromDsl(departureTime, routeName, aircraftRegStr, pilotId);
+                }
                 final var fpId = FlightPlanId.valueOf(flightPlanIdStr);
-                flightPlan = flight.addFlightPlan(fpId, dslContent);
+                if (isNewFlight) {
+                    flightPlan = flight.addFlightPlan(fpId, dslContent);
+                } else {
+                    flightPlan = flight.updateFlightPlan(fpId, dslContent);
+                }
                 flightRepo.save(flight);
                 if (tx != null) tx.commit();
             } catch (final Exception e) {

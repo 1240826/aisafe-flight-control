@@ -7,11 +7,13 @@ import eapli.aisafe.flightplan.domain.FlightPlan;
 import eapli.aisafe.flightplan.domain.FlightPlanId;
 import eapli.aisafe.flightplan.domain.FlightPlanStatus;
 import eapli.aisafe.flightplan.domain.ValidationResult;
+import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,6 +29,7 @@ class TestFlightPlanControllerTest {
     private FlightPlanExporter exporter;
     private SimulationRunner runner;
     private DslValidator dslValidator;
+    private WeatherDataRepository weatherRepo;
     private TestFlightPlanController controller;
 
     @BeforeEach
@@ -36,7 +39,8 @@ class TestFlightPlanControllerTest {
         exporter = mock(FlightPlanExporter.class);
         runner = mock(SimulationRunner.class);
         dslValidator = mock(DslValidator.class);
-        controller = new TestFlightPlanController(authz, flightRepo, exporter, runner, dslValidator);
+        weatherRepo = mock(WeatherDataRepository.class);
+        controller = new TestFlightPlanController(authz, flightRepo, exporter, runner, dslValidator, weatherRepo);
     }
 
     @Test
@@ -197,6 +201,95 @@ class TestFlightPlanControllerTest {
         final var result = controller.testFlightPlan("FP001");
         assertFalse(result.passed());
         assertTrue(result.message().contains("Could not parse departure time"));
+    }
+
+    @Test
+    void ensureScenarioWithOneEntryPasses() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        when(dslValidator.validate(any())).thenReturn(ValidationResult.passed());
+        when(exporter.exportForSimulator(any())).thenReturn("[{\"ID\":\"T1\"}]");
+        when(runner.run(any())).thenReturn(generatePassReport());
+
+        final var entry = new TestFlightPlanController.FlightPlanEntry(flight, fp);
+        final var result = controller.testScenario(List.of(entry));
+        assertTrue(result.passed());
+        assertEquals(FlightPlanStatus.TEST_PASSED, fp.status());
+        assertNotNull(result.reportContent());
+    }
+
+    @Test
+    void ensureScenarioWithMultipleEntriesPasses() {
+        final var flight1 = new Flight(FlightDesignator.valueOf("TP100"), DEP_TIME);
+        final var fp1 = flight1.addFlightPlan(FlightPlanId.valueOf("FP001"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        final var flight2 = new Flight(FlightDesignator.valueOf("TP200"), DEP_TIME);
+        final var fp2 = flight2.addFlightPlan(FlightPlanId.valueOf("FP002"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        when(dslValidator.validate(any())).thenReturn(ValidationResult.passed());
+        when(exporter.exportForSimulator(any())).thenReturn("[{\"ID\":\"T1\"}]");
+        when(runner.run(any())).thenReturn(generatePassReport());
+
+        final var entry1 = new TestFlightPlanController.FlightPlanEntry(flight1, fp1);
+        final var entry2 = new TestFlightPlanController.FlightPlanEntry(flight2, fp2);
+        final var result = controller.testScenario(List.of(entry1, entry2));
+        assertTrue(result.passed());
+        assertEquals(FlightPlanStatus.TEST_PASSED, fp1.status());
+        assertEquals(FlightPlanStatus.TEST_PASSED, fp2.status());
+        assertEquals(2, result.results().size());
+    }
+
+    @Test
+    void ensureScenarioSkipsInvalidStatus() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        fp.markAsInTest(); // status is now IN_TEST — not valid for scenario
+
+        final var entry = new TestFlightPlanController.FlightPlanEntry(flight, fp);
+        final var result = controller.testScenario(List.of(entry));
+        assertFalse(result.passed());
+        assertTrue(result.message().contains("No valid flight plans"));
+    }
+
+    @Test
+    void ensureScenarioRunnerFailureResetsToDraft() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        when(dslValidator.validate(any())).thenReturn(ValidationResult.passed());
+        when(exporter.exportForSimulator(any())).thenReturn("{}");
+        when(runner.run(any()))
+                .thenThrow(new SimulationRunnerException("Simulator crashed"));
+
+        final var entry = new TestFlightPlanController.FlightPlanEntry(flight, fp);
+        final var result = controller.testScenario(List.of(entry));
+        assertFalse(result.passed());
+        assertEquals(FlightPlanStatus.DRAFT, fp.status(),
+                "Should reset to DRAFT after runner failure");
+    }
+
+    @Test
+    void ensureScenarioSkipsDslValidationFailure() {
+        final var flight1 = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp1 = flight1.addFlightPlan(FlightPlanId.valueOf("FP001"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        final var flight2 = new Flight(FlightDesignator.valueOf("TP5678"), DEP_TIME);
+        final var fp2 = flight2.addFlightPlan(FlightPlanId.valueOf("FP002"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        when(dslValidator.validate(any())).thenReturn(ValidationResult.passed())
+                .thenReturn(ValidationResult.failed("Invalid DSL"));
+        when(exporter.exportForSimulator(any())).thenReturn("[{\"ID\":\"T1\"}]");
+        when(runner.run(any())).thenReturn(generatePassReport());
+
+        final var entry1 = new TestFlightPlanController.FlightPlanEntry(flight1, fp1);
+        final var entry2 = new TestFlightPlanController.FlightPlanEntry(flight2, fp2);
+        final var result = controller.testScenario(List.of(entry1, entry2));
+        assertTrue(result.passed());
+        assertEquals(FlightPlanStatus.TEST_PASSED, fp1.status());
+        assertEquals(FlightPlanStatus.DRAFT, fp2.status(),
+                "Failed validation should NOT be marked IN_TEST");
     }
 
     private String generatePassReport() {

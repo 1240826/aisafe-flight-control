@@ -200,8 +200,8 @@ public class FlightPlanToScenarioConverter {
         final int startAlt;
         final int endAlt;
         if (allSegments.size() == 1) {
-            startAlt = depElev;
-            endAlt = arrElev;
+            startAlt = (int) alt;
+            endAlt = (int) alt;
         } else if (index == 0) {
             startAlt = depElev;
             endAlt = (int) alt;

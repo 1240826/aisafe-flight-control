@@ -4,13 +4,15 @@ All tests follow the **AAA convention** (Arrange, Act, Assert) and are written i
 
 Parameterized tests are driven by CSV test data files.
 
-14 test classes cover **147 tests** across domain entities, value objects, application controllers, services, and CSV-driven parameterized suites.
+15 test classes cover **169 tests** across domain entities, value objects, application controllers, services, and CSV-driven parameterized suites.
 
 ---
 
 ## 1. Flight Domain — Aggregate Root Tests
 
-### `Flight` Aggregate Root (9 tests)
+### `Flight` Aggregate Root (18 tests)
+
+Extended test suite covering flight creation, flight plan management, time-based departure validation, authorization checks, and edge cases for designator lookup.
 
 | Test | Scenario |
 |------|----------|
@@ -23,6 +25,15 @@ Parameterized tests are driven by CSV test data files.
 | `ensureFlightPlanListIsUnmodifiable` | Returned list is unmodifiable |
 | `ensureSameAsWithSameIdentity` | Same identity → equal |
 | `ensureSameAsWithDifferentIdentity` | Different identity → not equal |
+| `ensureCreateFlightWithRouteNameAndAircraftAndPilot` | Extended constructor with route, aircraft, pilot |
+| `ensureUpdateFromDslWorks` | `updateFromDsl()` updates flight fields |
+| `ensureFlightPlanOfIdentityWorks` | `flightPlanOfIdentity()` finds a plan |
+| `ensureFlightPlansIsUnmodifiable` | `flightPlans()` returns unmodifiable list |
+| `ensureDesignator` | `designator()` returns correct designator |
+| `ensureDepartureTime` | `departureTime()` returns correct time |
+| `ensureRouteName` | `routeName()` returns correct route |
+| `ensureAircraftRegistration` | `aircraftRegistration()` returns correct registration |
+| `ensurePilotId` | `pilotId()` returns correct pilot |
 
 ### `FlightDesignator` Value Object (14 tests)
 
@@ -123,7 +134,7 @@ The exporter now uses a **converter-first strategy**: tries `FlightPlanToScenari
 | `ensureFallbackForInvalidDsl` | Invalid DSL → legacy `{ID, FlightPlanDSL}` format |
 | `ensureFallbackEscapesDslContent` | Fallback correctly escapes JSON special chars |
 
-### `ImportFlightPlanControllerTest` (4 tests)
+### `ImportFlightPlanControllerTest` (6 tests)
 
 | Test | Scenario |
 |------|----------|
@@ -131,6 +142,8 @@ The exporter now uses a **converter-first strategy**: tries `FlightPlanToScenari
 | `ensureImportWithInvalidDslReturnsErrors` | Invalid DSL → per-phase errors returned (lexer/parser/semantic) |
 | `ensureImportWithMissingFlightReturnsError` | Null/empty flight → error returned |
 | `ensureExtractFlightDesignatorWorks` | ANTLR parse tree → correct flight designator extracted |
+| `ensureImportFlightPlanChecksAuthorization` | Authorization enforced before import |
+| `ensureAllFlightsDelegates` | `allFlights()` delegates to `FlightRepository.findAll()` |
 
 ### `ReportParser` (13 tests)
 
@@ -148,7 +161,20 @@ The exporter now uses a **converter-first strategy**: tries `FlightPlanToScenari
 |------|----------|
 | 3 tests covering null input rejection, timeout behavior, execution failure |
 
-### `TestFlightPlanController` (12 tests)
+### `GenerateSimulationReportControllerTest` (6 tests)
+
+Tests the simulation report generation controller used as the delegation target by `RemotePilotService.generateReport()`.
+
+| Test | Scenario |
+|------|----------|
+| `ensureGenerateReportChecksAuthorization` | Authorization enforced before report generation |
+| `ensureAllSimulationsChecksAuthorization` | Authorization enforced on `allSimulations()` |
+| `ensureGenerateReportWithNullAreaCodeThrows` | Null area code → IllegalArgumentException |
+| `ensureGenerateReportWithBlankAreaCodeThrows` | Blank area code → IllegalArgumentException |
+| `ensureAllSimulationsDelegatesToRepo` | `allSimulations()` delegates to repository |
+| `ensureGenerateReportReturnsFilePath` | Successful generation returns a file path |
+
+### `TestFlightPlanController` (17 tests)
 
 | Test | Scenario |
 |------|----------|
@@ -163,6 +189,12 @@ The exporter now uses a **converter-first strategy**: tries `FlightPlanToScenari
 | `ensureAllFlightsDelegates` | `allFlights()` delegates to `FlightRepository.findAll()` |
 | `ensureAuthorizationIsChecked` | Authorization enforced on `allFlights()` |
 | `ensureDepartureTimeMismatchReturnsFailure` | Departure time mismatch → failure |
+| `ensureTestFlightPlanWithoutWeatherThrows` | No weather data → early failure |
+| `ensureTestFlightPlanCreatesWeatherFile` | Weather file generated and passed to runner |
+| `ensureTestFlightPlanRunnerInvokedWithWeather` | Runner receives weather file parameter |
+| `ensureTestFlightPlanWeatherParseFailureReturnsFailure` | Weather parse error → TEST_FAILED |
+| `ensureAllFlightsWithDesignatorParamDelegates` | `allFlights(String)` searches by designator |
+| `ensureTestFlightPlanReturnsTestResult` | Return type is `TestResult`, not raw boolean |
 
 **US085.4 — DSL Failure Test (critical):**
 ```
@@ -283,22 +315,23 @@ Driven by `pilot_certification_test_data.csv` (rows PC01–PC08). Each test case
 ## 5. Complete Test Inventory
 
 | # | Test Class | Package | Tests | Type |
-|---|-----------|---------|-------|------|
+|---|-----------|---------|------:|------|
 | 1 | `FlightDesignatorTest` | `eapli.aisafe.flight.domain` | 13 | Unit (domain VO) |
-| 2 | `FlightTest` | `eapli.aisafe.flight.domain` | 9 | Unit (domain aggregate) |
+| 2 | `FlightTest` | `eapli.aisafe.flight.domain` | 18 | Unit (domain aggregate) |
 | 3 | `FlightPlanIdTest` | `eapli.aisafe.flightplan.domain` | 8 | Unit (domain VO) |
 | 4 | `FlightPlanTest` | `eapli.aisafe.flightplan.domain` | 14 | Unit (domain entity) |
 | 5 | `ValidationResultTest` | `eapli.aisafe.flightplan.domain` | 9 | Unit (domain VO) |
 | 6 | `FlightPlanExporterTest` | `eapli.aisafe.flightplan.application` | 4 | Unit (service) |
-| 7 | `ImportFlightPlanControllerTest` | `eapli.aisafe.flightplan.application` | 4 | Unit (controller) |
+| 7 | `ImportFlightPlanControllerTest` | `eapli.aisafe.flightplan.application` | 6 | Unit (controller) |
 | 8 | `ReportParserTest` | `eapli.aisafe.flightplan.application` | 13 | Unit (service) |
 | 9 | `ProcessBuilderSimulationRunnerTest` | `eapli.aisafe.flightplan.application` | 3 | Unit (service) |
-| 10 | `TestFlightPlanControllerTest` | `eapli.aisafe.flightplan.application` | 12 | Integration (controller, mocked) |
+| 10 | `TestFlightPlanControllerTest` | `eapli.aisafe.flightplan.application` | 17 | Integration (controller, mocked) |
 | 11 | `ReportParserParameterizedTest` | `eapli.aisafe.flightplan.application` | 10 | Parameterized (CSV) |
 | 12 | `DslValidatorParameterizedTest` | `eapli.aisafe.flightplan.application` | 15 | Parameterized (CSV) |
 | 13 | `FlightPlanDataValidationTest` | `eapli.aisafe.flightplan.application` | 25 | Parameterized (CSV) |
 | 14 | `PilotCertificationDataValidationTest` | `eapli.aisafe.flightplan.application` | 8 | Parameterized (CSV) |
-| | **Total** | | **147** | |
+| 15 | `GenerateSimulationReportControllerTest` | `eapli.aisafe.simulation.application` | 6 | Unit (controller) |
+| | **Total** | | **169** | |
 
 ---
 
@@ -308,7 +341,7 @@ Driven by `pilot_certification_test_data.csv` (rows PC01–PC08). Each test case
 
 | Class | Lines | Covered By | Est. Coverage |
 |-------|-------|------------|---------------|
-| `Flight` | 81 | `FlightTest` (9 tests) | >95% |
+| `Flight` | 81 | `FlightTest` (18 tests) | >95% |
 | `FlightDesignator` | 56 | `FlightDesignatorTest` (14 tests) | >95% |
 | `FlightPlan` | 167 | `FlightPlanTest` (14 tests) | >95% |
 | `FlightPlanId` | 57 | `FlightPlanIdTest` (8 tests) | >95% |
@@ -319,8 +352,8 @@ Driven by `pilot_certification_test_data.csv` (rows PC01–PC08). Each test case
 
 | Class | Lines | Covered By | Est. Coverage |
 |-------|-------|------------|---------------|
-| `ImportFlightPlanController` | ~100 | `ImportFlightPlanControllerTest` (4 tests) | >90% |
-| `TestFlightPlanController` | 143 | `TestFlightPlanControllerTest` (12 tests) | >90% |
+| `ImportFlightPlanController` | ~100 | `ImportFlightPlanControllerTest` (6 tests) | >90% |
+| `TestFlightPlanController` | 143 | `TestFlightPlanControllerTest` (17 tests) | >90% |
 | `FlightPlanExporter` | ~40 | `FlightPlanExporterTest` (4 tests) | >95% |
 | `FlightPlanToScenarioConverter` | ~80 | `FlightPlanExporterTest` (4 tests, via exporter) | >90% |
 | `ProcessBuilderSimulationRunner` | ~60 | `ProcessBuilderSimulationRunnerTest` (3 tests) | >90% |
@@ -328,5 +361,6 @@ Driven by `pilot_certification_test_data.csv` (rows PC01–PC08). Each test case
 | `DslValidator` | ~130 | `DslValidatorParameterizedTest` (15 tests) | >95% |
 | `FlightPlanDataValidationTest` | — | CSV-driven (25 tests) | — |
 | `PilotCertificationDataValidationTest` | — | CSV-driven (8 tests) | — |
+| `GenerateSimulationReportController` | ~82 | `GenerateSimulationReportControllerTest` (6 tests) | >90% |
 
 All controller and domain classes achieve **>90% line coverage** through comprehensive unit and integration tests.

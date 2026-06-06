@@ -12,6 +12,9 @@ P = 10
 simulation: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o simulation $(LDFLAGS)
 
+sim_server: sim_server.c
+	$(CC) $(CFLAGS) sim_server.c -o sim_server
+
 main.o: main.c common.h json_parser.h us110_env.h
 	$(CC) $(CFLAGS) -c main.c
 
@@ -46,7 +49,7 @@ run: simulation
 	./simulation $(TEST_DIR)/scenario_heavy_traffic.json 1 $(P)
 
 clean:
-	rm -f *.o simulation report_*.txt
+	rm -f *.o simulation sim_server report_*.txt
 
 transatlantic: simulation
 	./simulation $(TEST_DIR)/scenario_transatlantic_arrivals.json 1 $(P)

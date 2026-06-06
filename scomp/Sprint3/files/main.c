@@ -310,7 +310,9 @@ static int run_simulation(void)
         if (eff_interval > 600) eff_interval = 600;
         if (eff_interval > 0 && step % eff_interval == 0) {
             draw_airspace(shm, step);
-            usleep(any_in ? 80000 : 20000);
+            const char *delay_env = getenv("SIM_DRAW_DELAY_US");
+            int draw_delay = delay_env ? atoi(delay_env) : 0;
+            if (any_in && draw_delay > 0) usleep(draw_delay);
         }
     }
 
@@ -539,15 +541,23 @@ int main(int argc, char *argv[])
     }
     if (argc >= 3) {
         int t = parse_time(argv[2]);
-        if (t > 0 || (t == 0 && argv[2][0] == '0')) sim_start_sec = t;
+        if (t > 0 || (t == 0 && argv[2][0] == '0')) {
+            sim_start_sec = t;
+        } else {
+            long raw = atol(argv[2]);
+            if (raw >= 0 && raw < 86400) sim_start_sec = (int)raw;
+        }
     }
     if (argc >= 4) {
         int val = atoi(argv[3]);
-        if (val > 0) print_interval = val;
+        if (val >= 0) print_interval = val;
     }
     if (argc >= 5) {
         extern void set_report_output_path(const char *);
         set_report_output_path(argv[4]);
+    }
+    if (argc >= 6) {
+        snprintf(weather_path, sizeof(weather_path), "%s", argv[5]);
     }
     if (argc >= 2) {
         return run_simulation();
@@ -632,7 +642,7 @@ int main(int argc, char *argv[])
                 if (fgets(buf, sizeof(buf), stdin)) {
                     buf[strcspn(buf, "\n")] = '\0';
                     int val = atoi(buf);
-                    if (val > 0) print_interval = val;
+                    if (val >= 0) print_interval = val;
                 }
                 break;
             }

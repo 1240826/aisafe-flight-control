@@ -918,6 +918,8 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
                 AirportIATA.valueOf("OPO"), AirportIATA.valueOf("WAW"));
         saveRoute("TP901", CompanyIATA.valueOf("TP"),
                 AirportIATA.valueOf("LIS"), AirportIATA.valueOf("OPO"));
+        saveRoute("TP789", CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("LIS"), AirportIATA.valueOf("MAD"));
     }
 
     private void saveRoute(final String routeName, final CompanyIATA company,
@@ -963,7 +965,7 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
                 FlightRouteName.valueOf("TP456"),
                 "CS-TUB", PilotId.valueOf("P12345"), DSL_TP4000);
         saveFlight("TP5000", "FP006",
-                LocalDateTime.of(2026, 6, 2, 8, 0),
+                LocalDateTime.of(2026, 6, 2, 8, 5),   // matches DSL first leg departs at 08:05+01:00
                 FlightRouteName.valueOf("TP901"),
                 "CS-TAC", PilotId.valueOf("P12345"), DSL_TP5000);
     }

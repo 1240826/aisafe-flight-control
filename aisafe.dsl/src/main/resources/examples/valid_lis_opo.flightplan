@@ -12,11 +12,11 @@ flight TP5000 : charter {
     leg {
         departure {
             airport  : LIS;
-            datetime : 2026-06-02T08:00+01:00;
+            datetime : 2026-06-02T08:05+01:00;
         }
         arrival {
             airport  : OPO;
-            datetime : 2026-06-02T09:00+01:00;
+            datetime : 2026-06-02T09:05+01:00;
         }
         fuel {
             quantity : 5000 kg;

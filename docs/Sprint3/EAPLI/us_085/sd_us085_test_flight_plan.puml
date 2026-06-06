@@ -15,7 +15,7 @@ participant "flight:Flight"                    as flight      <<domain>>
 participant "plan:FlightPlan"                  as plan        <<domain>>
 participant ":DslValidator"                    as dsl         <<service>>
 participant ":FlightPlanExporter"              as exporter    <<service>>
-participant ":ProcessBuilderSimulationRunner"  as runner      <<service>>
+participant ":SimulationRunner"                as runner      <<service>>
 participant "ReportParser"                     as parser      <<service>>
 participant ":FlightRepository"                as repo        <<persistence>>
 
@@ -43,6 +43,14 @@ activate plan
 plan --> ctrl : DRAFT
 deactivate plan
 
+note right of ctrl : Phase 2a — Departure Time Check
+ctrl -> plan : dslContent()
+activate plan
+plan --> ctrl : raw DSL string
+deactivate plan
+ctrl -> ctrl : checkDepartureTime(flight, dslContent)
+note right : regex parse HH:MM from DSL\ncompare with flight.departureTime
+
 note right of ctrl : Phase 3 — DSL Re-validation
 ctrl -> plan : dslContent()
 activate plan
@@ -68,16 +76,21 @@ activate exporter
 exporter --> ctrl : jsonPayload
 deactivate exporter
 
+note right of ctrl : Phase 4a — Build Weather File
+ctrl -> ctrl : buildWeatherFile(flight)
+note right : checks flight.weatherDataId\ncalls WeatherDataToSimulatorExporter\nreturns temp file path or null
+
 note right of ctrl : Phase 5 — C Simulation
-ctrl -> runner : run(jsonPayload)
+ctrl -> runner : run(jsonPayload, weatherFilePath)
 activate runner
+note right of runner : SocketSimulationRunner\nor\nProcessBuilderSimulationRunner
 runner --> ctrl : reportContent (String)
 deactivate runner
 
 note right of ctrl : Phase 6 — Parse Report
 ctrl -> parser : parse(reportContent)
 activate parser
-parser --> ctrl : ReportParseResult(passed=yes, viol=0)
+parser --> ctrl : ReportParseResult(passed=yes, viol=0, perFlightResults)
 deactivate parser
 
 note right of ctrl : Phase 7 — Record Result

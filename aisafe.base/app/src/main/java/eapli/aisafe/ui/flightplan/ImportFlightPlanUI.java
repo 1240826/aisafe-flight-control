@@ -21,7 +21,11 @@ public class ImportFlightPlanUI extends AbstractUI {
             "valid_lis_cdg.flightplan",
             "valid_opo_waw.flightplan",
             "valid_lis_opo.flightplan",
-            "invalid_sem_zero_fuel.flightplan");
+            "invalid_sem_zero_fuel.flightplan",
+            "valid_demo_conflict_a.flightplan",
+            "valid_demo_conflict_b.flightplan",
+            "valid_demo_regular_usa_lis.flightplan",
+            "valid_demo_charter_lis_mad.flightplan");
 
     @Override
     protected boolean doShow() {

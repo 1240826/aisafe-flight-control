@@ -54,9 +54,13 @@ public final class RemoteProtocol {
     public static final String CMD_REMOVE_PILOT         = "REMOVE_PILOT";
 
     // Pilot (US086)
-    public static final String CMD_IMPORT_FLIGHT_PLAN = "IMPORT_FLIGHT_PLAN";
-    public static final String CMD_LIST_ROUTES        = "LIST_ROUTES";
-    public static final String CMD_LIST_FLIGHTS       = "LIST_FLIGHTS";
+    public static final String CMD_IMPORT_FLIGHT_PLAN   = "IMPORT_FLIGHT_PLAN";
+    public static final String CMD_LIST_ROUTES          = "LIST_ROUTES";
+    public static final String CMD_LIST_FLIGHTS         = "LIST_FLIGHTS";
+    public static final String CMD_CREATE_FLIGHT_PLAN   = "CREATE_FLIGHT_PLAN";
+    public static final String CMD_VALIDATE_FLIGHT_PLAN = "VALIDATE_FLIGHT_PLAN";
+    public static final String CMD_GENERATE_REPORT      = "GENERATE_REPORT";
+    public static final String CMD_MONTHLY_REPORT       = "MONTHLY_REPORT";
 
     // ── Server responses ─────────────────────────────────────────────────────
     public static final String RESP_AUTH_OK   = "AUTH_OK";

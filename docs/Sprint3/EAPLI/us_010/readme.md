@@ -136,5 +136,5 @@ The updated PlantUML diagram is at `domain_model_sprint3.puml`. It supersedes th
 | DSL is **re-validated every time** in US085 | No caching — ensures latest grammar | Team decision |
 | Report stored as **filePath + content (TEXT)** | Both filesystem and DB for durability | C14 |
 | Database: **PostgreSQL** | Already configured in persistence.xml | C01 + existing setup |
-| C invocation via **ProcessBuilder** | File-based handoff, no JNI/sockets | Sprint 2 decision |
+| C invocation via **SimulationRunner interface** | Abstracted behind `SimulationRunner` — supports `ProcessBuilderSimulationRunner` (local) and `SocketSimulationRunner` (TCP to sim_server) | Sprint 3 evolution |
 | Package: `eapli.aisafe.flightplan.domain` | Not `flight` — avoids confusion with Flight aggregate | Team decision |
