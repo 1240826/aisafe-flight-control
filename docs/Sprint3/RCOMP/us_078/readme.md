@@ -1,72 +1,99 @@
-﻿# US030 — Authentication and Authorization Infrastructure
+﻿# US078 — ATC Collaborator Remote Access (RCOMP)
 
 ## 1. Context
 
-This task was assigned in Sprint 2 as shared infrastructure. It is the first time this task is being developed. The objective is to establish the authentication and authorization foundation that all other use cases depend on: role definitions, login flow, and security clearance enforcement at login.
+This task is assigned in Sprint 3 within the Computer Networks (RCOMP) scope.
+The objective is to allow an Air Traffic Control (ATC) Collaborator to remotely access the system through a dedicated TCP-based client application. This makes all ATC Collaborator functionalities available over the network securely, without any direct database connection on the client side.
 
-**Assigned to:** Shared (all team members)
+**Issue:** #61
+**Assigned to:** Jaime Simões
 
 ### 1.1 List of Issues
 
-- Analysis: #22
-- Design: #22
-- Implement: #22
-- Test: #22
+- Analysis: #61
+- Design: #61
+- Implement: #61
+- Test: #61
 
 ---
 
 ## 2. Requirements
 
-**US030** As the system, I want to enforce authentication and role-based authorization so that only users with the correct roles can access each feature.
+**US078** As an ATC Collaborator, I want to remotely access the system in order to manage flight routes and air control areas.
 
 ### Acceptance Criteria
 
-- **US030.1** The system must define all AISafe roles: `ADMIN`, `BACKOFFICE_OPERATOR`, `ATC_COLLABORATOR`, `FLIGHT_CONTROL_OPERATOR`, `WEATHER_PERSON`.
-- **US030.2** Every controller method must call `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(...)` before any business logic.
-- **US030.3** An unauthenticated access attempt must be rejected.
-- **US030.4** After successful framework authentication, the system must check the user's `securityClearanceExpiryDate`. If expired, login must be denied (account is NOT deactivated — just blocked). *(Client clarification: security clearance expired → cannot log in.)*
-- **US030.5** Skills assessment expiry does **not** block login.
+- **US078.1** A specific TCP-based client application must be developed to communicate with a concurrent server application embedded in the main system.
+- **US078.2** The client application must interact with the system exclusively through the TCP connection — any direct interaction with the database from the client machine is strictly unacceptable.
+- **US078.3** All ATC Collaborator user stories must be remotely available via this client application:
+    - **US071** — Register Air Control Area (ACA)
+    - **US073** — Create Flight Route
+    - **US074** — Delete (Deactivate) Flight Route
+- **US078.4** Authentication and authorization must be enforced over the connection before any operation is executed. Only users holding the `ATC_COLLABORATOR` role can access this service.
 
 ### Dependencies/References
 
-- NFR09 — authentication and authorization.
-- EAPLI framework — `AuthzRegistry`, `AuthorizationService`, `UserManagementService`.
+- US071, US073, US074 — ATC Collaborator operations (Sprint 2/3).
+- US030 — Authentication and authorization infrastructure (applied to remote logins).
+- US090 — External logging of remote accesses (logs login/logout/disconnect via UDP).
+- NFR09 — Authentication and authorization enforced on all functionalities.
 
 ---
 
 ## 3. Analysis
 
-### 3.0 LLM Assistance
+### 3.1 Network Architecture
 
-Generative AI (Claude, Anthropic) was used to support the analysis and design of this user story.
+The system follows a two-tier concurrent remote access model:
 
-**Prompt 1:** "How does authentication and role-based authorization work in the EAPLI framework? How do I define custom roles and enforce them in controllers?"
+- A standalone **ATC Client App** (Java console) connects via TCP to a dedicated port exposed by the main system.
+- The **TCP Server** is embedded in the main system and spawns one handler thread (`AtccClientHandler`) per accepted connection to allow concurrent access by multiple ATC Collaborators.
+- All business logic (US071, US073, US074) executes strictly on the server side through existing application services.
+- The server enforces that the authenticated user holds the `ATC_COLLABORATOR` role before any operation is executed.
 
-**LLM suggestions adopted:**
-- `AISafeRoles` class defines all roles as `public static final Role` constants, following the `ExemploRoles` pattern from `eapli.base`
-- Every controller calls `AuthzRegistry.authorizationService().ensureAuthenticatedUserHasAnyOf(Role...)` as its first operation
-- Login UI calls `AuthzRegistry.authorizationService().authenticateUser(username, password)` via the framework's `LoginUI`
+---
 
-**Decisions made by the team:**
-- Security clearance check at login is performed after the framework authenticates the user, by loading `UserSecurityProfile` from its repository and comparing `securityClearanceExpiryDate` with today
-- Skills assessment has no login effect (confirmed by client)
+### 3.2 Application-Level Protocol
 
-### 3.1 Framework Roles
+A simple, lightweight text-based request/response protocol is defined for this connection.
+Each message is terminated with `\n`. Fields inside a message are separated by the pipe character (`|`).
 
-```java
-public class AISafeRoles {
-    public static final Role ADMIN = Role.valueOf("ADMIN");
-    public static final Role BACKOFFICE_OPERATOR = Role.valueOf("BACKOFFICE_OPERATOR");
-    public static final Role ATC_COLLABORATOR = Role.valueOf("ATC_COLLABORATOR");
-    public static final Role FLIGHT_CONTROL_OPERATOR = Role.valueOf("FLIGHT_CONTROL_OPERATOR");
-    public static final Role WEATHER_PERSON = Role.valueOf("WEATHER_PERSON");
+**Client to Server messages:**
 
-    public static Role[] nonUserValues() {
-        return new Role[]{ADMIN, BACKOFFICE_OPERATOR, ATC_COLLABORATOR,
-                          FLIGHT_CONTROL_OPERATOR, WEATHER_PERSON};
-    }
-}
-```
+| Code | Format | Description |
+|------|--------|-------------|
+| `AUTH` | `AUTH\|<username>\|<password>` | Authenticate the session |
+| `REGISTER_ACA` | `REGISTER_ACA\|<area_code>\|<name>\|<min_lat>\|<max_lat>\|<min_lon>\|<max_lon>` | Register a new ACA (US071) |
+| `CREATE_ROUTE` | `CREATE_ROUTE\|<route_name>\|<company_iata>\|<origin_iata>\|<destination_iata>` | Create a new flight route (US073) |
+| `DEACTIVATE_ROUTE` | `DEACTIVATE_ROUTE\|<route_name>\|<deactivation_date>` | Deactivate an active route (US074) |
+| `LIST_COMPANIES` | `LIST_COMPANIES` | List registered companies for route selection helper |
+| `LIST_AIRPORTS` | `LIST_AIRPORTS` | List registered airports for route/ACA helper |
+| `QUIT` | `QUIT` | Gracefully close the TCP session |
+
+**Server to Client messages:**
+
+| Code | Meaning |
+|------|---------|
+| `AUTH_OK` | Authentication successful |
+| `AUTH_FAIL\|<reason>` | Authentication failed (invalid credentials, expired clearance, or insufficient roles) |
+| `OK\|<optional_payload>` | Operation succeeded — returns data payload if applicable |
+| `ERR\|<reason>` | Operation failed — contains detailed error/exception message |
+
+---
+
+### 3.3 Session Flow
+
+1. Client establishes a TCP connection to the server on the ATCC-dedicated port.
+2. Server accepts the socket and spawns a thread (`AtccClientHandler`) to handle the client.
+3. Client sends `AUTH|<username>|<password>`.
+4. Server validates credentials via EAPLI `AuthzRegistry`.
+5. Server checks `securityClearanceExpiryDate` (US030.4).
+6. Server verifies the user holds the `ATC_COLLABORATOR` role.
+7. If valid: Server responds `AUTH_OK`. The session is now authenticated.
+8. If invalid: Server responds `AUTH_FAIL|<reason>` (connection remains open for retry or QUIT).
+9. Server emits a UDP log event to the Logging Server (US90) for both outcomes.
+10. Any request other than `AUTH` or `QUIT` received before successful authentication is answered with `ERR|NOT_AUTHENTICATED`.
+11. After `QUIT` or client disconnect, the server closes the sockets, dispatches a UDP log event, and cleans up.
 
 ---
 
@@ -74,73 +101,55 @@ public class AISafeRoles {
 
 ### 4.1 Realization
 
-**Classes to create:**
+The system decomposes into clean network-layer classes and reuses EAPLI application controllers:
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `AISafeRoles` | `aisafe.core` | Defines all role constants |
-| `AISafePasswordPolicy` | `aisafe.core` | Password complexity rules |
-| `UserSecurityProfile` | `aisafe.core` | Stores `securityClearanceExpiryDate` per user |
-| `UserSecurityProfileRepository` | `aisafe.core` | Repository interface |
-| `JpaUserSecurityProfileRepository` | `aisafe.persistence.impl` | JPA implementation |
-| `InMemoryUserSecurityProfileRepository` | `aisafe.persistence.impl` | In-memory implementation |
-| `AISafeLoginUI` | `aisafe.app.backoffice.console` | Extends framework login; adds clearance check |
+**Key classes to create (RCOMP network layer):**
 
-**Sequence Diagram — Login with Security Clearance Check:**
+| Class | Responsibility |
+|-------|---------------|
+| `TcpAtccServer` (extends `AbstractTcpServer`) | Listens on the ATC-dedicated TCP port; accepts connections and spawns handlers |
+| `AtccClientHandler` (implements `Runnable`) | Handles one socket session: reads requests, parses commands, executes, writes responses |
+| `AtccRemoteSessionState` | Tracks authentication state and the authenticated ATC Collaborator |
+| `AtccClientApp` | Standalone console application for the remote client |
 
-![Sequence Diagram — Login with Security Clearance Check](sd_us030_login.svg)
+**Key classes to reuse (EAPLI business layer):**
 
-**Sequence Diagram — Controller Authorization Check (template for all USs):**
+| Class | Responsibility |
+|-------|---------------|
+| `RegisterAirControlAreaController` | Core controller for US071 |
+| `CreateFlightRouteController` | Core controller for US073 |
+| `DeleteFlightRouteController` | Core controller for US074 |
 
-![Sequence Diagram — Controller Authorization Check](sd_us030_authz_check.svg)
+### 4.2 Diagrams
 
-### 4.2 Acceptance Tests
-
-**AT1 — Expired security clearance blocks login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` was yesterday (in the past),
-When the user attempts to log in with valid credentials,
-Then the system denies access with a message indicating the security clearance has expired, without deactivating the account.
-
-**AT2 — Valid security clearance allows login (US030.4)**
-
-Given a user whose `securityClearanceExpiryDate` is 30 days in the future,
-When the user logs in with valid credentials,
-Then the system grants access and the user is directed to the main menu.
-
-**AT3 — Unauthenticated access to a protected operation is blocked (US030.3)**
-
-Given a session where no user is authenticated,
-When any controller method protected by `ensureAuthenticatedUserHasAnyOf(...)` is invoked,
-Then the system rejects the operation with an authorization error.
+The sequence diagram for the remote operations is defined in `sd_us078_atcc_remote_access.puml` (which shows connection, authentication, and execution of `createRoute(...)` on the server-side controllers).
 
 ---
 
 ## 5. Implementation
 
-**Key new files:**
-
-- `eapli.aisafe.usermanagement.domain.AISafeRoles` — role constants
-- `eapli.aisafe.usermanagement.domain.AISafePasswordPolicy` — password policy
-- `eapli.aisafe.usermanagement.domain.UserSecurityProfile` — security clearance holder
-- `eapli.aisafe.usermanagement.repositories.UserSecurityProfileRepository` — interface
-- `eapli.aisafe.app.backoffice.console.presentation.authz.AISafeLoginUI` — extended login
-
-*Major commits: (to be filled after implementation)*
+**Key Files:**
+- `TcpAtccServer.java` — Server daemon listening on port
+- `AtccClientHandler.java` — Concurrent connection thread worker
+- `AtccClientApp.java` — Standalone client terminal console UI
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start application — bootstrap loads roles, valid domains, fuel types, manufacturers, countries
-2. Log in with valid credentials and valid clearance → access granted
-3. Log in with expired clearance → denied with message
-4. Access any feature without login → rejected
+1. Start the main database and backend application (initializing `TcpAtccServer` thread).
+2. Start the UDP logging server (US090).
+3. Run `AtccClientApp` on a network node.
+4. Attempt executing an action without authentication → verifies `ERR|NOT_AUTHENTICATED` is returned.
+5. Log in with an invalid role or invalid credentials → verifies `AUTH_FAIL` is returned.
+6. Log in with an `ATC_COLLABORATOR` account → verifies `AUTH_OK`.
+7. Register an ACA, create a route, and deactivate it remotely → verifies `OK` responses and checks DB updates on the server.
+8. Verify UDP server logged all session actions.
 
 ---
 
 ## 7. Observations
 
-`UserSecurityProfile` is a companion entity to the EAPLI framework's `SystemUser`. Because `SystemUser` is framework-managed and cannot be modified, the security clearance date is stored in a separate entity linked by `username` (the `SystemUser` natural key). This avoids coupling to the framework's internal structure.
-
-The `AISafeRoles` class follows the `ExemploRoles` pattern exactly — the only change is the set of role constants and the `nonUserValues()` array.
+- Reuses existing EAPLI controllers without changing any underlying business logic.
+- Network transactions are decoupled from the DB (the client never sees database drivers, passwords, or connection pools).
+- Follows the exact protocol pattern as US044 (Weather) and US086 (Pilot), securing a standard approach to socket networking in the project.
