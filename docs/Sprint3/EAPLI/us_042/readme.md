@@ -10,10 +10,10 @@ providers and be easily extensible to new data formats without modifying existin
 
 ### 1.1 List of Issues
 
-- Analysis: #71 (US042 — Import Bulk Weather Data)
-- Design: #71 (US042 — Import Bulk Weather Data)
-- Implement: #71 (US042 — Import Bulk Weather Data)
-- Test: #71 (US042 — Import Bulk Weather Data)
+- Analysis: #71 
+- Design: #71 
+- Implement: #71 
+- Test: #71 
 
 ---
 
