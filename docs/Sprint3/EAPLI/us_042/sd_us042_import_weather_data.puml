@@ -9,12 +9,11 @@ skinparam ParticipantPadding 20
 autonumber
 
 actor "WeatherPerson" as actor
-participant ":ImportWeatherDataUI"         as ui       <<presentation>>
-participant ":ImportWeatherDataController" as ctrl     <<application>>
-participant ":AuthorizationService"        as authz    <<framework>>
-participant ":WeatherDataImporterFactory"  as factory  <<application>>
-participant ":CSVWeatherDataImporter"      as importer <<application>>
-participant ":WeatherDataRepository"       as repo     <<persistence>>
+participant ":ImportBulkWeatherDataUI"    as ui       <<presentation>>
+participant ":ImportBulkWeatherDataController" as ctrl <<application>>
+participant ":AuthorizationService"       as authz    <<framework>>
+participant ":AirControlAreaRepository"   as acaRepo  <<persistence>>
+participant ":WeatherDataRepository"      as repo     <<persistence>>
 
 actor -> ui : selects "Import Weather Data"
 activate ui
@@ -22,7 +21,7 @@ activate ui
 ui -> actor : requests file path
 actor -> ui : provides file path
 
-ui -> ctrl : importWeatherData(filePath)
+ui -> ctrl : importFromCsv(csvPath)
 activate ctrl
 
 ctrl -> authz : ensureAuthenticatedUserHasAnyOf(WEATHER_PERSON)
@@ -30,24 +29,29 @@ activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> factory : getImporter(filePath)
-activate factory
-factory --> ctrl : importer
-deactivate factory
-
-ctrl -> importer : parse(filePath)
-activate importer
-importer --> ctrl : weatherDataList, errorList
-deactivate importer
-
-loop for each valid WeatherData
-    ctrl -> repo : save(weatherData)
-    activate repo
-    repo --> ctrl
-    deactivate repo
+loop for each line in CSV
+    alt line starts with '#'
+        ctrl -> ctrl : parseHeader(line) – extracts ACA mapping
+        activate ctrl
+        ctrl -> acaRepo : ofIdentity(areaCode)
+        activate acaRepo
+        acaRepo --> ctrl : aca (or throws if unknown)
+        deactivate acaRepo
+        deactivate ctrl
+    else data line
+        ctrl -> ctrl : parseLine(line, acaMapping) – 12 columns, European decimals
+        
+        ctrl -> repo : save(weatherData)
+        activate repo
+        repo --> ctrl
+        deactivate repo
+        
+        ctrl -> ctrl : imported++
+    end
+    note right : on error: skipped++,\nerror added to list
 end
 
-ctrl --> ui : importSummary(imported, errors)
+ctrl --> ui : ImportResult(imported, skipped, errors)
 deactivate ctrl
 
 ui --> actor : displays import summary
