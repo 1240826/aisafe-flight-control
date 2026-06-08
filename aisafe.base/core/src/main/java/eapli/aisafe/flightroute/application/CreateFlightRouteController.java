@@ -14,6 +14,7 @@ import eapli.aisafe.usermanagement.domain.AISafeRoles;
 import eapli.framework.application.UseCaseController;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import eapli.framework.infrastructure.authz.application.AuthzRegistry;
+import eapli.aisafe.flightroute.domain.FlightRoute;
 
 import java.util.Optional;
 
@@ -54,6 +55,11 @@ public class CreateFlightRouteController {
 
     public boolean routeExists(final String routeName) {
         return routeRepo.ofIdentity(FlightRouteName.valueOf(routeName)).isPresent();
+    }
+
+    public Iterable<FlightRoute> allActiveRoutes() {
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ATC_COLLABORATOR);
+        return routeRepo.findAllActive();
     }
 
     /**
