@@ -35,6 +35,7 @@ import eapli.framework.domain.repositories.TransactionalContext;
 import eapli.framework.infrastructure.authz.application.AuthzRegistry;
 import eapli.framework.infrastructure.authz.domain.model.PlainTextEncoder;
 import eapli.framework.infrastructure.pubsub.EventDispatcher;
+import eapli.aisafe.server.AtcServerDaemon;
 
 import java.util.Optional;
 
@@ -83,7 +84,12 @@ public final class AISafeBackoffice extends BaseApp {
 		t2.setDaemon(true);
 		t2.start();
 
-		System.out.println("[RCOMP] Remote services started (ports 1044, 1086).");
+		// US078 — ATCC remote access (port 1078)
+		final Thread t3 = new Thread(new AtcServerDaemon(), "daemon-atcc-US78");
+		t3.setDaemon(true);
+		t3.start();
+
+		System.out.println("[RCOMP] Remote services started (ports 1044, 1078, 1086).");
 	}
 
 	@Override
