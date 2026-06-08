@@ -3,8 +3,9 @@
 ## 1. Context
 
 This task was assigned in Sprint 3. The objective is to allow a Weather Person to import bulk
-weather data from a file into the system. The system must support multiple external weather service
-providers and be easily extensible to new data formats without modifying existing code.
+weather data from a CSV file into the system. The CSV uses European formatting (`,` as decimal
+separator, `;` as column separator) and supports a header-based mapping of numeric ACA IDs to
+AreaCodes.
 
 **Assigned to:** Cláudio Pinto
 
@@ -25,7 +26,7 @@ information from multiple external providers can be aggregated for better accura
 ### Acceptance Criteria
 
 - **US042.1** The system must require the WEATHER_PERSON role.
-- **US042.2** The system must support CSV as the initial import format.
+- **US042.2** The system must support CSV as the import format.
 - **US042.3** Each record in the file must be validated before being persisted.
 - **US042.4** Invalid records must be reported without interrupting the import of valid ones.
 - **US042.5** The system must be extensible to new data formats without modifying existing code.
@@ -49,41 +50,50 @@ independently or where we deviated from the AI output.
 
 ---
 
-#### Prompt 1 — Extensible importer design
+#### Prompt 1 — CSV import design
 
 > "We are implementing a bulk weather data import feature in Java using DDD and the EAPLI framework.
-> The initial format is CSV. The system must be easy to extend to new formats without modifying
-> existing code. Suggest a design that supports this extensibility requirement."
+> The initial format is CSV with European decimal separators and a header-based ACA mapping. Suggest
+> a design that supports extensibility to new formats."
 
 **LLM suggestions adopted:**
-- `WeatherDataImporter` interface with a single `parse(filePath)` method — each format is a
-  separate implementation (Strategy pattern)
-- `WeatherDataImporterFactory` selects the correct importer by file extension, so adding a new
-  format only requires a new implementation and registering it in the factory (Open/Closed
-  Principle)
 - Invalid records are collected and reported at the end rather than aborting the whole import
 
 **Decisions made by the team / deviations from LLM output:**
-- The LLM suggested auto-detecting the source provider from the file contents — the team reads it
-  from the CSV header, consistent with the `sourceProvider` attribute already on the WeatherData
-  domain object (US041)
+- The LLM suggested a `WeatherDataImporter` interface with separate implementations per format
+  (Strategy pattern). The team opted for inline parsing in the controller because the CSV format
+  is tightly coupled to the ACA header-mapping logic and the 12-column layout, and a separate
+  importer abstraction would add complexity without immediate benefit. If a new format is needed
+  in a future sprint, the import logic can be extracted at that point.
+- The LLM proposed reading the source provider from a separate column — the team reads it from a
+  configuration in the CSV header (`# ACA N = COD`), consistent with the `sourceProvider`
+  attribute already on the WeatherData domain object (US041).
 - The LLM proposed a batch `saveAll()` — replaced with individual `save()` per record so that
-  partial imports succeed even when some records are invalid
+  partial imports succeed even when some records are invalid.
 
 ---
 
 ### 3.1 Key Design Decisions
 
-**Strategy pattern for importers** — `WeatherDataImporter` is an interface. `CSVWeatherDataImporter`
-is the first concrete implementation. Adding a new format in a future sprint only requires a new
-class — no changes to the controller or factory logic.
+**Inline CSV parsing in the controller** — the `ImportBulkWeatherDataController` reads the file
+line by line, parses headers (`# ACA N = COD`), validates each data row (12 columns, European
+decimal format), and persists valid records. Invalid rows are caught and counted without stopping
+the import.
+
+**ACA header mapping** — CSV lines starting with `#` followed by `ACA <numericId> = <AreaCode>`
+establish a mapping between the numeric ID used in the file and the system's `AreaCode`. The
+controller validates the AreaCode against the `AirControlAreaRepository` before importing.
 
 **Validation before persistence** — each parsed record is validated by the `WeatherData` domain
 constructor before being passed to the repository. Invalid records are skipped and collected for
 reporting.
 
-**Reuse of existing domain objects** — `WeatherData` and `WeatherDataRepository` were created in
-Sprint 2 (US041) and are reused directly. No domain changes are required.
+**ImportResult value object** — an inner class that encapsulates `imported`, `skipped`, and
+`errors` (list of error messages) returned to the UI for display.
+
+**Reuse of existing domain objects** — `WeatherData`, `WindCondition`, and
+`WeatherDataRepository` were created in Sprint 2 (US041) and are reused directly. No domain
+changes are required.
 
 ---
 
@@ -93,12 +103,11 @@ Sprint 2 (US041) and are reused directly. No domain changes are required.
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `ImportWeatherDataUI` | `aisafe.app.backoffice.console` | Prompts for file path; displays import summary |
-| `ImportWeatherDataController` | `aisafe.core` | Auth; delegates to factory and importer; saves records |
-| `WeatherDataImporter` | `aisafe.core` | Interface — `parse(filePath): List<WeatherData>` |
-| `WeatherDataImporterFactory` | `aisafe.core` | Selects importer by file extension |
-| `CSVWeatherDataImporter` | `aisafe.core` | Parses CSV; validates each record |
+| `ImportBulkWeatherDataUI` | `aisafe.app.backoffice.console` | Prompts for file path; displays import summary |
+| `ImportBulkWeatherDataController` | `aisafe.core` | Auth; reads CSV; parses headers and data rows; saves valid records; returns `ImportResult` |
+| `AirControlAreaRepository` | `aisafe.core` | Validates that AreaCodes in header mapping exist |
 | `WeatherDataRepository` | `aisafe.core` | Persists each valid `WeatherData` record (existing) |
+| `ImportResult` (inner class) | `aisafe.core` | DTO with `imported`, `skipped`, `errors` |
 
 **Sequence Diagram:**
 
@@ -107,33 +116,91 @@ Sprint 2 (US041) and are reused directly. No domain changes are required.
 ### 4.2 Acceptance Tests
 
 **AT1 — Valid CSV imported successfully (US042.2, US042.3)**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureImportFromCsvSavesWeatherData`
+- Given a valid CSV line with correct ACA header mapping,
+- When the Weather Person imports the file,
+- Then the record is persisted and the system reports 1 imported, 0 skipped.
 
-Given a valid CSV file with multiple weather data records,
-When the Weather Person imports the file,
-Then all valid records are persisted and the system reports the count of imported records.
+**AT2 — Multiple valid lines are all imported**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureMultipleValidLinesAreAllImported`
+- Given a CSV with two valid data lines and a correct ACA header,
+- When the Weather Person imports the file,
+- Then both records are persisted (`times(2)`).
 
-**AT2 — Invalid records skipped, valid ones persisted (US042.4)**
+**AT3 — Blank lines are skipped (US042.4)**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureBlankLinesAreSkipped`
+- Given a CSV with a blank line between valid records,
+- When the Weather Person imports the file,
+- Then blank lines are ignored and valid records are persisted.
 
-Given a CSV file where some records have missing or malformed fields,
-When the Weather Person imports the file,
-Then valid records are persisted and invalid ones are listed in the error summary without
-interrupting the import.
+**AT4 — Invalid column count is reported (US042.4)**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureInvalidColumnCountIsSkipped`
+- Given a CSV row with fewer than 12 columns,
+- When the Weather Person imports the file,
+- Then the row is skipped with error "Expected 12 columns".
 
-**AT3 — Unauthorised user rejected (US042.1)**
+**AT5 — Missing ACA header is reported**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureMissingAcaHeaderIsSkipped`
+- Given a CSV with no `# ACA N = COD` header and a data row referencing ACA ID "1",
+- When the Weather Person imports the file,
+- Then the row is skipped with error "Unknown ACA ID: 1".
 
-Given a user without the WEATHER_PERSON role,
-When they attempt to access the import feature,
-Then the system rejects the operation.
+**AT6 — Invalid number format is reported (US042.4)**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureInvalidNumberFormatIsSkipped`
+- Given a CSV row with a non-numeric latitude value,
+- When the Weather Person imports the file,
+- Then the row is skipped with error "Invalid lat1".
+
+**AT7 — Invalid date format is reported (US042.4)**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureInvalidDateIsSkipped`
+- Given a CSV row with a malformed date,
+- When the Weather Person imports the file,
+- Then the row is skipped with error "Invalid date/time".
+
+**AT8 — Unknown ACA code in header throws**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureUnknownAcaInHeaderThrows`
+- Given a CSV header with an AreaCode not registered in the system,
+- When the Weather Person imports the file,
+- Then the system throws `IllegalArgumentException`.
+
+**AT9 — European decimal format is parsed correctly**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureEuropeanDecimalIsParsedCorrectly`
+- Given a CSV row using comma as decimal separator (`28,75`),
+- When the Weather Person imports the file,
+- Then the wind speed is parsed as 28.75.
+
+**AT10 — ImportResult structure (US042.4)**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureResultToString`
+- Given an `ImportResult` with 5 imported, 2 skipped, 2 errors,
+- Then `toString()` returns "Imported: 5 | Skipped: 2 | Errors: 2".
+
+**AT11 — Unauthorised user rejected (US042.1)**
+- **Test:** `ImportBulkWeatherDataControllerTest.ensureImportChecksAuthorization`
+- Given a user without the WEATHER_PERSON role,
+- When they attempt to import,
+- Then `authz.ensureAuthenticatedUserHasAnyOf(WEATHER_PERSON)` is invoked and the operation
+  is rejected.
+
+### 4.3 Domain Tests
+
+- **WeatherDataTest (14 tests):** validates null/blank constraints on areaCode, windCondition,
+  sourceProvider, recordedDateTime; accessors return correct values.
+- **WindConditionTest (27 tests):** validates speed > 0, direction [0, 360), lat/lon ranges,
+  altitude >= 0.
 
 ---
 
 ## 5. Implementation
 
-- `eapli.aisafe.weatherdata.application.ImportWeatherDataController`
-- `eapli.aisafe.weatherdata.application.WeatherDataImporterFactory`
-- `eapli.aisafe.weatherdata.application.importers.WeatherDataImporter`
-- `eapli.aisafe.weatherdata.application.importers.CSVWeatherDataImporter`
-- `eapli.aisafe.app.backoffice.console.presentation.weatherdata.ImportWeatherDataUI`
+- `eapli.aisafe.weatherdata.application.ImportBulkWeatherDataController` — main controller with
+  inline CSV parsing and `ImportResult` inner class
+- `eapli.aisafe.app.backoffice.console.presentation.weatherdata.ImportBulkWeatherDataUI` — UI
+  prompting for file path and displaying results
+- Test filenames used for acceptance tests are under `docs/Sprint3/EAPLI/us_042/tests/`:
+  - `weather_data_test.csv` (mixed valid/invalid)
+  - `weather_data_valid_only.csv`
+  - `weather_data_headers_only.csv`
+  - `weather_data_empty.csv`
 
 ---
 
@@ -142,24 +209,24 @@ Then the system rejects the operation.
 To demonstrate this user story:
 
 1. Bootstrap or manually register an air control area (US050).
-2. Bootstrap or manually register weather data for that area (US041) to confirm the domain object
-   and repository are working.
-3. Prepare a valid CSV file with multiple weather data records, including at least one invalid
-   record.
-4. Log in as a Weather Person.
-5. Select "Import Weather Data", provide the CSV file path.
-6. Verify that valid records are persisted and the import summary lists the invalid ones without
+2. Prepare a valid CSV file with at least one `# ACA N = COD` header and 12-column data rows
+   (semicolon-separated, comma as decimal separator).
+3. Log in as a Weather Person.
+4. Select "Import Bulk Weather Data from CSV (US042)", provide the CSV file path.
+5. Verify that valid records are persisted and the import summary lists the invalid ones without
    interrupting the import.
 
-To demonstrate extensibility (US042.5):
-
-1. Implement a new `WeatherDataImporter` for a different format (e.g. JSON).
-2. Register it in `WeatherDataImporterFactory`.
-3. Verify that no existing class was modified and the new format is accepted by the system.
+Example CSV:
+```
+# ACA 121 = LPPC
+121;43,840454;-9,795711;40,225;-7,9501;0;1000;90;28,75;22/06/2026;05:00;08:15
+```
 
 ---
 
 ## 7. Observations
 
-Adding a new import format in a future sprint requires only: (1) implementing `WeatherDataImporter`,
-(2) registering the new implementation in `WeatherDataImporterFactory`. No other class is modified.
+The `ImportBulkWeatherDataController` handles the CSV format (European decimal, 12 columns,
+ACA header mapping) entirely within the controller. If a new format is required in a future
+sprint, the common file-reading and validation logic can be extracted into a strategy/hierarchy
+at that point, following the Open/Closed Principle.
