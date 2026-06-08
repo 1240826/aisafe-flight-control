@@ -12,6 +12,7 @@ import eapli.aisafe.airport.domain.AirportIATA;
 import eapli.aisafe.company.domain.CompanyIATA;
 import eapli.aisafe.flight.domain.Flight;
 import eapli.aisafe.flight.domain.FlightDesignator;
+import eapli.aisafe.flight.domain.FlightType;
 import eapli.aisafe.flight.repositories.FlightRepository;
 import eapli.aisafe.flightplan.domain.FlightPlan;
 import eapli.aisafe.flightplan.domain.FlightPlanId;
@@ -203,6 +204,11 @@ public class ImportFlightPlanController {
                 }
                 final LocalDateTime departureTime = parseTimestamp(tsStr);
 
+                // ── Extract flight type (REGULAR or CHARTER) ──────────────
+                final FlightType flightType =
+                        ctx.flightDecl().flightType().REGULAR() != null
+                                ? FlightType.REGULAR : FlightType.CHARTER;
+
                 // ── Extract and validate pilot license ───────────────────
                 final String pilotLicenseStr =
                         ctx.flightDecl().IDENTIFIER(1).getText();
@@ -232,11 +238,12 @@ public class ImportFlightPlanController {
                 final boolean isNewFlight = flight == null;
                 if (isNewFlight) {
                     flight = new Flight(designator, departureTime,
-                            routeName, aircraftRegStr, pilotId);
+                            routeName, aircraftRegStr, pilotId, flightType);
                 }
 
                 if (!isNewFlight) {
-                    flight.updateFromDsl(departureTime, routeName, aircraftRegStr, pilotId);
+                    flight.updateFromDsl(departureTime, routeName,
+                            aircraftRegStr, pilotId, flightType);
                 }
                 final var fpId = FlightPlanId.valueOf(flightPlanIdStr);
                 if (isNewFlight) {

@@ -1,10 +1,9 @@
 package eapli.aisafe.server;
 
 import eapli.aisafe.aircontrolarea.domain.AirControlArea;
-import eapli.aisafe.infrastructure.persistence.PersistenceContext;
 import eapli.aisafe.remote.RemoteProtocol;
+import eapli.aisafe.remote.weather.RemoteWeatherService;
 import eapli.aisafe.usermanagement.domain.AISafeRoles;
-import eapli.aisafe.weatherdata.application.RegisterWeatherDataController;
 import eapli.aisafe.weatherdata.domain.WeatherData;
 
 import java.net.Socket;
@@ -16,11 +15,14 @@ import java.time.format.DateTimeParseException;
 /**
  * US044 — handles one Weather Person TCP session.
  *
+ * <p>Delegates all business logic to {@link RemoteWeatherService},
+ * keeping this handler focused purely on protocol parsing and response formatting.
+ *
  * <p>Supported commands (after AUTH):
  * <ul>
  *   <li>{@code REGISTER_WEATHER|areaCode|lat|lon|altM|windKnots|windDeg|tempC|provider|datetime}</li>
- *   <li>{@code IMPORT_WEATHER|areaCode|csvRows}  — rows: {@code lat,lon,alt,speed,dir,temp,provider[,datetime]} separated by {@code ;}</li>
- *   <li>{@code CONSULT_WEATHER|areaCode|date}   — date: ISO (2026-06-01)</li>
+ *   <li>{@code IMPORT_WEATHER|areaCode|csvRows} — rows: {@code lat,lon,alt,speed,dir,temp,provider[,datetime]} separated by {@code ;}</li>
+ *   <li>{@code CONSULT_WEATHER|areaCode|date} — date: ISO (e.g. 2026-06-01)</li>
  *   <li>{@code LIST_AREAS}</li>
  * </ul>
  */
@@ -28,11 +30,11 @@ class WeatherClientHandler extends AbstractClientHandler {
 
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private final RegisterWeatherDataController controller;
+    private final RemoteWeatherService weatherService;
 
     WeatherClientHandler(final Socket clientSocket) {
         super(clientSocket, RemoteProtocol.SVC_WEATHER, AISafeRoles.WEATHER_PERSON);
-        this.controller = new RegisterWeatherDataController();
+        this.weatherService = new RemoteWeatherService();
     }
 
     @Override
@@ -54,18 +56,17 @@ class WeatherClientHandler extends AbstractClientHandler {
                     "Usage: REGISTER_WEATHER|areaCode|lat|lon|altM|windKnots|windDeg|tempC|provider|datetime");
         }
         try {
-            final String areaCode   = f[1];
-            final double lat        = Double.parseDouble(f[2]);
-            final double lon        = Double.parseDouble(f[3]);
-            final int    alt        = Integer.parseInt(f[4]);
-            final double windSpeed  = Double.parseDouble(f[5]);
-            final double windDir    = Double.parseDouble(f[6]);
-            final double temp       = Double.parseDouble(f[7]);
-            final String provider   = f[8];
-            final LocalDateTime dt  = LocalDateTime.parse(f[9], DT_FMT);
-
-            controller.registerWeatherData(areaCode, lat, lon, alt, windSpeed, windDir, temp, provider, dt);
-            return RemoteProtocol.ok("Weather data registered for area " + areaCode);
+            weatherService.registerWeatherData(
+                    f[1],
+                    Double.parseDouble(f[2]),
+                    Double.parseDouble(f[3]),
+                    Integer.parseInt(f[4]),
+                    Double.parseDouble(f[5]),
+                    Double.parseDouble(f[6]),
+                    Double.parseDouble(f[7]),
+                    f[8],
+                    LocalDateTime.parse(f[9], DT_FMT));
+            return RemoteProtocol.ok("Weather data registered for area " + f[1]);
         } catch (final NumberFormatException e) {
             return RemoteProtocol.err("Invalid number: " + e.getMessage());
         } catch (final DateTimeParseException e) {
@@ -95,18 +96,19 @@ class WeatherClientHandler extends AbstractClientHandler {
                 continue;
             }
             try {
-                final double lat       = Double.parseDouble(cols[0]);
-                final double lon       = Double.parseDouble(cols[1]);
-                final int    alt       = Integer.parseInt(cols[2]);
-                final double speed     = Double.parseDouble(cols[3]);
-                final double dir       = Double.parseDouble(cols[4]);
-                final double temp      = Double.parseDouble(cols[5]);
-                final String provider  = cols[6];
                 final LocalDateTime dt = cols.length > 7
                         ? LocalDateTime.parse(cols[7], DT_FMT)
                         : LocalDateTime.now();
-
-                controller.registerWeatherData(areaCode, lat, lon, alt, speed, dir, temp, provider, dt);
+                weatherService.registerWeatherData(
+                        areaCode,
+                        Double.parseDouble(cols[0]),
+                        Double.parseDouble(cols[1]),
+                        Integer.parseInt(cols[2]),
+                        Double.parseDouble(cols[3]),
+                        Double.parseDouble(cols[4]),
+                        Double.parseDouble(cols[5]),
+                        cols[6],
+                        dt);
                 count++;
             } catch (final Exception e) {
                 errors.append("Row error: ").append(e.getMessage()).append("; ");
@@ -127,7 +129,7 @@ class WeatherClientHandler extends AbstractClientHandler {
         try {
             final String areaCode  = f[1];
             final LocalDate filter = LocalDate.parse(f[2], DateTimeFormatter.ISO_LOCAL_DATE);
-            final Iterable<WeatherData> records = controller.weatherDataForArea(areaCode);
+            final Iterable<WeatherData> records = weatherService.weatherDataForArea(areaCode);
 
             final StringBuilder sb = new StringBuilder();
             int count = 0;
@@ -161,8 +163,7 @@ class WeatherClientHandler extends AbstractClientHandler {
 
     private String doListAreas() {
         try {
-            final Iterable<AirControlArea> areas =
-                    PersistenceContext.repositories().airControlAreas().findAll();
+            final Iterable<AirControlArea> areas = weatherService.listAreas();
             final StringBuilder sb = new StringBuilder();
             for (final AirControlArea a : areas) {
                 if (sb.length() > 0) sb.append(";");
