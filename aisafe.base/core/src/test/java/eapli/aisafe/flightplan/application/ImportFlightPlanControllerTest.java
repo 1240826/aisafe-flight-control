@@ -19,9 +19,12 @@ import eapli.aisafe.pilot.repositories.PilotRepository;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import eapli.aisafe.flight.domain.FlightDesignator;
+import static org.mockito.ArgumentMatchers.any;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -200,5 +203,19 @@ class ImportFlightPlanControllerTest {
     void ensureExtractFlightDesignatorWorks() {
         final var designator = controller.extractFlightDesignator(VALID_DSL);
         assertEquals("TP3000", designator);
+    }
+
+    @Test
+    void ensureFlightPlansForFlightDelegatesToRepo() {
+        final var designator = FlightDesignator.valueOf("TP1234");
+        final var flight = mock(Flight.class);
+        when(flightRepo.ofIdentity(designator)).thenReturn(java.util.Optional.of(flight));
+        when(flight.flightPlans()).thenReturn(List.of());
+
+        final var result = controller.flightPlansForFlight("TP1234");
+
+        assertNotNull(result);
+        verify(flightRepo).ofIdentity(designator);
+        verify(flight).flightPlans();
     }
 }
