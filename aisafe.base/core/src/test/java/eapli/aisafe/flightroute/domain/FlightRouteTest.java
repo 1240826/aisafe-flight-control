@@ -3,6 +3,8 @@ package eapli.aisafe.flightroute.domain;
 import eapli.aisafe.company.domain.CompanyIATA;
 import eapli.aisafe.airport.domain.AirportIATA;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import java.time.LocalDate;
 
@@ -136,5 +138,16 @@ class FlightRouteTest {
                 AirportIATA.valueOf("OPO"),
                 AirportIATA.valueOf("OPO")
         ), "FlightRoute must reject identical origin and destination");
+    }
+
+    @ParameterizedTest
+    @CsvFileSource(resources = "/us073/flight_route_name_test.csv", numLinesToSkip = 1)
+    void ensureFlightRouteNameInvariants(final String nameInput, final boolean expectValid) {
+        if (expectValid) {
+            final var routeName = FlightRouteName.valueOf(nameInput);
+            assertEquals(nameInput.toUpperCase().trim(), routeName.name());
+        } else {
+            assertThrows(Exception.class, () -> FlightRouteName.valueOf(nameInput));
+        }
     }
 }
