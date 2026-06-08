@@ -11,7 +11,7 @@ class MonthlyReportTest {
     private static final YearMonth PERIOD = YearMonth.of(2026, 6);
 
     private MonthlyReport validReport() {
-        return new MonthlyReport(PERIOD, 10, 25, 5, 3, 15, 2, 100, 8, 12);
+        return new MonthlyReport(PERIOD, 10, 25, 5, 3, 15, 2, 100, 8, 12, "");
     }
 
     @Test
@@ -67,7 +67,7 @@ class MonthlyReportTest {
 
     @Test
     void ensureAllZerosCanBePassed() {
-        final var report = new MonthlyReport(PERIOD, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        final var report = new MonthlyReport(PERIOD, 0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         assertEquals(0, report.totalFlights());
         assertEquals(0, report.totalAircraft());
     }
@@ -76,7 +76,7 @@ class MonthlyReportTest {
     void ensureLargeValuesAreStored() {
         final var report = new MonthlyReport(PERIOD, 1_000_000, 5_000_000,
                 1_000_000, 1_000_000, 2_000_000, 1_000_000,
-                500_000, 10_000, 500);
+                500_000, 10_000, 500, "");
         assertEquals(1_000_000, report.totalFlights());
         assertEquals(500, report.totalAircraft());
     }

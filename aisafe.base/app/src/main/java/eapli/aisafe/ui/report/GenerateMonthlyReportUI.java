@@ -5,6 +5,10 @@ import eapli.aisafe.report.domain.MonthlyReport;
 import eapli.framework.io.util.Console;
 import eapli.framework.presentation.console.AbstractUI;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 
@@ -31,9 +35,18 @@ public class GenerateMonthlyReportUI extends AbstractUI {
 
         try {
             final MonthlyReport report = controller.generateForMonth(period);
-            System.out.println("\n" + report);
+            final String text = "\n" + report;
+            System.out.println(text);
+
+            final Path dir = Paths.get("reports");
+            Files.createDirectories(dir);
+            final Path file = dir.resolve("monthly-report-" + period + ".txt");
+            Files.writeString(file, text);
+            System.out.println("  [Saved to " + file.toAbsolutePath() + "]");
         } catch (final IllegalStateException e) {
             System.out.println("  [!] " + e.getMessage());
+        } catch (final IOException e) {
+            System.out.println("  [!] Could not save report file: " + e.getMessage());
         }
 
         return false;
