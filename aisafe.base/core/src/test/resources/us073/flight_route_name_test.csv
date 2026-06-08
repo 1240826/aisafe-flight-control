@@ -1,0 +1,11 @@
+nameInput,expectValid
+TP123,true
+LH9,true
+AZ4567,true
+AA12,true
+A123,false
+T1,false
+TP12345,false
+TP-123,false
+TP 12,false
+,,false
