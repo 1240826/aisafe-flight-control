@@ -9,60 +9,74 @@ skinparam ParticipantPadding 20
 autonumber
 
 actor "Pilot" as actor
-participant ":AddWeatherDataToFlightUI"        as ui      <<presentation>>
-participant ":AddWeatherDataToFlightController" as ctrl   <<application>>
-participant ":AuthorizationService"            as authz   <<framework>>
-participant ":FlightRepository"                as flightRepo <<persistence>>
-participant ":WeatherDataRepository"           as wdRepo  <<persistence>>
-participant ":Flight"                          as flight  <<domain>>
+participant ":AddWeatherToFlightUI"        as ui      <<presentation>>
+participant ":AddWeatherToFlightController" as ctrl   <<application>>
+participant ":AuthorizationService"        as authz   <<framework>>
+participant ":FlightRepository"            as flightRepo <<persistence>>
+participant ":AirControlAreaRepository"    as acaRepo <<persistence>>
+participant ":WeatherDataRepository"       as wdRepo  <<persistence>>
+participant ":Flight"                      as flight  <<domain>>
 
 actor -> ui : selects "Add Weather Data to Flight"
 activate ui
 
-ui -> ctrl : myFlights()
+ui -> ctrl : allFlights()
 activate ctrl
+
 ctrl -> authz : ensureAuthenticatedUserHasAnyOf(PILOT)
 activate authz
 authz --> ctrl
 deactivate authz
-ctrl -> flightRepo : findByPilot(pilot)
+
+ctrl -> flightRepo : findAll()
 activate flightRepo
 flightRepo --> ctrl : flights
 deactivate flightRepo
-ctrl --> ui : flights
+
+ctrl --> ui : flights (client-side filtered by matching designator)
 deactivate ctrl
 
 ui -> actor : displays flight list
 actor -> ui : selects flight
 
-ui -> ctrl : availableWeatherData()
+ui -> ctrl : weatherDataForFlight(flight)
 activate ctrl
+
+ctrl -> ctrl : computeMidpoint(flight) – midpoint lat/lon from route
+ctrl -> acaRepo : findAll()
+activate acaRepo
+acaRepo --> ctrl : all ACAs
+deactivate acaRepo
+
+ctrl -> ctrl : findAcaForMidpoint(lat, lon) – finds ACA containing midpoint
+
 ctrl -> wdRepo : findAll()
 activate wdRepo
-wdRepo --> ctrl : weatherDataList
+wdRepo --> ctrl : all weather data
 deactivate wdRepo
-ctrl --> ui : weatherDataList
+
+ctrl -> ctrl : filters weather data by matched ACA code
+ctrl --> ui : weatherList (ACA-filtered)
 deactivate ctrl
 
 ui -> actor : displays weather data list
-actor -> ui : selects weatherData
+actor -> ui : selects weather data
 
-ui -> ctrl : addWeatherData(flightId, weatherDataId)
+ui -> ctrl : assignWeather(flightDesignator, weatherDataId)
 activate ctrl
 
-ctrl -> flightRepo : ofIdentity(flightId)
+ctrl -> wdRepo : ofIdentity(weatherDataId)
+activate wdRepo
+wdRepo --> ctrl : weatherData (or throws)
+deactivate wdRepo
+
+ctrl -> flightRepo : ofIdentity(flightDesignator)
 activate flightRepo
 flightRepo --> ctrl : flight
 deactivate flightRepo
 
-ctrl -> wdRepo : ofIdentity(weatherDataId)
-activate wdRepo
-wdRepo --> ctrl : weatherData
-deactivate wdRepo
-
-ctrl -> flight : addWeatherData(weatherData)
+ctrl -> flight : assignWeatherData(weatherDataId)
 activate flight
-note right : if flightPlan.status == TESTED\nreset to DRAFT
 flight --> ctrl
 deactivate flight
 
@@ -71,7 +85,7 @@ activate flightRepo
 flightRepo --> ctrl
 deactivate flightRepo
 
-ctrl --> ui : success
+ctrl --> ui : updated flight
 deactivate ctrl
 
 ui --> actor : displays confirmation
