@@ -16,7 +16,7 @@ import java.time.format.DateTimeParseException;
 @SuppressWarnings("squid:S106")
 public class ConsultWeatherDataUI extends AbstractUI {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final ConsultWeatherDataController controller = new ConsultWeatherDataController();
 
@@ -34,7 +34,7 @@ public class ConsultWeatherDataUI extends AbstractUI {
                 date = LocalDate.parse(
                         Console.readLine("Date (yyyy-MM-dd)").trim(), DATE_FMT);
             } catch (final DateTimeParseException e) {
-                System.out.println("Invalid date format. Use dd-mm-yyyy.");
+                System.out.println("Invalid date format. Use yyyy-MM-dd.");
             }
         }
 
