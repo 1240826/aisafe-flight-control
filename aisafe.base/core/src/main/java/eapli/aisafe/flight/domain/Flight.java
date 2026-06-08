@@ -15,6 +15,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -39,6 +41,10 @@ public class Flight implements AggregateRoot<FlightDesignator> {
 
     @Column(name = "DEPARTURE_TIME", nullable = false)
     private LocalDateTime departureTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "FLIGHT_TYPE", nullable = false, length = 10)
+    private FlightType flightType = FlightType.REGULAR;
 
     /** Cross-aggregate reference: the route this flight follows (US080). */
     @Embedded
@@ -68,6 +74,7 @@ public class Flight implements AggregateRoot<FlightDesignator> {
     public Flight(final FlightDesignator designator, final LocalDateTime departureTime) {
         this.designator = designator;
         this.departureTime = departureTime;
+        this.flightType = FlightType.REGULAR;
     }
 
     /**
@@ -77,16 +84,30 @@ public class Flight implements AggregateRoot<FlightDesignator> {
     public Flight(final FlightDesignator designator, final LocalDateTime departureTime,
                   final FlightRouteName routeName, final String aircraftRegistration,
                   final PilotId pilotLicense) {
-        Preconditions.noneNull(designator, departureTime, routeName, aircraftRegistration, pilotLicense);
+        this(designator, departureTime, routeName, aircraftRegistration, pilotLicense, FlightType.REGULAR);
+    }
+
+    /**
+     * Full constructor with flight type (US080/081).
+     */
+    public Flight(final FlightDesignator designator, final LocalDateTime departureTime,
+                  final FlightRouteName routeName, final String aircraftRegistration,
+                  final PilotId pilotLicense, final FlightType flightType) {
+        Preconditions.noneNull(designator, departureTime, routeName, aircraftRegistration, pilotLicense, flightType);
         this.designator = designator;
         this.departureTime = departureTime;
         this.routeName = routeName;
         this.aircraftRegistration = aircraftRegistration;
         this.pilotLicense = pilotLicense;
+        this.flightType = flightType;
     }
 
     public LocalDateTime departureTime() {
         return departureTime;
+    }
+
+    public FlightType flightType() {
+        return flightType;
     }
 
     public FlightRouteName routeName() {
@@ -162,6 +183,18 @@ public class Flight implements AggregateRoot<FlightDesignator> {
         this.routeName = routeName;
         this.aircraftRegistration = aircraftRegistration;
         this.pilotLicense = pilotLicense;
+    }
+
+    public void updateFromDsl(final LocalDateTime departureTime,
+                               final FlightRouteName routeName,
+                               final String aircraftRegistration,
+                               final PilotId pilotLicense,
+                               final FlightType flightType) {
+        this.departureTime = departureTime;
+        this.routeName = routeName;
+        this.aircraftRegistration = aircraftRegistration;
+        this.pilotLicense = pilotLicense;
+        this.flightType = flightType;
     }
 
     public FlightPlan updateFlightPlan(final FlightPlanId flightPlanId, final String newDslContent) {

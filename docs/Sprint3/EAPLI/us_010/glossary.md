@@ -36,7 +36,7 @@ This glossary defines all domain concepts present in the Sprint 3 domain model. 
 | **FlightPlanId** | Value Object | Auto-generated numeric identifier of a FlightPlan. Constitutive part of FlightPlan. |
 | **FlightPlanStatus** | Enum | The lifecycle state of a flight plan. Values: `DRAFT` (created/weather-added), `IN_TEST` (validation in progress), `TEST_PASSED` (all phases passed), `TEST_FAILED` (at least one phase failed). US080, US082, US085. |
 | **FlightRoute** | Entity (root) | A route between two airports (origin and destination) owned by an AirTransportCompany. Has a unique route name and optional deactivation date. US073, US074. |
-| **FlightType** | Enum | The type of a flight. Values: `REGULAR` (recurring schedule defined at route level), `CHARTER` (single occurrence). Section 3.2. |
+| **FlightType** | Enum | The type of a flight. Values: `REGULAR` (recurring schedule defined at route level), `CHARTER` (single occurrence). Extracted from the DSL content at import time (US080). Section 3.2. |
 | **fuelType** (EngineModel) | Attribute (String) | The fuel type consumed by an EngineModel. Validated against `FuelType.ALL` constants class. Valid values: `Jet-A1` (kerosene-based, sec. 3.3 — density 0.804 kg/l, specific energy 42.80 MJ/kg), `AvGas 100LL` (aviation gasoline), `SAF` (Sustainable Aviation Fuel). |
 | **Manufacturer** | Entity (root) | A company that manufactures aircraft models and/or engine models. A single manufacturer can cover both roles. Section 3.1.2. |
 | **ManufacturerName** | Value Object | The name of a Manufacturer. Constitutive part of Manufacturer. |

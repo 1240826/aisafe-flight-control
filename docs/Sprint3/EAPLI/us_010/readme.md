@@ -232,6 +232,7 @@ The updated PlantUML diagram is at `domain_model_sprint3.puml`. It supersedes th
 - `Pilot` is a standalone aggregate with its own `PilotId` — no inheritance from `Collaborator`.
 - `FlightDesignator` is a single-string value object.
 - `Flight` has `departureTime` (string) — no `DepartureSchedule` hierarchy, no `scheduledArrivalTime`.
+- `Flight.flightType` (`REGULAR`/`CHARTER`) is extracted from the DSL content at import time (US080) — the DSL file header declares `flight <id> : regular` or `flight <id> : charter`.
 - `FlightPlanStatus` uses Sprint 3 values: `DRAFT`, `IN_TEST`, `TEST_PASSED`, `TEST_FAILED`.
 - `FlightPlan` includes `dslContent`, `reportFilePath`, `reportContent`, `createdAt`, `lastTestedAt`.
 - `FlightPlanId` is a new value object; a `ValidationResult` VO (passed + reasons) supports the validation service.
