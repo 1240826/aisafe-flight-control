@@ -298,4 +298,13 @@ public class ImportFlightPlanController {
                 .replace("Z", "");
         return LocalDateTime.parse(withoutTz, TIMESTAMP_FORMATTER);
     }
+
+    public List<FlightPlan> flightPlansForFlight(final String flightDesignator) {
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.FLIGHT_CONTROL_OPERATOR);
+        final var designator = FlightDesignator.valueOf(flightDesignator);
+        final var flight = flightRepo.ofIdentity(designator)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Flight not found: " + flightDesignator));
+        return flight.flightPlans();
+    }
 }
