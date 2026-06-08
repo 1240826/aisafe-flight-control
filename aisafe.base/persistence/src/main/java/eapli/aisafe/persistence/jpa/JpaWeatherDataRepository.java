@@ -9,6 +9,8 @@ import eapli.framework.infrastructure.repositories.impl.jpa.JpaAutoTxRepository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * JPA implementation of WeatherDataRepository.
@@ -32,8 +34,9 @@ public class JpaWeatherDataRepository
 
     @Override
     public Iterable<WeatherData> findByAreaCodeAndDate(final AreaCode areaCode, final LocalDate date){
-        final String start = date.atStartOfDay().toString();
-        final String end = date.atTime(LocalTime.MAX).toString();
-        return match("e.areaCode.code = '" + areaCode.toString() + "' AND e.recordedDateTime BETWEEN '" + start + "' AND '" + end + "'");
-    }
+        final Map<String, Object> params = new HashMap<>();
+        params.put("areaCode", areaCode.toString());
+        params.put("start", date.atStartOfDay());
+        params.put("end", date.atTime(LocalTime.MAX));
+        return match("e.areaCode.code = :areaCode AND e.recordedDateTime BETWEEN :start AND :end", params);    }
 }
