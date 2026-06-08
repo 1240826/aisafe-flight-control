@@ -12,8 +12,13 @@ actor "FlightControlOperator" as actor
 participant ":GenerateMonthlyReportUI"        as ui        <<presentation>>
 participant ":GenerateMonthlyReportController" as ctrl     <<application>>
 participant ":AuthorizationService"           as authz     <<framework>>
-participant ":MonthlyStatisticsReportGenerator" as generator <<application>>
-participant ":ReportWriter"                   as writer    <<application>>
+participant ":CollaboratorRepository"         as collabRepo <<persistence>>
+participant "provider\n:MonthlyReportDataProvider" as provider <<application>>
+participant ":FlightRepository"               as flightRepo <<persistence>>
+participant ":WeatherDataRepository"          as wdRepo    <<persistence>>
+participant ":PilotRepository"                as pilotRepo <<persistence>>
+participant ":AircraftRepository"             as acRepo    <<persistence>>
+participant ":MonthlyReport"                  as report    <<domain>>
 
 actor -> ui : selects "Generate Monthly Report"
 activate ui
@@ -21,7 +26,7 @@ activate ui
 ui -> actor : requests month and year
 actor -> ui : provides month and year
 
-ui -> ctrl : generateMonthlyReport(month, year)
+ui -> ctrl : generateForMonth(period)
 activate ctrl
 
 ctrl -> authz : ensureAuthenticatedUserHasAnyOf(FLIGHT_CONTROL_OPERATOR)
@@ -29,19 +34,58 @@ activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> generator : generate(month, year)
-activate generator
-note right : Template Method:\n1. collectData()\n2. buildSections()\n3. applyBranding()
-generator --> ctrl : report
-deactivate generator
+ctrl -> collabRepo : findBySystemUser(currentUser)
+activate collabRepo
+collabRepo --> ctrl : collaborator
+deactivate collabRepo
 
-ctrl -> writer : write(report)
-activate writer
-writer --> ctrl : filePath
-deactivate writer
+ctrl -> ctrl : areaCodeOfCurrentUser()\n→ collaborator.areaCode()
 
-ctrl --> ui : filePath
+ctrl -> provider : generateForMonth(period, areaCode)
+activate provider
+
+provider -> flightRepo : findAll()
+activate flightRepo
+flightRepo --> provider : all flights
+deactivate flightRepo
+
+loop for each flight in period
+    provider -> provider : count flight, flightsPerWeek
+    loop for each flightPlan
+        provider -> provider : classify status\n(DRAFT/IN_TEST/TEST_PASSED/TEST_FAILED)
+    end
+end
+
+provider -> wdRepo : findByAreaCode(areaCode)
+activate wdRepo
+wdRepo --> provider : weather data
+deactivate wdRepo
+
+provider -> pilotRepo : findAll()
+activate pilotRepo
+pilotRepo --> provider : all pilots
+deactivate pilotRepo
+
+provider -> acRepo : findAll()
+activate acRepo
+acRepo --> provider : all aircraft
+deactivate acRepo
+
+create report
+provider -> report : MonthlyReport(period, totals, flightsPerWeek)
+activate report
+report --> provider
+deactivate report
+
+provider --> ctrl : report
+deactivate provider
+
+ctrl --> ui : report
 deactivate ctrl
+
+ui -> ui : prints report to console
+
+ui -> ui : saves report to\nreports/monthly-report-YYYY-MM.txt
 
 ui --> actor : displays confirmation and file path
 deactivate ui
