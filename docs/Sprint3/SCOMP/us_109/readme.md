@@ -114,8 +114,8 @@ The report generation thread interacts with three other components during the si
 - **Safety violation detection thread (US107):** signals the report thread via a condition
   variable whenever a violation is written to shared memory. The report thread wakes up,
   reads the new violation event, and appends it to its internal violation log.
-- **Shared memory segment (US105):** contains the `FlightRecord` array (one entry per
-  flight process) and the `ViolationEvent` array. The report thread reads these once the
+- **Shared memory segment (US105):** contains the `FlightData` array (one entry per
+  flight process) and the `Violation` array. The report thread reads these once the
   simulation concludes for final aggregation.
 - **Simulation end signal:** when all flight processes have terminated, the parent process
   signals the report thread to perform the final aggregation and write the report file.
@@ -132,8 +132,8 @@ The report generation thread interacts with three other components during the si
 │                                  │ Generation     │ │
 │  ┌──────────────────────┐        │ Thread         │ │
 │  │ Shared Memory        │ ──────►│ (US109)        │ │
-│  │ - FlightRecord[]     │ read   │                │ │
-│  │ - ViolationEvent[]   │        └───────┬────────┘ │
+│  │ - FlightData[]       │ read   │                │ │
+│  │ - Violation[]        │        └───────┬────────┘ │
 │  └──────────────────────┘                │          │
 │                                          │ write    │
 └──────────────────────────────────────────┼──────────┘
@@ -148,25 +148,26 @@ The report generation thread interacts with three other components during the si
 The report is saved as a plain text file with the following structure:
 
 ```
-=== AISafe Simulation Report ===
-Generated: 2026-06-10T15:00:00
+============================================
+  AISafe Simulation Report
+  Generated: Wed May 27 12:34:56 2026
+  Total steps: 3732  (3732 seconds simulated)
+  Flights: 4
+  Total violations detected: 0
+============================================
 
-Total Flights: 5
+FLIGHT SUMMARY:
+  ARRIV1: n_viol=0  ever_in_area=yes  completed=yes
+  ARRIV2: n_viol=0  ever_in_area=yes  completed=yes
+  ...
 
---- Flight Execution Statuses ---
-Flight TP101: COMPLETED
-Flight TP102: COMPLETED
-Flight TP103: ABORTED
-Flight TP104: VIOLATION
-Flight TP105: COMPLETED
+VIOLATION LOG:
+  #1 step=128  HORIZ1 <-> HORIZ2  h_dist=2226m  v_dist=0m
+    pos_a=(41.0000, -8.5000, 9200)  pos_b=(41.0200, -8.5000, 9200)
 
---- Safety Violations ---
-[2026-06-10T14:45:12] VIOLATION DETECTED
-  Flight A: TP103 | Position: (x=1200.5, y=3400.2, z=10000.0) | Velocity: (vx=250.0, vy=0.0, vz=0.0)
-  Flight B: TP104 | Position: (x=1205.1, y=3398.7, z=10000.0) | Velocity: (vx=-250.0, vy=0.0, vz=0.0)
-
---- Validation Result ---
-FAIL — 1 safety violation(s) detected.
+============================================
+  RESULT: PASS
+============================================
 ```
 
 ---
@@ -174,36 +175,43 @@ FAIL — 1 safety violation(s) detected.
 ### 3.3 Key Structures and Functions (C)
 
 ```c
-typedef enum {
-    RUNNING, COMPLETED, ABORTED, VIOLATION
-} FlightStatus;
-
+/* Flight status tracked via FlightData fields in shared memory */
 typedef struct {
-    int    flightId;
-    FlightStatus status;
-    double posX, posY, posZ;
-    double velX, velY, velZ;
-} FlightRecord;
+    char id[ID_LEN];
+    pid_t pid;
+    Pos3D pos;          /* current position (lat, lon, alt) */
+    Vel3D vel;          /* current velocity (vx, vy, vz) */
+    Phase phase;
+    int active;         /* 1 if flight has departed and not completed */
+    int in_area;        /* 1 if inside monitored airspace */
+    int ever_in_area;
+    int n_viol;         /* number of violations this flight was involved in */
+    int completed;      /* 1 if flight has reached final segment end */
+    int cur_seg;
+    double wind_speed_kt;
+    double wind_dir_deg;
+    Snapshot history[MAX_HISTORY];
+    int hist_count;
+} FlightData;
 
+/* Violation event stored in shared memory */
 typedef struct {
-    time_t timestamp;
-    int    flightIdA;
-    double posXA, posYA, posZA;
-    double velXA, velYA, velZA;
-    int    flightIdB;
-    double posXB, posYB, posZB;
-    double velXB, velYB, velZB;
-} ViolationEvent;
+    int step;
+    time_t ts;
+    int fa, fb;         /* flight indices */
+    Pos3D pa, pb;       /* positions of both aircraft */
+    Vel3D va, vb;       /* velocities of both aircraft */
+    double h_m, v_m;    /* horizontal / vertical separation */
+} Violation;
 ```
 
 Key functions:
 
-| Function | Responsibility |
-|----------|---------------|
-| `report_thread_func(void*)` | Main thread loop; waits on condition variable; handles violation notifications and final aggregation |
-| `aggregate_final_report()` | Reads shared memory after simulation ends; collects flight statuses and violation count |
-| `write_report_to_file()` | Writes the structured report to a plain text file |
-| `append_violation_event()` | Called on each condition variable signal; appends violation to internal log |
+| Function | File | Responsibility |
+|----------|------|---------------|
+| `report_generator_thread()` | `us107/us107_report_notify.c` | Main thread loop; `pthread_cond_timedwait` on `viol_cond`; logs `[REPORT]` in real time; calls `write_report()` at end |
+| `write_report()` | `us109/us109_report.c` | Writes the structured report to a timestamped plain text file with PASS/FAIL verdict |
+| `set_report_output_path()` | `us109/us109_report.c` | Configures a custom output path for the report file |
 
 ---
 
@@ -249,12 +257,11 @@ complete report content.
 
 | Name | Type | Module | Responsibility |
 |------|------|--------|---------------|
-| `FlightRecord` | C struct | SCOMP simulation | Holds per-flight execution status, position and velocity in shared memory |
-| `ViolationEvent` | C struct | SCOMP simulation | Holds a single safety violation event with timestamps, positions and velocity vectors |
-| `report_thread_func` | C function | SCOMP simulation | Report generation thread entry point; waits on condition variable and performs final aggregation |
-| `aggregate_final_report` | C function | SCOMP simulation | Reads shared memory after simulation ends and computes overall result |
-| `write_report_to_file` | C function | SCOMP simulation | Writes structured plain text report to file |
-| `GenerateSimulationReportController` | Java class | `aisafe.core.application` | EAPLI controller (US111); reads the file produced by this US and presents it to the FCO |
+| `FlightData` | C struct | `files/common.h` | Holds per-flight execution status, position, velocity, wind in shared memory |
+| `Violation` | C struct | `files/common.h` | Holds a single safety violation event with step, timestamps, positions and velocity vectors |
+| `SharedData` | C struct | `files/common.h` | Top-level shared memory struct containing all flight data, violations, mutexes, condvars, semaphores |
+| `report_generator_thread` | C function | `us107/us107_report_notify.c` | Report generation thread entry point; timedwait on viol_cond, real-time [REPORT] logging, calls write_report() at end |
+| `write_report` | C function | `us109/us109_report.c` | Writes structured plain text report to timestamped file |
 
 **Sequence Diagram — Report Generation Thread Lifecycle:**
 
@@ -268,13 +275,13 @@ See section 3.4.
 
 ## 5. Implementation
 
-**Key new files:**
+**Key files:**
 
-- `report_thread.c` / `report_thread.h` — report generation thread implementation
-- `simulation_structs.h` — `FlightRecord` and `ViolationEvent` struct definitions (shared
-  with US105, US106, US107)
-
-*Major commits: (to be filled after implementation)*
+| File | Responsibility |
+|------|---------------|
+| `files/common.h` | `SharedData`, `FlightData`, `Violation` struct definitions (shared with US105–US110) |
+| `us107/us107_report_notify.c` | `report_generator_thread()` — real-time violation logging and final report trigger |
+| `us109/us109_report.c` | `write_report()` — writes structured plain text report to file |
 
 ---
 
@@ -296,9 +303,7 @@ See section 3.4.
 - This US is the SCOMP-side implementation of the report; US111 is the EAPLI-side trigger
   and presentation layer. The integration point is the plain text report file written by
   this US and read by the US111 controller.
-- The `FlightRecord` and `ViolationEvent` structs defined here are shared with US105
-  (shared memory initialization), US106 (thread creation), and US107 (condition variable
-  signalling) — all struct definitions must be kept in a single shared header file
-  (`simulation_structs.h`) to avoid inconsistencies.
+- The `Violation` and `SharedData` structs are defined in `files/common.h` and shared with
+  US105–US110. This single header avoids inconsistencies across all user stories.
 - Mutex locking must be applied when reading shared memory during final aggregation to
   avoid race conditions with any remaining active threads.
