@@ -2,6 +2,15 @@
 #include "physics.h"
 #include <string.h>
 #include <math.h>
+#include <errno.h>
+
+static int sem_wait_retry(sem_t *sem) {
+    int ret;
+    do {
+        ret = sem_wait(sem);
+    } while (ret != 0 && errno == EINTR);
+    return ret;
+}
 
 void run_flight_process(int idx, SharedData *shm)
 {
@@ -15,7 +24,7 @@ void run_flight_process(int idx, SharedData *shm)
     int flight_completed = 0;
 
     while (shm->running && !flight_completed) {
-        if (sem_wait(shm->sem_step_start) != 0) {
+        if (sem_wait_retry(shm->sem_step_start) != 0) {
             break;
         }
         if (!shm->running) break;
@@ -101,7 +110,7 @@ int simulation_step(SharedData *shm)
         sem_post(shm->sem_step_start);
 
     for (int i = 0; i < count; i++)
-        sem_wait(shm->sem_step_done);
+        sem_wait_retry(shm->sem_step_done);
 
     int remaining = 0;
     for (int i = 0; i < shm->n_flights; i++) {

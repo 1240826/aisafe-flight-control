@@ -39,11 +39,13 @@ Instead of sending updates via pipes, all flight data is written to a shared mem
 | `FlightData[N]` | Array storing the current position, altitude, and status of each flight. |
 | `Mutex/CondVars`| Pthread mutexes and condition variables (stored in shared memory using `PTHREAD_PROCESS_SHARED` attribute if accessed across processes, or just used internally by parent threads). |
 
-### Synchronization (Semaphores)
+### Synchronization (Named Semaphores)
 
-To enforce step-by-step synchronization (US108), the system requires named or unnamed semaphores:
-- `sem_step_start`: Signals children to compute the next step.
-- `sem_step_done`: Signals the parent that a child has finished its calculation and written to shared memory.
+To enforce step-by-step synchronization (US108), the system uses named POSIX semaphores:
+- `sem_step_start` (`/aisafe_start`): signals children to compute the next step.
+- `sem_step_done` (`/aisafe_done`): signals the parent that a child has finished its calculation and written to shared memory.
+
+Named semaphores (`sem_open`) are used instead of unnamed (`sem_init`) because they are reliably process-shared across forks on all POSIX systems. Unnamed semaphores with `pshared=1` are not consistently supported on all kernels (particularly on macOS/BSD), whereas named semaphores are portable and well-tested.
 
 ### LLM Assistance
 
@@ -57,29 +59,45 @@ Generative AI was used to support the analysis and design of this user story. Be
 
 **LLM suggestions adopted:**
 - Use `shm_open`, `ftruncate`, and `mmap` to allocate the shared memory block **before** calling `fork()` or `pthread_create()`, ensuring all entities inherit the mapped memory.
-- Use POSIX unnamed semaphores (`sem_init` with the `pshared` flag set to 1) placed directly inside the mapped shared memory struct for easy access by all processes.
 
 **Decisions made by the team / deviations from LLM output:**
-- The LLM suggested using named semaphores (`sem_open`), but we decided to use unnamed semaphores (`sem_init` with `pshared = 1`) embedded directly in the shared memory struct to simplify cleanup and avoid leftover semaphore files in the OS (`/dev/shm`).
+- The LLM suggested unnamed semaphores (`sem_init` with `pshared=1`) — we chose named semaphores (`sem_open`) instead, for portability and reliable process-sharing across forks. Named semaphores are the approach used in the classroom theory examples (Exercise 2 — fork + named semaphores).
 
 ## 4. Design
 
 ```c
 init_hybrid_simulation()
   // 1. Initialize Shared Memory
-  shm_fd = shm_open("/sim_shm", O_CREAT | O_RDWR, 0666)
+  shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666)
   ftruncate(shm_fd, sizeof(SharedData))
   shared_data = mmap(0, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)
 
-  // 2. Initialize Semaphores and Mutexes in Shared Memory
-  sem_init(&shared_data->sem_step_start, 1, 0)
-  sem_init(&shared_data->sem_step_done, 1, 0)
-  
-  // 3. Spawn Parent Threads (Monitoring, Reporting, Environment)
-  pthread_create(&safety_thread, NULL, safety_monitor_func, shared_data)
-  pthread_create(&report_thread, NULL, report_gen_func, shared_data)
+  // 2. Initialize Named Semaphores (process-shared, initial value 0)
+  sem_unlink(SEM_START_NAME)
+  sem_unlink(SEM_DONE_NAME)
+  shared_data->sem_step_start = sem_open(SEM_START_NAME, O_CREAT, 0666, 0)
+  shared_data->sem_step_done  = sem_open(SEM_DONE_NAME, O_CREAT, 0666, 0)
 
-  // 4. Fork Child Processes (Flights)
+  // 3. Initialize Process-Shared Mutexes and Condition Variables
+  pthread_mutexattr_t mattr;
+  pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
+  pthread_mutex_init(&shared_data->pos_mutex, &mattr);
+  pthread_mutex_init(&shared_data->viol_mutex, &mattr);
+  pthread_mutex_init(&shared_data->detect_mutex, &mattr);
+  pthread_mutex_init(&shared_data->env_mutex, &mattr);
+
+  pthread_condattr_t cattr;
+  pthread_condattr_setpshared(&cattr, PTHREAD_PROCESS_SHARED);
+  pthread_cond_init(&shared_data->viol_cond, &cattr);
+  pthread_cond_init(&shared_data->detect_cond, &cattr);
+  pthread_cond_init(&shared_data->env_cond, &cattr);
+
+  // 4. Spawn Parent Threads (Violation Detector, Report Generator, Environment)
+  pthread_create(&detect_thr, NULL, violation_detector_thread, shared_data)
+  pthread_create(&report_thr, NULL, report_generator_thread, shared_data)
+  pthread_create(&env_thr, NULL, environment_thread, shared_data)
+
+  // 5. Fork Child Processes (Flights)
   for i in 0..n:
     fork()
     if child:
