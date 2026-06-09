@@ -12,33 +12,38 @@ actor "ATCC" as actor
 participant ":AddPilotUI" as ui <<presentation>>
 participant ":AddPilotController" as ctrl <<application>>
 participant ":AuthorizationService" as authz <<framework>>
-participant ":UserManagementService" as userSvc <<framework>>
+participant ":AirTransportCompanyRepository" as companyRepo <<repository>>
 participant ":AircraftModelRepository" as modelRepo <<repository>>
 participant ":PilotRepository" as pilotRepo <<repository>>
+participant "pilotId:PilotId" as pilotId <<domain>>
 participant "p:Pilot" as pilot <<domain>>
 
 actor -> ui : add pilot
 activate ui
 
-ui -> ctrl : getAircraftModels()
+ui -> ctrl : allCompanies()
 activate ctrl
+ctrl -> companyRepo : findAll()
+activate companyRepo
+companyRepo --> ctrl : companies
+deactivate companyRepo
+ctrl --> ui : companies
+deactivate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
-activate authz
-authz --> ctrl
-deactivate authz
+note right of ui : user selects one company\nfrom the numbered list
 
+ui -> ctrl : allAircraftModels()
+activate ctrl
 ctrl -> modelRepo : findAll()
 activate modelRepo
 modelRepo --> ctrl : aircraftModels
 deactivate modelRepo
-
 ctrl --> ui : aircraftModels
 deactivate ctrl
 
-note right of ui : username entered as string\ncertifiedModels selected\nfrom available aircraft models
+note right of ui : licenseNumber entered as string\ncertifiedModels toggled from list\ncertificationDate entered (YYYY-MM-DD)
 
-ui -> ctrl : addPilot(\n  username,\n  certifiedModelIds)
+ui -> ctrl : addPilot(\n  licenseNumber,\n  company,\n  certifiedModels,\n  certificationDate)
 activate ctrl
 
 ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
@@ -46,34 +51,15 @@ activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
-activate authz
-authz --> ctrl : atccUser
-deactivate authz
+create pilotId
+ctrl -> pilotId ** : valueOf(licenseNumber)
 
-ctrl -> userSvc : findUserByUsername(username)
-activate userSvc
-userSvc --> ctrl : systemUser
-deactivate userSvc
-
-note right of ctrl : throws exception if\nuser not found
-
-ctrl -> pilotRepo : findByUserAndCompany(\n  systemUser, atccUser.company())
-activate pilotRepo
-pilotRepo --> ctrl : optional<Pilot>
-deactivate pilotRepo
-
-note right of ctrl : throws exception if\npilot already active\nin this company
-
-ctrl -> modelRepo : findAllById(certifiedModelIds)
-activate modelRepo
-modelRepo --> ctrl : certifiedModels
-deactivate modelRepo
-
-note right of ctrl : throws exception if any\nmodel ID does not exist
+note right of ctrl : throws if format invalid\n(must match [A-Z][0-9]{4,10})
 
 create pilot
-ctrl -> pilot ** : new Pilot(\n  systemUser,\n  atccUser.company(),\n  certifiedModels)
+ctrl -> pilot ** : new Pilot(\n  pilotId,\n  company,\n  certifiedModels,\n  certificationDate)
+
+note right of ctrl : throws if certifiedModels empty\nor certificationDate in the future
 
 ctrl -> pilotRepo : save(pilot)
 activate pilotRepo
