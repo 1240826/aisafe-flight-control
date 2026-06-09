@@ -1,0 +1,16 @@
+
+--------------------------------------------------
+  MONTHLY REPORT — 2026-06
+--------------------------------------------------
+  Flights                : 8
+  Flight Plans           : 11
+    ├─ DRAFT             : 7
+    ├─ IN TEST           : 0
+    ├─ TEST PASSED       : 2  (50,0%)
+    └─ TEST FAILED       : 2  (50,0%)
+  Test Pass Rate         : 50,0%  (2/4 tested)
+  Weather Records        : 66
+  Active Pilots          : 3
+  Total Aircraft         : 10
+  Flights per week        : W23:8
+--------------------------------------------------
