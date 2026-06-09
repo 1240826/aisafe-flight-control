@@ -1,0 +1,26 @@
+# US112/MR - MonthlyReport domain validation
+# Columns: testCaseId,period,totalFlights,totalFlightPlans,flightPlansDraft,flightPlansInTest,flightPlansPassed,flightPlansFailed,totalWeatherRecords,totalActivePilots,totalAircraft,flightsPerWeek,expectedPassRate,expectedTestedPlans
+# --- Normal operational month ---
+MR01,2026-06,120,45,10,5,25,5,3000,15,8,Mon:15_Tue:18_Wed:20_Thu:22_Fri:25_Sat:12_Sun:8,83.33,30
+# --- Month with no tested plans ---
+MR02,2026-06,50,30,20,10,0,0,1000,10,5,,0.0,0
+# --- All zeros ---
+MR03,2026-06,0,0,0,0,0,0,0,0,0,,0.0,0
+# --- 100% pass rate ---
+MR04,2026-07,80,20,0,0,20,0,1500,12,6,Mon:12_Tue:14_Wed:10_Thu:16_Fri:18_Sat:6_Sun:4,100.0,20
+# --- 0% pass rate (all failed) ---
+MR05,2026-07,40,15,0,0,0,15,800,8,4,,0.0,15
+# --- Large values (near limits) ---
+MR06,2026-12,1000000,500000,100000,100000,200000,100000,500000,10000,500,,66.67,300000
+# --- Month with fractional pass rate ---
+MR07,2026-08,95,33,8,3,14,8,2500,11,7,Mon:14_Tue:16_Wed:15_Thu:18_Fri:20_Sat:7_Sun:5,63.64,22
+# --- Only draft plans, no testing activity ---
+MR08,2026-09,0,10,10,0,0,0,500,5,3,,0.0,0
+# --- Only in-test plans, no completed tests ---
+MR09,2026-09,60,25,0,25,0,0,1200,9,5,Mon:10_Tue:12_Wed:8_Thu:14_Fri:16_Sat:0_Sun:0,0.0,0
+# --- January with flightsPerWeek ---
+MR10,2026-01,310,88,22,11,44,11,4200,20,10,Mon:45_Tue:48_Wed:50_Thu:52_Fri:55_Sat:30_Sun:30,80.0,55
+# --- One tested flight ---
+MR11,2026-10,1,1,0,0,1,0,10,1,1,Mon:1,100.0,1
+# --- One failed test ---
+MR12,2026-10,1,1,0,0,0,1,10,1,1,,0.0,1

@@ -1,0 +1,41 @@
+# US042/WC - WindCondition domain validation
+# Columns: testCaseId,speedKnots,directionDegrees,latitude,longitude,altitudeMetres,expectValid
+# --- Valid boundary cases ---
+WC01,15.5,270,38.7,-9.1,1000,true
+WC02,10.0,0,0.0,0.0,0,true
+WC03,10.0,359,0.0,0.0,0,true
+WC04,10.0,90,90.0,0.0,0,true
+WC05,10.0,90,-90.0,0.0,0,true
+WC06,10.0,90,0.0,180.0,0,true
+WC07,10.0,90,0.0,-180.0,0,true
+# --- Realistic values ---
+WC08,25.3,180,51.470,-0.454,35000,true
+WC09,12.0,45,41.248,-8.681,10000,true
+WC10,8.5,315,38.774,-9.134,5000,true
+WC11,45.0,270,65.0,-18.0,40000,true
+WC12,3.2,120,-33.867,151.208,2000,true
+WC13,60.0,90,0.0,0.0,50000,true
+WC14,30.0,225,48.856,2.352,30000,true
+WC15,18.7,10,55.755,37.617,15000,true
+# --- Invalid: speed ---
+WC16,0.0,270,38.7,-9.1,1000,false
+WC17,-5.0,270,38.7,-9.1,1000,false
+WC18,-0.1,180,0.0,0.0,0,false
+# --- Invalid: direction ---
+WC19,10.0,360,0.0,0.0,0,false
+WC20,10.0,-1,0.0,0.0,0,false
+WC21,10.0,400,0.0,0.0,0,false
+WC22,10.0,-90,0.0,0.0,0,false
+# --- Invalid: latitude ---
+WC23,10.0,90,91.0,0.0,0,false
+WC24,10.0,90,-91.0,0.0,0,false
+WC25,10.0,90,100.0,0.0,0,false
+WC26,10.0,90,-100.0,0.0,0,false
+# --- Invalid: longitude ---
+WC27,10.0,90,0.0,181.0,0,false
+WC28,10.0,90,0.0,-181.0,0,false
+WC29,10.0,90,0.0,200.0,0,false
+WC30,10.0,90,0.0,-200.0,0,false
+# --- Invalid: altitude ---
+WC31,10.0,90,0.0,0.0,-1,false
+WC32,10.0,90,0.0,0.0,-100,false

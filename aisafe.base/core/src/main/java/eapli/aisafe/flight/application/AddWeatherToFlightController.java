@@ -87,7 +87,7 @@ public class AddWeatherToFlightController {
         authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.PILOT);
         final var midpoint = computeMidpoint(flight);
         final var aca = findAcaForMidpoint(midpoint.lat, midpoint.lon);
-        final var acaCode = aca.code().toString();
+        final var acaCode = aca.code();
         final var result = new ArrayList<WeatherData>();
         for (final var wd : weatherRepo.findAll()) {
             if (wd.areaCode().equals(acaCode)) {

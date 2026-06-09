@@ -5,7 +5,10 @@ import eapli.aisafe.aircontrolarea.domain.AreaCode;
 import eapli.aisafe.aircontrolarea.repositories.AirControlAreaRepository;
 import eapli.aisafe.flight.domain.Flight;
 import eapli.aisafe.flight.domain.FlightDesignator;
+import eapli.aisafe.flight.domain.FlightType;
 import eapli.aisafe.flight.repositories.FlightRepository;
+import eapli.aisafe.flightroute.domain.FlightRouteName;
+import eapli.aisafe.pilot.domain.PilotId;
 import eapli.aisafe.weatherdata.domain.WeatherData;
 import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
@@ -39,8 +42,6 @@ class AddWeatherToFlightControllerTest {
         controller = new AddWeatherToFlightController(authz, flightRepo, weatherRepo, acaRepo);
     }
 
-    // ── allFlights ────────────────────────────────────────────────────────────
-
     @Test
     void ensureAllFlightsDelegatesToRepo() {
         when(flightRepo.findAll()).thenReturn(List.of(
@@ -59,7 +60,28 @@ class AddWeatherToFlightControllerTest {
         verify(authz).ensureAuthenticatedUserHasAnyOf(any());
     }
 
-    // ── flightByDesignator ────────────────────────────────────────────────────
+    @Test
+    void ensureAllFlightsReturnsEmptyListWhenNoFlights() {
+        when(flightRepo.findAll()).thenReturn(List.of());
+
+        final var result = controller.allFlights();
+
+        assertNotNull(result);
+        assertFalse(result.iterator().hasNext());
+    }
+
+    @Test
+    void ensureAllFlightsReturnsMultipleFlights() {
+        when(flightRepo.findAll()).thenReturn(List.of(
+                new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME),
+                new Flight(FlightDesignator.valueOf("TP5678"), DEP_TIME)));
+
+        final var result = controller.allFlights();
+
+        int count = 0;
+        for (final var f : result) count++;
+        assertEquals(2, count);
+    }
 
     @Test
     void ensureFlightByDesignatorReturnsFlight() {
@@ -78,8 +100,7 @@ class AddWeatherToFlightControllerTest {
         when(flightRepo.ofIdentity(FlightDesignator.valueOf("TP9999"))).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
-                () -> controller.flightByDesignator("TP9999"),
-                "Unknown flight must be rejected");
+                () -> controller.flightByDesignator("TP9999"));
     }
 
     @Test
@@ -90,7 +111,10 @@ class AddWeatherToFlightControllerTest {
         verify(authz).ensureAuthenticatedUserHasAnyOf(any());
     }
 
-    // ── assignWeather ─────────────────────────────────────────────────────────
+    @Test
+    void ensureFlightByDesignatorWithNullDesignator() {
+        assertThrows(Exception.class, () -> controller.flightByDesignator(null));
+    }
 
     @Test
     void ensureAssignWeatherSavesFlight() {
@@ -149,5 +173,91 @@ class AddWeatherToFlightControllerTest {
 
         assertEquals(1L, result.weatherDataId());
         verify(flightRepo).save(any());
+    }
+
+    @Test
+    void ensureAssignWeatherWithZeroId() {
+        final Flight flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        when(weatherRepo.ofIdentity(0L)).thenReturn(Optional.of(mock(WeatherData.class)));
+        when(flightRepo.ofIdentity(FlightDesignator.valueOf("TP1234")))
+                .thenReturn(Optional.of(flight));
+        when(flightRepo.save(any())).thenReturn(flight);
+
+        final var result = controller.assignWeather("TP1234", 0L);
+
+        assertEquals(0L, result.weatherDataId());
+    }
+
+    @Test
+    void ensureAssignWeatherWithLargeId() {
+        final Flight flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        when(weatherRepo.ofIdentity(999999L)).thenReturn(Optional.of(mock(WeatherData.class)));
+        when(flightRepo.ofIdentity(FlightDesignator.valueOf("TP1234")))
+                .thenReturn(Optional.of(flight));
+        when(flightRepo.save(any())).thenReturn(flight);
+
+        final var result = controller.assignWeather("TP1234", 999999L);
+
+        assertEquals(999999L, result.weatherDataId());
+    }
+
+    @Test
+    void ensureWeatherDataForFlightReturnsData() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME,
+                FlightRouteName.valueOf("TP123"), "CS-TTT", new PilotId("P12345"), FlightType.REGULAR);
+        final var aca = mock(AirControlArea.class);
+        when(aca.containsCoordinates(anyDouble(), anyDouble())).thenReturn(true);
+        when(aca.code()).thenReturn(AreaCode.valueOf("LPPC"));
+        when(acaRepo.findAll()).thenReturn(List.of(aca));
+
+        final WeatherData wd = mock(WeatherData.class);
+        when(wd.areaCode()).thenReturn(AreaCode.valueOf("LPPC"));
+        when(weatherRepo.findAll()).thenReturn(List.of(wd));
+
+        final var result = controller.weatherDataForFlight(flight);
+
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void ensureWeatherDataForFlightReturnsEmptyWhenNoAcaFound() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME,
+                FlightRouteName.valueOf("TP123"), "CS-TTT", new PilotId("P12345"), FlightType.REGULAR);
+        when(acaRepo.findAll()).thenReturn(List.of());
+
+        assertThrows(IllegalStateException.class,
+                () -> controller.weatherDataForFlight(flight));
+    }
+
+    @Test
+    void ensureFindAcaForMidpointReturnsCorrectAca() {
+        final var aca = mock(AirControlArea.class);
+        when(aca.containsCoordinates(38.7, -9.1)).thenReturn(true);
+        when(acaRepo.findAll()).thenReturn(List.of(aca));
+
+        final var result = controller.findAcaForMidpoint(38.7, -9.1);
+
+        assertSame(aca, result);
+    }
+
+    @Test
+    void ensureFindAcaForMidpointThrowsWhenNoAcaFound() {
+        when(acaRepo.findAll()).thenReturn(List.of());
+
+        assertThrows(IllegalStateException.class,
+                () -> controller.findAcaForMidpoint(0.0, 0.0));
+    }
+
+    @Test
+    void ensureFlightByDesignatorWithLowerCaseDesignator() {
+        final Flight flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        when(flightRepo.ofIdentity(FlightDesignator.valueOf("TP1234")))
+                .thenReturn(Optional.of(flight));
+
+        final var result = controller.flightByDesignator("tp1234");
+
+        assertNotNull(result);
+        assertEquals("TP1234", result.identity().toString());
     }
 }
