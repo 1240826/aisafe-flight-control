@@ -1,6 +1,8 @@
 package rcomp.client;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Scanner;
 
 public final class AtcClientApp {
@@ -87,6 +89,7 @@ public final class AtcClientApp {
 	private static void doAddAircraft(final TcpClient c, final Scanner sc) throws IOException {
 		System.out.print("Registration number: ");
 		final String reg = sc.nextLine().trim();
+		if (reg.isEmpty()) { System.out.println("Registration required."); return; }
 		System.out.print("Country: ");
 		final String country = sc.nextLine().trim();
 		System.out.print("Model code (e.g. A320): ");
@@ -95,8 +98,10 @@ public final class AtcClientApp {
 		final String company = sc.nextLine().trim();
 		System.out.print("Crew members: ");
 		final String crew = sc.nextLine().trim();
+		if (!isInt(crew, "Crew members")) return;
 		System.out.print("Date (yyyy-mm-dd): ");
 		final String date = sc.nextLine().trim();
+		if (!isDate(date)) return;
 		printResp(c.send("ADD_AIRCRAFT|" + reg + "|" + country + "|" + model
 				+ "|" + company + "|" + crew + "|" + date));
 	}
@@ -124,18 +129,22 @@ public final class AtcClientApp {
 	private static void doDeleteRoute(final TcpClient c, final Scanner sc) throws IOException {
 		System.out.print("Route name: ");
 		final String name = sc.nextLine().trim();
+		if (name.isEmpty()) { System.out.println("Route name required."); return; }
 		System.out.print("Deactivation date (yyyy-mm-dd): ");
 		final String date = sc.nextLine().trim();
+		if (!isDate(date)) return;
 		printResp(c.send("DELETE_ROUTE|" + name + "|" + date));
 	}
 
 	private static void doAddPilot(final TcpClient c, final Scanner sc) throws IOException {
 		System.out.print("License number: ");
 		final String license = sc.nextLine().trim();
+		if (license.isEmpty()) { System.out.println("License required."); return; }
 		System.out.print("Company IATA: ");
 		final String company = sc.nextLine().trim();
 		System.out.print("Certification date (yyyy-mm-dd): ");
 		final String date = sc.nextLine().trim();
+		if (!isDate(date)) return;
 		System.out.print("Certified models (comma-separated, e.g. A320,B738): ");
 		final String models = sc.nextLine().trim();
 		printResp(c.send("ADD_PILOT|" + license + "|" + company + "|" + date + "|" + models));
@@ -152,6 +161,26 @@ public final class AtcClientApp {
 	}
 
 	// ── Helpers
+
+	private static boolean isInt(final String s, final String field) {
+		try {
+			Integer.parseInt(s);
+			return true;
+		} catch (final NumberFormatException e) {
+			System.out.println("Invalid " + field + ": must be a whole number.");
+			return false;
+		}
+	}
+
+	private static boolean isDate(final String s) {
+		try {
+			LocalDate.parse(s);
+			return true;
+		} catch (final DateTimeParseException e) {
+			System.out.println("Invalid date. Use yyyy-MM-dd (e.g. 2026-06-01).");
+			return false;
+		}
+	}
 
 	private static void printResp(final String resp) {
 		if (resp == null) {

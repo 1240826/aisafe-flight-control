@@ -1,6 +1,9 @@
 package rcomp.client;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Scanner;
 
 /**
@@ -87,14 +90,22 @@ public final class AISafeClientApp {
 
     private static void doRegisterWeather(final TcpClient c, final Scanner sc) throws IOException {
         System.out.print("Area code: ");          final String area  = sc.nextLine().trim();
+        if (area.isEmpty()) { System.out.println("Area code required."); return; }
         System.out.print("Latitude: ");           final String lat   = sc.nextLine().trim();
+        if (!isDouble(lat, "Latitude")) return;
         System.out.print("Longitude: ");          final String lon   = sc.nextLine().trim();
+        if (!isDouble(lon, "Longitude")) return;
         System.out.print("Altitude (m): ");       final String alt   = sc.nextLine().trim();
+        if (!isDouble(alt, "Altitude")) return;
         System.out.print("Wind speed (knots): "); final String speed = sc.nextLine().trim();
+        if (!isDouble(speed, "Wind speed")) return;
         System.out.print("Wind dir (deg): ");     final String dir   = sc.nextLine().trim();
+        if (!isDouble(dir, "Wind direction")) return;
         System.out.print("Temperature (°C): ");   final String temp  = sc.nextLine().trim();
+        if (!isDouble(temp, "Temperature")) return;
         System.out.print("Provider: ");           final String prov  = sc.nextLine().trim();
         System.out.print("DateTime (e.g. 2026-06-01T14:30:00): "); final String dt = sc.nextLine().trim();
+        if (!isDateTime(dt)) return;
 
         printResp(c.send("REGISTER_WEATHER|" + area + "|" + lat + "|" + lon + "|"
                 + alt + "|" + speed + "|" + dir + "|" + temp + "|" + prov + "|" + dt));
@@ -103,6 +114,7 @@ public final class AISafeClientApp {
     private static void doImportWeather(final TcpClient c, final Scanner sc) throws IOException {
         System.out.print("Area code: ");
         final String area = sc.nextLine().trim();
+        if (area.isEmpty()) { System.out.println("Area code required."); return; }
         System.out.println("CSV rows (lat,lon,alt,speed,dir,temp,provider[,datetime])");
         System.out.println("Separate with  ;  — blank line to finish:");
         final StringBuilder csv = new StringBuilder();
@@ -111,22 +123,56 @@ public final class AISafeClientApp {
             if (csv.length() > 0) csv.append(";");
             csv.append(line.trim());
         }
+        if (csv.isEmpty()) { System.out.println("No data entered."); return; }
         printResp(c.send("IMPORT_WEATHER|" + area + "|" + csv));
     }
 
     private static void doConsultWeather(final TcpClient c, final Scanner sc) throws IOException {
         System.out.print("Area code: ");
         final String area = sc.nextLine().trim();
+        if (area.isEmpty()) { System.out.println("Area code required."); return; }
         System.out.print("Date (e.g. 2026-06-01): ");
-        printResp(c.send("CONSULT_WEATHER|" + area + "|" + sc.nextLine().trim()));
+        final String date = sc.nextLine().trim();
+        if (!isDate(date)) return;
+        printResp(c.send("CONSULT_WEATHER|" + area + "|" + date));
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private static boolean isDouble(final String s, final String field) {
+        try {
+            Double.parseDouble(s);
+            return true;
+        } catch (final NumberFormatException e) {
+            System.out.println("Invalid " + field + ": must be a number.");
+            return false;
+        }
+    }
+
+    private static boolean isDate(final String s) {
+        try {
+            LocalDate.parse(s);
+            return true;
+        } catch (final DateTimeParseException e) {
+            System.out.println("Invalid date. Use yyyy-MM-dd (e.g. 2026-06-01).");
+            return false;
+        }
+    }
+
+    private static boolean isDateTime(final String s) {
+        try {
+            LocalDateTime.parse(s);
+            return true;
+        } catch (final DateTimeParseException e) {
+            System.out.println("Invalid datetime. Use ISO format (e.g. 2026-06-01T14:30:00).");
+            return false;
+        }
+    }
 
     private static void printResp(final String resp) {
         if (resp == null)                 { System.out.println("Connection closed by server."); return; }
         if (resp.startsWith("OK|"))       { System.out.println("✔  " + resp.substring(3)); }
-        else if (resp.startsWith("ERR|")) { System.out.println("✘  Error: " + resp.substring(4)); }
+        else if (resp.startsWith("ERR|")) { System.out.println("  Error: " + resp.substring(4)); }
         else                              { System.out.println("   " + resp); }
     }
 }

@@ -3,6 +3,8 @@ package rcomp.client;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Scanner;
 
 /**
@@ -111,8 +113,13 @@ public final class PilotClientApp {
     private static void doImportFlightPlan(final TcpClient c, final Scanner sc) throws IOException {
         System.out.print("Flight ID: ");
         final String flightId = sc.nextLine().trim();
+        if (flightId.isEmpty()) { System.out.println("Flight ID required."); return; }
         System.out.print("DSL file path: ");
         final String path = sc.nextLine().trim();
+        if (!Files.exists(Paths.get(path))) {
+            System.out.println("File not found: " + path);
+            return;
+        }
         try {
             final String dsl = Files.readString(Paths.get(path));
             printResp(c.send("IMPORT_FLIGHT_PLAN|" + flightId + "|" + dsl));
@@ -123,27 +130,61 @@ public final class PilotClientApp {
 
     private static void doValidateFlightPlan(final TcpClient c, final Scanner sc) throws IOException {
         System.out.print("Flight Plan ID: ");
-        printResp(c.send("VALIDATE_FLIGHT_PLAN|" + sc.nextLine().trim()));
+        final String id = sc.nextLine().trim();
+        if (id.isEmpty()) { System.out.println("Flight Plan ID required."); return; }
+        printResp(c.send("VALIDATE_FLIGHT_PLAN|" + id));
     }
 
     private static void doGenerateReport(final TcpClient c, final Scanner sc) throws IOException {
         System.out.print("Area code: ");
-        printResp(c.send("GENERATE_REPORT|" + sc.nextLine().trim()));
+        final String area = sc.nextLine().trim();
+        if (area.isEmpty()) { System.out.println("Area code required."); return; }
+        printResp(c.send("GENERATE_REPORT|" + area));
     }
 
     private static void doMonthlyReport(final TcpClient c, final Scanner sc) throws IOException {
         System.out.print("Year (e.g. 2026): ");
         final String year  = sc.nextLine().trim();
+        if (!isInt(year, "Year") || year.length() != 4) {
+            System.out.println("Invalid year. Use a 4-digit year (e.g. 2026).");
+            return;
+        }
         System.out.print("Month (1-12): ");
         final String month = sc.nextLine().trim();
-        final String resp = c.send("MONTHLY_REPORT|" + year + "|" + month);
-        printResp(resp);
-        if (resp != null && resp.startsWith("OK|")) {
-            System.out.println(resp.substring(3).replace("\\n", "\n"));
+        if (!isInt(month, "Month")) return;
+        int m = Integer.parseInt(month);
+        if (m < 1 || m > 12) {
+            System.out.println("Invalid month. Must be between 1 and 12.");
+            return;
         }
+        final String resp = c.send("MONTHLY_REPORT|" + year + "|" + month);
+        if (resp == null)                  { System.out.println("Connection closed by server."); return; }
+        if (resp.startsWith("OK|"))        { System.out.println(resp.substring(3).replace("\\n", "\n")); }
+        else if (resp.startsWith("ERR|"))  { System.out.println("ERR  " + resp.substring(4)); }
+        else                               { System.out.println(resp.replace("\\n", "\n")); }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static boolean isInt(final String s, final String field) {
+        try {
+            Integer.parseInt(s);
+            return true;
+        } catch (final NumberFormatException e) {
+            System.out.println("Invalid " + field + ": must be a whole number.");
+            return false;
+        }
+    }
+
+    private static boolean isDate(final String s) {
+        try {
+            LocalDate.parse(s);
+            return true;
+        } catch (final DateTimeParseException e) {
+            System.out.println("Invalid date. Use yyyy-MM-dd (e.g. 2026-06-01).");
+            return false;
+        }
+    }
 
     private static String readMultiline(final Scanner sc) {
         final StringBuilder sb = new StringBuilder();

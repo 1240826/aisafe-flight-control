@@ -1,0 +1,15 @@
+
+--------------------------------------------------
+  MONTHLY REPORT — 2026-05
+--------------------------------------------------
+  Flights                : 0
+  Flight Plans           : 0
+    ├─ DRAFT             : 0
+    ├─ IN TEST           : 0
+    ├─ TEST PASSED       : 0  (0,0%)
+    └─ TEST FAILED       : 0  (100,0%)
+  Test Pass Rate         : ---  (none tested)
+  Weather Records        : 0
+  Active Pilots          : 3
+  Total Aircraft         : 10
+--------------------------------------------------

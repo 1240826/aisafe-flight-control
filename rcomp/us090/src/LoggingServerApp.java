@@ -1,3 +1,5 @@
+package rcomp.logging;
+
 import java.io.IOException;
 
 /**
@@ -10,10 +12,10 @@ import java.io.IOException;
  * Both share the same LogStore instance.
  *
  * Usage:
- *   java -cp out LoggingServerApp <udpPort> <httpPort>
+ *   java -cp out rcomp.logging.LoggingServerApp <udpPort> <httpPort>
  *
  * Example:
- *   java -cp out LoggingServerApp 9090 8080
+ *   java -cp out rcomp.logging.LoggingServerApp 9090 8080
  *
  * Defaults:
  *   udpPort  = 9090

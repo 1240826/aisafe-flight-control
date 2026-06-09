@@ -142,7 +142,7 @@ class PilotClientHandler extends AbstractClientHandler {
             final int year  = Integer.parseInt(f[1]);
             final int month = Integer.parseInt(f[2]);
             final MonthlyReport report = pilotService.monthlyReport(year, month);
-            return RemoteProtocol.ok(report.toString().replace("\n", "\\n"));
+            return RemoteProtocol.ok(report.toString().replace("\r\n", "\n").replace("\n", "\\n"));
         } catch (final DateTimeParseException e) {
             return RemoteProtocol.err("Invalid date: " + e.getMessage());
         } catch (final Exception e) {

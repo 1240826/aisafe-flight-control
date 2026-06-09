@@ -24,6 +24,7 @@ public final class TcpClient implements AutoCloseable {
     public TcpClient(final String host, final int port) throws IOException {
         this.socket = new Socket();
         this.socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
+        this.socket.setSoTimeout(30_000);
         this.in  = new BufferedReader(
                 new InputStreamReader(socket.getInputStream(),  StandardCharsets.UTF_8));
         this.out = new PrintWriter(
