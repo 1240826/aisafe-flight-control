@@ -727,6 +727,13 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
     }
 
     private void bootstrapFlightControlOperators() {
+        // Demo superuser — Lisboa FIR (LPPC)
+        final SystemUser demo = registerUser("demo", TestDataConstants.PASSWORD1,
+                "Demo", "Superuser", "demo@aisafe.local",
+                Set.of(AISafeRoles.ADMIN));
+        saveCollaboratorFCO(demo, "Demo Superuser",
+                "Full Access FCO", AreaCode.valueOf("LPPC"));
+
         // FCO 1 — Lisboa FIR (LPPC)
         final SystemUser fco1 = registerUser("fco1", TestDataConstants.PASSWORD1,
                 "Ana", "Santos", "fco1@aisafe.local",
