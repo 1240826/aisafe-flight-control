@@ -1,5 +1,5 @@
-@startuml sd_us074_deactivate_flight_route
-title US074 — Deactivate Flight Route
+@startuml sd_us074_delete_flight_route
+title US074 — Delete (Deactivate) Flight Route
 
 skinparam sequenceMessageAlign center
 skinparam defaultFontName Arial
@@ -8,85 +8,81 @@ skinparam ParticipantPadding 20
 
 autonumber
 
-actor "ATCC" as actor
-participant ":DeactivateFlightRouteUI" as ui <<presentation>>
-participant ":DeactivateFlightRouteController" as ctrl <<application>>
-participant ":AuthorizationService" as authz <<framework>>
-participant ":FlightRouteRepository" as routeRepo <<repository>>
-participant ":FlightPlanRepository" as planRepo <<repository>>
-participant ":FlightRoute" as route <<domain>>
+actor "ATC Collaborator" as actor
+participant ":DeleteFlightRouteUI"         as ui        <<presentation>>
+participant ":DeleteFlightRouteController" as ctrl      <<application>>
+participant ":AuthorizationService"        as authz     <<framework>>
+participant ":FlightRouteRepository"       as routeRepo <<repository>>
+participant ":FlightRepository"            as flightRepo <<repository>>
+participant ":FlightRoute"                 as route     <<domain>>
 
-== List available routes ==
+== List active routes ==
 
 actor -> ui : deactivate flight route
 activate ui
 
-ui -> ctrl : getActiveRoutesForCompany()
+ui -> ctrl : activeRoutes()
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  AISafeRoles.ATC_COLLABORATOR)
 activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
-activate authz
-authz --> ctrl : atccUser
-deactivate authz
-
-ctrl -> routeRepo : findActiveRoutesByCompany(\n  atccUser.company())
+ctrl -> routeRepo : findAllActive()
 activate routeRepo
-routeRepo --> ctrl : activeRoutes
+routeRepo --> ctrl : Iterable<FlightRoute>
 deactivate routeRepo
 
-ctrl --> ui : activeRoutes
+ctrl --> ui : Iterable<FlightRoute>
 deactivate ctrl
 
-note right of ui : displays list of active routes;\nuser selects a route and\nenters the deactivation date
+note right of ui
+  displays list of active routes;
+  user selects a route and
+  enters the deactivation date
+end note
 
 == Deactivate selected route ==
 
-actor -> ui : selects route + enters deactivationDate
+actor -> ui : selects route + enters deactivationDate : LocalDate
 
-ui -> ctrl : deactivateRoute(\n  routeId, deactivationDate)
+ui -> ctrl : deactivateRoute(\n  routeName : String, deactivationDate : LocalDate)
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  AISafeRoles.ATC_COLLABORATOR)
 activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
-activate authz
-authz --> ctrl : atccUser
-deactivate authz
+note over ctrl
+  name = FlightRouteName.valueOf(routeName)
+end note
 
-ctrl -> routeRepo : findById(routeId)
+ctrl -> routeRepo : ofIdentity(name : FlightRouteName)
 activate routeRepo
-routeRepo --> ctrl : flightRoute
+routeRepo --> ctrl : Optional<FlightRoute>
 deactivate routeRepo
 
-ctrl -> ctrl : ensureRouteBelongsToCompany(\n  flightRoute, atccUser.company())
+ctrl -> flightRepo : existsByRouteNameAndDepartureTimeAfter(\n  name : FlightRouteName,\n  deactivationDate.atStartOfDay() : LocalDateTime)
+activate flightRepo
+flightRepo --> ctrl : false
+deactivate flightRepo
 
-ctrl -> planRepo : existsPlannedFlightAfterDate(\n  routeId, deactivationDate)
-activate planRepo
-planRepo --> ctrl : false
-deactivate planRepo
-
-ctrl -> route : deactivate(deactivationDate)
+ctrl -> route : deactivate(deactivationDate : LocalDate)
 activate route
 route --> ctrl
 deactivate route
 
-ctrl -> routeRepo : save(flightRoute)
+ctrl -> routeRepo : save(route : FlightRoute)
 activate routeRepo
-routeRepo --> ctrl
+routeRepo --> ctrl : FlightRoute
 deactivate routeRepo
 
-ctrl --> ui : success
+ctrl --> ui : FlightRoute
 deactivate ctrl
 
-ui --> actor : "Route deactivated successfully."
+ui --> actor : "Route '<name>' deactivated successfully from <date>"
 deactivate ui
 
 @enduml
