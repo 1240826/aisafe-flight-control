@@ -1,0 +1,28 @@
+# US042/WD - WeatherData domain validation
+# Columns separated by semicolon (;) because windSpeed uses dot notation
+# Columns: testCaseId;areaCode;windSpeed;windDir;windLat;windLon;windAlt;temperature;sourceProvider;recordedDate;recordedTime;expectValid
+# --- Valid cases ---
+WD01;LPPC;15.5;270;38.7;-9.1;1000;18.5;IPMA;14/05/2026;10:00;true
+WD02;LPPC;12.0;180;38.774;-9.134;5000;22.3;EUROCONTROL;15/05/2026;14:30;true
+WD03;BIRD;30.0;45;65.0;-18.0;35000;-12.5;Isavia;16/05/2026;08:15;true
+WD04;WEFIR;8.5;315;41.248;-8.681;2000;15.0;METAR OPO;01/06/2026;00:00;true
+WD05;KZNE;60.0;90;51.470;-0.454;40000;-35.0;NOAA;20/12/2026;23:59;true
+WD06;LPPC;10.0;0;0.0;0.0;0;30.0;WEATHER_FORECAST;30/06/2026;12:00;true
+WD07;LIRR;25.0;270;48.856;2.352;30000;10.5;METAR CDG;01/01/2026;06:00;true
+# --- Invalid: sourceProvider blank ---
+WD08;LPPC;15.5;270;38.7;-9.1;1000;18.5;   ;14/05/2026;10:00;false
+WD09;LPPC;15.5;270;38.7;-9.1;1000;18.5;;14/05/2026;10:00;false
+# --- Invalid: wind condition - speed zero ---
+WD10;LPPC;0.0;270;38.7;-9.1;1000;18.5;IPMA;14/05/2026;10:00;false
+# --- Invalid: wind condition - direction out of range ---
+WD11;LPPC;15.5;360;38.7;-9.1;1000;18.5;IPMA;14/05/2026;10:00;false
+# --- Invalid: wind condition - latitude out of range ---
+WD12;LPPC;15.5;270;91.0;-9.1;1000;18.5;IPMA;14/05/2026;10:00;false
+# --- Invalid: wind condition - longitude out of range ---
+WD13;LPPC;15.5;270;38.7;181.0;1000;18.5;IPMA;14/05/2026;10:00;false
+# --- Invalid: wind condition - negative altitude ---
+WD14;LPPC;15.5;270;38.7;-9.1;-1;18.5;IPMA;14/05/2026;10:00;false
+# --- Invalid: bad date format ---
+WD15;LPPC;15.5;270;38.7;-9.1;1000;18.5;IPMA;2026-05-14;10:00;false
+# --- Invalid: bad time format ---
+WD16;LPPC;15.5;270;38.7;-9.1;1000;18.5;IPMA;14/05/2026;25:00;false

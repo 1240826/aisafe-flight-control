@@ -35,9 +35,9 @@ class ImportBulkWeatherDataControllerTest {
         controller = new ImportBulkWeatherDataController(authz, repo, acaRepo);
 
         when(acaRepo.ofIdentity(AreaCode.valueOf("LPPC"))).thenReturn(Optional.of(mock()));
+        when(acaRepo.ofIdentity(AreaCode.valueOf("WEFIR"))).thenReturn(Optional.of(mock()));
+        when(acaRepo.ofIdentity(AreaCode.valueOf("KZNE"))).thenReturn(Optional.of(mock()));
     }
-
-    // ── Happy path ────────────────────────────────────────────────────────────
 
     @Test
     void ensureImportFromCsvSavesWeatherData() throws IOException {
@@ -46,7 +46,7 @@ class ImportBulkWeatherDataControllerTest {
                 "# ACA 1 = LPPC\n" +
                 "1;38,0;-10,0;39,0;-9,0;0;2000;270;15,5;14/05/2026;10:00;12:00\n");
 
-        final ImportBulkWeatherDataController.ImportResult result = controller.importFromCsv(csv);
+        final var result = controller.importFromCsv(csv);
 
         assertEquals(1, result.imported());
         assertEquals(0, result.skipped());
@@ -64,13 +64,8 @@ class ImportBulkWeatherDataControllerTest {
         verify(authz).ensureAuthenticatedUserHasAnyOf(any());
     }
 
-    // ── CSV format ────────────────────────────────────────────────────────────
-
     @Test
     void ensureMultipleValidLinesAreAllImported() throws IOException {
-        when(acaRepo.ofIdentity(AreaCode.valueOf("LPPC"))).thenReturn(Optional.of(mock()));
-        when(acaRepo.ofIdentity(AreaCode.valueOf("WEFIR"))).thenReturn(Optional.of(mock()));
-
         final Path csv = tempDir.resolve("multi.csv");
         Files.writeString(csv,
                 "# ACA 1 = LPPC\n" +
@@ -100,14 +95,12 @@ class ImportBulkWeatherDataControllerTest {
         assertEquals(0, result.skipped());
     }
 
-    // ── Error handling ────────────────────────────────────────────────────────
-
     @Test
     void ensureInvalidColumnCountIsSkipped() throws IOException {
         final Path csv = tempDir.resolve("badcols.csv");
         Files.writeString(csv,
                 "# ACA 1 = LPPC\n" +
-                "1;38,0;-10,0;39,0;-9,0\n");  // only 6 columns
+                "1;38,0;-10,0;39,0;-9,0\n");
 
         final var result = controller.importFromCsv(csv);
 
@@ -164,16 +157,11 @@ class ImportBulkWeatherDataControllerTest {
         when(acaRepo.ofIdentity(AreaCode.valueOf("XXXX"))).thenReturn(Optional.empty());
         Files.writeString(csv, "# ACA 1 = XXXX\n");
 
-        assertThrows(IllegalArgumentException.class, () -> controller.importFromCsv(csv),
-                "Unknown ACA in header must be rejected");
+        assertThrows(IllegalArgumentException.class, () -> controller.importFromCsv(csv));
     }
 
     @Test
     void ensureEuropeanDecimalIsParsedCorrectly() throws IOException {
-        when(acaRepo.ofIdentity(AreaCode.valueOf("LPPC"))).thenReturn(Optional.of(mock()));
-        when(acaRepo.ofIdentity(AreaCode.valueOf("KZNE"))).thenReturn(Optional.of(mock()));
-        when(acaRepo.ofIdentity(AreaCode.valueOf("WEFIR"))).thenReturn(Optional.of(mock()));
-
         final Path csv = tempDir.resolve("eu.csv");
         Files.writeString(csv,
                 "# ACA 1 = LPPC\n" +
@@ -187,6 +175,50 @@ class ImportBulkWeatherDataControllerTest {
 
         assertEquals(3, result.imported());
         assertEquals(0, result.skipped());
+    }
+
+    @Test
+    void ensureMixedValidAndInvalidLines() throws IOException {
+        final Path csv = tempDir.resolve("mixed.csv");
+        Files.writeString(csv,
+                "# ACA 1 = LPPC\n" +
+                "1;38,0;-10,0;39,0;-9,0;0;2000;270;15,5;14/05/2026;10:00;12:00\n" +
+                "1;bad;-10,0;39,0;-9,0;0;2000;270;15,5;14/05/2026;10:00;12:00\n" +
+                "1;40,0;-8,0;41,0;-7,0;500;2500;180;20,0;15/05/2026;14:30;16:30\n");
+
+        final var result = controller.importFromCsv(csv);
+
+        assertEquals(2, result.imported());
+        assertEquals(1, result.skipped());
+        assertTrue(result.hasErrors());
+    }
+
+    @Test
+    void ensureLargeBatchImport() throws IOException {
+        final Path csv = tempDir.resolve("large.csv");
+        final var sb = new StringBuilder("# ACA 1 = LPPC\n");
+        for (int i = 0; i < 100; i++) {
+            sb.append("1;38,0;-10,0;39,0;-9,0;0;2000;270;15,5;14/05/2026;10:00;12:00\n");
+        }
+        Files.writeString(csv, sb.toString());
+
+        final var result = controller.importFromCsv(csv);
+
+        assertEquals(100, result.imported());
+        assertEquals(0, result.skipped());
+        verify(repo, times(100)).save(any());
+    }
+
+    @Test
+    void ensureHeadersOnlyWithNoDataLines() throws IOException {
+        final Path csv = tempDir.resolve("headersonly.csv");
+        Files.writeString(csv, "# ACA 1 = LPPC\n");
+
+        final var result = controller.importFromCsv(csv);
+
+        assertEquals(0, result.imported());
+        assertEquals(0, result.skipped());
+        assertFalse(result.hasErrors());
     }
 
     @Test
@@ -207,5 +239,60 @@ class ImportBulkWeatherDataControllerTest {
     void ensureResultHasErrorsReturnsFalseWhenNoErrors() {
         final var result = new ImportBulkWeatherDataController.ImportResult(1, 0, java.util.List.of());
         assertFalse(result.hasErrors());
+    }
+
+    @Test
+    void ensureEmptyFileProducesEmptyResult() throws IOException {
+        final Path csv = tempDir.resolve("emptyfile.csv");
+        Files.writeString(csv, "");
+
+        final var result = controller.importFromCsv(csv);
+
+        assertEquals(0, result.imported());
+        assertEquals(0, result.skipped());
+        assertFalse(result.hasErrors());
+    }
+
+    @Test
+    void ensureInvalidTimeFormatIsSkipped() throws IOException {
+        final Path csv = tempDir.resolve("badtime.csv");
+        Files.writeString(csv,
+                "# ACA 1 = LPPC\n" +
+                "1;38,0;-10,0;39,0;-9,0;0;2000;270;15,5;14/05/2026;25:00;12:00\n");
+
+        final var result = controller.importFromCsv(csv);
+
+        assertEquals(0, result.imported());
+        assertEquals(1, result.skipped());
+    }
+
+    @Test
+    void ensureMultipleAcaHeadersAreParsed() throws IOException {
+        final Path csv = tempDir.resolve("multiaca.csv");
+        Files.writeString(csv,
+                "# ACA 1 = LPPC\n" +
+                "# ACA 10 = WEFIR\n" +
+                "1;38,0;-10,0;39,0;-9,0;0;2000;270;15,5;14/05/2026;10:00;12:00\n" +
+                "10;40,0;-8,0;41,0;-7,0;500;2500;180;20,0;15/05/2026;14:30;16:30\n");
+
+        final var result = controller.importFromCsv(csv);
+
+        assertEquals(2, result.imported());
+        assertEquals(0, result.skipped());
+    }
+
+    @Test
+    void ensureCommentLinesNotStartingWithAcaAreIgnored() throws IOException {
+        final Path csv = tempDir.resolve("comments.csv");
+        Files.writeString(csv,
+                "# This is a general comment\n" +
+                "# ACA 1 = LPPC\n" +
+                "# Another comment\n" +
+                "1;38,0;-10,0;39,0;-9,0;0;2000;270;15,5;14/05/2026;10:00;12:00\n");
+
+        final var result = controller.importFromCsv(csv);
+
+        assertEquals(1, result.imported());
+        assertEquals(0, result.skipped());
     }
 }

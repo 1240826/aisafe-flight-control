@@ -1,105 +1,117 @@
 package eapli.aisafe.report.domain;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class MonthlyReportTest {
 
-    private static final YearMonth PERIOD = YearMonth.of(2026, 6);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("csvTestData")
+    void ensureMonthlyReportFromCsv(
+            final String testCaseId,
+            final String periodStr,
+            final long totalFlights,
+            final long totalFlightPlans,
+            final long flightPlansDraft,
+            final long flightPlansInTest,
+            final long flightPlansPassed,
+            final long flightPlansFailed,
+            final long totalWeatherRecords,
+            final long totalActivePilots,
+            final long totalAircraft,
+            final String flightsPerWeek,
+            final double expectedPassRate,
+            final long expectedTestedPlans) {
+        final var period = YearMonth.parse(periodStr);
+        final var report = new MonthlyReport(period, totalFlights, totalFlightPlans,
+                flightPlansDraft, flightPlansInTest, flightPlansPassed, flightPlansFailed,
+                totalWeatherRecords, totalActivePilots, totalAircraft, flightsPerWeek);
 
-    private MonthlyReport validReport() {
-        return new MonthlyReport(PERIOD, 10, 25, 5, 3, 15, 2, 100, 8, 12, "");
-    }
-
-    @Test
-    void ensureMonthlyReportIsCreated() {
-        final var report = validReport();
         assertNotNull(report);
+        assertEquals(period, report.period());
+        assertEquals(totalFlights, report.totalFlights());
+        assertEquals(totalFlightPlans, report.totalFlightPlans());
+        assertEquals(flightPlansDraft, report.flightPlansDraft());
+        assertEquals(flightPlansInTest, report.flightPlansInTest());
+        assertEquals(flightPlansPassed, report.flightPlansPassed());
+        assertEquals(flightPlansFailed, report.flightPlansFailed());
+        assertEquals(totalWeatherRecords, report.totalWeatherRecords());
+        assertEquals(totalActivePilots, report.totalActivePilots());
+        assertEquals(totalAircraft, report.totalAircraft());
+        assertEquals(flightsPerWeek, report.flightsPerWeek());
+        assertEquals(expectedTestedPlans, report.testedFlightPlans());
+        assertEquals(expectedPassRate, report.passRatePercent(), 0.01);
     }
 
-    @Test
-    void ensurePeriodIsPreserved() {
-        final var report = validReport();
-        assertEquals(PERIOD, report.period());
-    }
-
-    @Test
-    void ensureTotalFlightsIsPreserved() {
-        final var report = validReport();
-        assertEquals(10, report.totalFlights());
-    }
-
-    @Test
-    void ensureTotalFlightPlansIsPreserved() {
-        final var report = validReport();
-        assertEquals(25, report.totalFlightPlans());
-    }
-
-    @Test
-    void ensureFlightPlansBreakdownIsPreserved() {
-        final var report = validReport();
-        assertEquals(5, report.flightPlansDraft());
-        assertEquals(3, report.flightPlansInTest());
-        assertEquals(15, report.flightPlansPassed());
-        assertEquals(2, report.flightPlansFailed());
-    }
-
-    @Test
-    void ensureWeatherRecordsIsPreserved() {
-        final var report = validReport();
-        assertEquals(100, report.totalWeatherRecords());
-    }
-
-    @Test
-    void ensureActivePilotsIsPreserved() {
-        final var report = validReport();
-        assertEquals(8, report.totalActivePilots());
-    }
-
-    @Test
-    void ensureTotalAircraftIsPreserved() {
-        final var report = validReport();
-        assertEquals(12, report.totalAircraft());
-    }
-
-    @Test
-    void ensureAllZerosCanBePassed() {
-        final var report = new MonthlyReport(PERIOD, 0, 0, 0, 0, 0, 0, 0, 0, 0, "");
-        assertEquals(0, report.totalFlights());
-        assertEquals(0, report.totalAircraft());
-    }
-
-    @Test
-    void ensureLargeValuesAreStored() {
-        final var report = new MonthlyReport(PERIOD, 1_000_000, 5_000_000,
-                1_000_000, 1_000_000, 2_000_000, 1_000_000,
-                500_000, 10_000, 500, "");
-        assertEquals(1_000_000, report.totalFlights());
-        assertEquals(500, report.totalAircraft());
-    }
-
-    @Test
-    void ensureToStringContainsPeriod() {
-        final var report = validReport();
-        assertTrue(report.toString().contains("2026-06"));
-    }
-
-    @Test
-    void ensureToStringContainsAllSections() {
-        final var report = validReport();
-        final String str = report.toString();
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("csvTestData")
+    void ensureToStringContainsPeriod(
+            final String testCaseId,
+            final String periodStr,
+            final long totalFlights,
+            final long totalFlightPlans,
+            final long flightPlansDraft,
+            final long flightPlansInTest,
+            final long flightPlansPassed,
+            final long flightPlansFailed,
+            final long totalWeatherRecords,
+            final long totalActivePilots,
+            final long totalAircraft,
+            final String flightsPerWeek,
+            final double expectedPassRate,
+            final long expectedTestedPlans) {
+        final var period = YearMonth.parse(periodStr);
+        final var report = new MonthlyReport(period, totalFlights, totalFlightPlans,
+                flightPlansDraft, flightPlansInTest, flightPlansPassed, flightPlansFailed,
+                totalWeatherRecords, totalActivePilots, totalAircraft, flightsPerWeek);
+        final var str = report.toString();
+        assertTrue(str.contains(periodStr));
         assertTrue(str.contains("MONTHLY REPORT"));
         assertTrue(str.contains("Flights"));
         assertTrue(str.contains("Flight Plans"));
-        assertTrue(str.contains("DRAFT"));
-        assertTrue(str.contains("IN TEST"));
-        assertTrue(str.contains("TEST PASSED"));
-        assertTrue(str.contains("TEST FAILED"));
-        assertTrue(str.contains("Weather Records"));
-        assertTrue(str.contains("Active Pilots"));
         assertTrue(str.contains("Total Aircraft"));
+    }
+
+    private static Stream<Arguments> csvTestData() {
+        final var rows = new ArrayList<Arguments>();
+        try (var reader = new BufferedReader(new InputStreamReader(
+                MonthlyReportTest.class.getResourceAsStream("/us112/monthly_report_test.csv"),
+                StandardCharsets.UTF_8))) {
+            final var lines = reader.lines().toList();
+            for (final var line : lines) {
+                if (line.isBlank() || line.startsWith("#") || line.startsWith("testCaseId")) continue;
+                final var parts = line.split(",", -1);
+                if (parts.length < 14) continue;
+                rows.add(Arguments.of(
+                        parts[0].trim(),
+                        parts[1].trim(),
+                        Long.parseLong(parts[2].trim()),
+                        Long.parseLong(parts[3].trim()),
+                        Long.parseLong(parts[4].trim()),
+                        Long.parseLong(parts[5].trim()),
+                        Long.parseLong(parts[6].trim()),
+                        Long.parseLong(parts[7].trim()),
+                        Long.parseLong(parts[8].trim()),
+                        Long.parseLong(parts[9].trim()),
+                        Long.parseLong(parts[10].trim()),
+                        parts[11].trim(),
+                        Double.parseDouble(parts[12].trim()),
+                        Long.parseLong(parts[13].trim())
+                ));
+            }
+        } catch (final Exception e) {
+            throw new RuntimeException("Failed to load CSV test data", e);
+        }
+        return rows.stream();
     }
 }

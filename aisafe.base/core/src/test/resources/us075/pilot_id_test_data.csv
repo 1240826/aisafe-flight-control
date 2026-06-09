@@ -1,0 +1,30 @@
+# US075 — PilotId Validation Test Data
+# Columns:
+#   testCaseId    - unique identifier for this test scenario
+#   licenseInput  - the license number string to test (empty string = blank input)
+#   expectValid   - true if the license should be accepted, false if it should be rejected
+#   description   - human-readable description of the scenario
+#
+# Format rules: one uppercase letter followed by 4 to 10 digits (e.g. P12345)
+# Header row is skipped by the test parser.
+testCaseId,licenseInput,expectValid,description
+PID01,P1234,true,Minimum valid: 1 letter + 4 digits
+PID02,P12345,true,Standard valid license
+PID03,P1234567890,true,Maximum valid: 1 letter + 10 digits
+PID04,A9999,true,Different leading letter A
+PID05,Z0000,true,Letter Z with zeros
+PID06,p12345,true,Lowercase letter is normalised to uppercase
+PID07,b99999,true,Lowercase b is normalised to uppercase
+PID08,P123,false,Too few digits (only 3, minimum is 4)
+PID09,P12345678901,false,Too many digits (11, maximum is 10)
+PID10,123456,false,No leading letter
+PID11,1P2345,false,Digit before letter
+PID12,PP12345,false,Two leading letters
+PID13,P1234A,false,Letter in digit section
+PID14,P 1234,false,Space inside license
+PID15,,false,Blank input
+PID16,P-1234,false,Hyphen in license
+PID17,P12.34,false,Dot in license
+PID18,P12345 ,true,Trailing whitespace is trimmed - license is accepted
+PID19, P12345,true,Leading whitespace is trimmed - license is accepted
+PID20,PILOT001,false,Old-style format not matching the required pattern

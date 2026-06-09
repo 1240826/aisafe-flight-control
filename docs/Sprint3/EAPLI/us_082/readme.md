@@ -57,28 +57,38 @@ independently or where we deviated from the AI output.
 > the status transition be handled?"
 
 **LLM suggestions adopted:**
-- `Flight.addWeatherData(WeatherData)` as the domain method — consistent with the WeatherData
-  reference being on the Flight root (domain model Decision 14)
-- Status transition handled inside the same method: if `flightPlan.status == TESTED`, reset to
-  `DRAFT` before associating the weather data
+- `Flight.assignWeatherData(Long weatherDataId)` as the domain method — consistent with the
+  WeatherData reference being on the Flight root (domain model Decision 14)
+- Status transition handled inside the same method: if any flightPlan has been tested, reset to
+  DRAFT before associating the weather data
 
 **Decisions made by the team / deviations from LLM output:**
 - The LLM placed the status reset in the controller — moved into the `Flight` domain method to
   keep the invariant inside the aggregate
-- The LLM suggested a separate `voidTest()` method — merged into `addWeatherData()` since the
-  void is a direct consequence of the operation, not an independent action
+- The LLM suggested `addWeatherData(WeatherData)` with the full object — the team uses
+  `assignWeatherData(Long weatherDataId)`, passing only the ID (cross-aggregate reference), which
+  is the EAPLI/DDD convention
 
 ---
 
 ### 3.1 Key Design Decisions
 
 **WeatherData reference on Flight root** — per domain model Decision 14, the cross-aggregate
-reference to WeatherData rises to the Flight root. The controller loads the Flight and calls
-`addWeatherData()` directly.
+reference to WeatherData rises to the Flight root as a `Long weatherDataId`. The controller loads
+the Flight and calls `assignWeatherData()` directly.
 
-**Status invariant inside the aggregate** — `Flight.addWeatherData()` enforces the rule: if the
-internal FlightPlan is in TESTED status, it is reset to DRAFT before the association is made. The
-controller does not need to know about this transition.
+**Status invariant inside the aggregate** — `Flight.assignWeatherData()` enforces the rule: if any
+internal FlightPlan is in TEST_PASSED or TEST_FAILED status, it is reset to DRAFT before the
+association is made. The controller does not need to know about this transition.
+
+**ACA auto-detection via route midpoint** — the controller computes the midpoint of the flight's
+route using a coordinate map (`AIRPORT_COORDS`), then finds the `AirControlArea` that contains
+that midpoint via `findAcaForMidpoint()`. Weather data is filtered by the matched ACA code,
+ensuring the Pilot only sees relevant weather records.
+
+**Client-side flight filtering** — the controller returns all flights via `allFlights()`; the UI
+filters to show only flights whose designator matches an imported flight plan. The Pilot selects
+the target flight from this filtered list.
 
 ---
 
@@ -88,43 +98,83 @@ controller does not need to know about this transition.
 
 | Class | Module | Responsibility |
 |-------|--------|----------------|
-| `AddWeatherDataToFlightUI` | `aisafe.app.backoffice.console` | Lists pilot's flights; lists available weather data; calls controller |
-| `AddWeatherDataToFlightController` | `aisafe.core` | Auth; loads Flight and WeatherData; calls domain method; saves |
-| `Flight` (modified) | `aisafe.core` | Adds `addWeatherData(WeatherData)` enforcing the status invariant |
-| `FlightRepository` | `aisafe.core` | Finds flights by pilot |
-| `WeatherDataRepository` | `aisafe.core` | Lists available WeatherData for selection |
+| `AddWeatherToFlightUI` | `aisafe.app.backoffice.console` | Lists flights (client-filtered); lists ACA-filtered weather data; calls controller |
+| `AddWeatherToFlightController` | `aisafe.core` | Auth; computes route midpoint; finds ACA for midpoint; filters weather data by ACA; loads Flight and WeatherData; calls domain method; saves |
+| `Flight` (modified) | `aisafe.core` | Adds `assignWeatherData(Long weatherDataId)` enforcing the status invariant |
+| `FlightRepository` | `aisafe.core` | Finds all flights |
+| `AirControlAreaRepository` | `aisafe.core` | Lists all ACAs to find one containing the route midpoint |
+| `WeatherDataRepository` | `aisafe.core` | Lists all weather data (filtered by matched ACA code) |
 
 **Sequence Diagram:**
 
 ![Sequence Diagram](sd_us082_add_weather_data_to_flight.svg)
 
-### 4.2 Acceptance Tests
+### 4.2 Controller Acceptance Tests
 
-**AT1 — Weather data added to DRAFT flight plan (US082.4, US082.5)**
+**AT1 — allFlights delegates to repo (US082.1)**
+- **Test:** `AddWeatherToFlightControllerTest.ensureAllFlightsDelegatesToRepo`
+- Given a logged-in Pilot,
+- When `allFlights()` is called,
+- Then `flightRepo.findAll()` is invoked and flights are returned.
 
-Given a flight plan in DRAFT status,
-When the Pilot adds weather data,
-Then the WeatherData is associated with the flight and the status remains DRAFT.
+**AT2 — allFlights checks authorization (US082.1)**
+- **Test:** `AddWeatherToFlightControllerTest.ensureAllFlightsChecksAuthorization`
+- Given a user without the PILOT role,
+- When `allFlights()` is called,
+- Then `authz.ensureAuthenticatedUserHasAnyOf(PILOT)` is invoked.
 
-**AT2 — Weather data added to TESTED flight plan voids the test (US082.4)**
+**AT3 — flightByDesignator returns flight**
+- **Test:** `AddWeatherToFlightControllerTest.ensureFlightByDesignatorReturnsFlight`
+- Given a valid flight designator,
+- When `flightByDesignator()` is called,
+- Then the matching `Flight` is returned.
 
-Given a flight plan in TESTED status,
-When the Pilot adds weather data,
-Then the WeatherData is associated with the flight and the flight plan status is reset to DRAFT.
+**AT4 — flightByDesignator throws for unknown**
+- **Test:** `AddWeatherToFlightControllerTest.ensureFlightByDesignatorThrowsForUnknown`
+- Given an invalid flight designator,
+- When `flightByDesignator()` is called,
+- Then `IllegalArgumentException` is thrown.
 
-**AT3 — Pilot cannot add weather data to another pilot's flight (US082.2)**
+**AT5 — assignWeather persists flight (US082.3)**
+- **Test:** `AddWeatherToFlightControllerTest.ensureAssignWeatherSavesFlight`
+- Given an existing flight and existing weather data,
+- When `assignWeather()` is called,
+- Then `flight.assignWeatherData()` is called and `flightRepo.save()` persists the flight.
 
-Given a flight plan that belongs to a different pilot,
-When the Pilot attempts to add weather data,
-Then the system rejects the operation.
+**AT6 — assignWeather rejects unknown flight (US082.3)**
+- **Test:** `AddWeatherToFlightControllerTest.ensureAssignWeatherWithUnknownFlightThrows`
+- Given a non-existent flight designator,
+- When `assignWeather()` is called,
+- Then `IllegalArgumentException` is thrown.
+
+**AT7 — assignWeather rejects unknown weather (US082.3)**
+- **Test:** `AddWeatherToFlightControllerTest.ensureAssignWeatherWithUnknownWeatherThrows`
+- Given a non-existent weather data ID,
+- When `assignWeather()` is called,
+- Then `IllegalArgumentException` is thrown.
+
+**AT8 — assignWeather is idempotent**
+- **Test:** `AddWeatherToFlightControllerTest.ensureAssignWeatherIsIdempotent`
+- Given a flight that already has weather data assigned,
+- When `assignWeather()` is called with the same weather data,
+- Then the operation succeeds without error.
+
+### 4.3 Domain Tests
+
+- **FlightTest.ensureAssignWeatherDataAssociatesWeatherToFlight** — verifies that after calling
+  `assignWeatherData(weatherDataId)`, the flight's `weatherDataId()` returns the expected value.
+- **FlightTest.ensureAssignWeatherDataResetsTestedFlightPlansToDraft** (US082.4) — verifies that
+  flight plans in TEST_PASSED/TEST_FAILED are reset to DRAFT after `assignWeatherData()`.
+- **FlightTest.ensureAssignWeatherDataDoesNotChangeDraftFlightPlans** (US082.5) — verifies that
+  flight plans already in DRAFT status remain DRAFT.
 
 ---
 
 ## 5. Implementation
 
-- `eapli.aisafe.flight.domain.Flight` — add `addWeatherData(WeatherData)`
-- `eapli.aisafe.flight.application.AddWeatherDataToFlightController`
-- `eapli.aisafe.app.backoffice.console.presentation.flight.AddWeatherDataToFlightUI`
+- `eapli.aisafe.flight.domain.Flight` — add `assignWeatherData(Long weatherDataId)`
+- `eapli.aisafe.flight.application.AddWeatherToFlightController`
+- `eapli.aisafe.app.backoffice.console.presentation.flight.AddWeatherToFlightUI`
 
 ---
 
@@ -135,7 +185,7 @@ To demonstrate this user story:
 1. Bootstrap or manually create a flight with a flight plan in DRAFT status (US080).
 2. Bootstrap or manually register weather data for the relevant air control area (US041/US042).
 3. Log in as the Pilot assigned to the flight.
-4. Select "Add Weather Data to Flight", choose the flight and a weather data record.
+4. Select "Add Weather Data to Flight (US082)", choose the flight and a weather data record.
 5. Verify the weather data is associated and the flight plan status remains DRAFT.
 
 To demonstrate the void behaviour (US082.4):
@@ -151,3 +201,6 @@ To demonstrate the void behaviour (US082.4):
 The status reset from TESTED to DRAFT is an invariant of the Flight aggregate and must not be
 enforced outside it. The controller is responsible only for loading the correct aggregate instances
 and persisting the result.
+
+The ACA is automatically detected from the flight route midpoint — the Pilot does not manually
+select an ACA. This ensures weather data shown is always relevant to the flight's area.

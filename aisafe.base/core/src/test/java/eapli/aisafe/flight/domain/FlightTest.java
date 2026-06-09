@@ -3,6 +3,8 @@ package eapli.aisafe.flight.domain;
 import eapli.aisafe.flightplan.domain.FlightPlanId;
 import eapli.aisafe.flightplan.domain.FlightPlanStatus;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import java.time.LocalDateTime;
 
@@ -11,6 +13,21 @@ import static org.junit.jupiter.api.Assertions.*;
 class FlightTest {
 
     private static final LocalDateTime DEP_TIME = LocalDateTime.of(2026, 6, 2, 10, 0);
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us082/flight_test.csv", numLinesToSkip = 1)
+    void ensureFlightDesignatorInvariants(final String testCaseId, final String designator, final boolean expectValid) {
+        if (expectValid) {
+            final var fd = FlightDesignator.valueOf(designator);
+            assertEquals(designator.toUpperCase().trim(), fd.toString());
+        } else {
+            if (designator == null || designator.isBlank()) {
+                assertThrows(Exception.class, () -> FlightDesignator.valueOf(""));
+            } else {
+                assertThrows(Exception.class, () -> FlightDesignator.valueOf(designator));
+            }
+        }
+    }
 
     @Test
     void ensureFlightIsCreatedWithDesignator() {
@@ -62,6 +79,14 @@ class FlightTest {
     }
 
     @Test
+    void ensureDuplicateFlightPlanThrows() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl1");
+        assertThrows(IllegalArgumentException.class,
+                () -> flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl2"));
+    }
+
+    @Test
     void ensureFlightPlanListIsUnmodifiable() {
         final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
         flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl");
@@ -82,8 +107,6 @@ class FlightTest {
         final var f2 = new Flight(FlightDesignator.valueOf("TP5678"), DEP_TIME);
         assertFalse(f1.sameAs(f2));
     }
-
-    // ── US082 – assignWeatherData ─────────────────────────────────────────────
 
     @Test
     void ensureAssignWeatherDataSetsId() {
@@ -114,9 +137,7 @@ class FlightTest {
         final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
         fp.markAsInTest();
         fp.markAsTestPassed();
-
         flight.assignWeatherData(42L);
-
         assertEquals(FlightPlanStatus.DRAFT, fp.status());
     }
 
@@ -126,9 +147,7 @@ class FlightTest {
         final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
         fp.markAsInTest();
         fp.markAsTestFailed();
-
         flight.assignWeatherData(42L);
-
         assertEquals(FlightPlanStatus.DRAFT, fp.status());
     }
 
@@ -137,9 +156,7 @@ class FlightTest {
         final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
         final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
         assertEquals(FlightPlanStatus.DRAFT, fp.status());
-
         flight.assignWeatherData(42L);
-
         assertEquals(FlightPlanStatus.DRAFT, fp.status());
     }
 
@@ -148,9 +165,7 @@ class FlightTest {
         final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
         final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "dsl content");
         fp.markAsInTest();
-
         flight.assignWeatherData(42L);
-
         assertEquals(FlightPlanStatus.IN_TEST, fp.status());
     }
 
@@ -170,12 +185,35 @@ class FlightTest {
         fp.markAsTestPassed();
         flight.assignWeatherData(42L);
         assertEquals(FlightPlanStatus.DRAFT, fp.status());
-
         fp.markAsInTest();
         fp.markAsTestPassed();
         flight.assignWeatherData(42L);
-
         assertEquals(FlightPlanStatus.TEST_PASSED, fp.status(),
                 "Re-assigning same weather data must not reset plans again");
+    }
+
+    @Test
+    void ensureUpdateFlightPlanUpdatesExisting() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        flight.addFlightPlan(FlightPlanId.valueOf("FP001"), "original dsl");
+        final var updated = flight.updateFlightPlan(FlightPlanId.valueOf("FP001"), "updated dsl");
+        assertEquals("updated dsl", updated.dslContent());
+    }
+
+    @Test
+    void ensureUpdateFlightPlanAddsIfNotExists() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var added = flight.updateFlightPlan(FlightPlanId.valueOf("FP001"), "new dsl");
+        assertNotNull(added);
+        assertEquals(1, flight.flightPlans().size());
+    }
+
+    @Test
+    void ensureUpdateFromDslUpdatesFields() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var newTime = LocalDateTime.of(2026, 7, 4, 15, 30);
+        flight.updateFromDsl(newTime, null, "CS-TTT", null);
+        assertEquals(newTime, flight.departureTime());
+        assertEquals("CS-TTT", flight.aircraftRegistration());
     }
 }

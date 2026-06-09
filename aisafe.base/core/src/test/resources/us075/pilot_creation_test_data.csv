@@ -1,0 +1,24 @@
+# US075 — Pilot Creation Test Data
+# Columns:
+#   testCaseId        - unique identifier
+#   licenseNumber     - pilot license (format: letter + 4-10 digits)
+#   companyIata       - 2-letter company IATA code
+#   certifiedModels   - pipe-separated list of aircraft model codes (e.g. B738|A320)
+#   certificationDate - ISO date YYYY-MM-DD, or FUTURE for tomorrow, or BLANK
+#   expectValid       - true if Pilot should be created, false if it should throw
+#   failureReason     - description of why creation fails (empty if expectValid=true)
+#
+# Header row is skipped by the test parser.
+testCaseId,licenseNumber,companyIata,certifiedModels,certificationDate,expectValid,failureReason
+PC01,P12345,TP,B738,2022-03-10,true,Valid pilot with one certified model
+PC02,P99999,LH,A320|B738,2021-06-15,true,Valid pilot with two certified models
+PC03,A11111,FR,B738|A320|B77W,2020-01-01,true,Valid pilot with three certified models
+PC04,Z00001,BA,B738,2026-06-09,true,Certification date is today (boundary - valid)
+PC05,P12346,TP,,2022-03-10,false,No certified models (empty list is rejected)
+PC06,P12347,TP,B738,FUTURE,false,Certification date in the future is rejected
+PC07,,TP,B738,2022-03-10,false,Blank license number is rejected
+PC08,P12348,,B738,2022-03-10,false,Null company is rejected
+PC09,P12349,TP,B738,BLANK,false,Null certification date is rejected
+PC10,123456,TP,B738,2022-03-10,false,License with no leading letter is rejected
+PC11,PP12345,TP,B738,2022-03-10,false,License with two leading letters is rejected
+PC12,P123,TP,B738,2022-03-10,false,License too short (3 digits, minimum is 4)
