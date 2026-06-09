@@ -448,9 +448,12 @@ int simulation_step(SharedData *shm)
     for (int i = 0; i < count; i++)
         sem_post(shm->sem_step_start);
 
-    /* Wait for all active children */
-    for (int i = 0; i < count; i++)
-        sem_wait(shm->sem_step_done);
+    /* Wait for all active children (retry on EINTR) */
+    for (int i = 0; i < count; i++) {
+        int ret;
+        do { ret = sem_wait(shm->sem_step_done); }
+        while (ret != 0 && errno == EINTR);
+    }
 
     /* Count remaining */
     int remaining = 0;
@@ -464,7 +467,12 @@ int simulation_step(SharedData *shm)
 
 ```c
 while (shm->running && !flight_completed) {
-    sem_wait(shm->sem_step_start);          /* barrier — wait for parent */
+    /* barrier — wait for parent (retry on EINTR) */
+    {   int ret;
+        do { ret = sem_wait(shm->sem_step_start); }
+        while (ret != 0 && errno == EINTR);
+        if (ret != 0) break;
+    }
     if (!shm->running) break;
 
     /* Activate at departure time */
@@ -506,6 +514,8 @@ while (shm->running && !flight_completed) {
     sem_post(shm->sem_step_done);           /* signal parent we're done */
 }
 ```
+
+**EINTR safety**: both `simulation_step()` and `run_flight_process()` wrap `sem_wait()` in a `do...while` loop that retries on `EINTR`. This prevents deadlock if a signal (e.g., SIGINT from Ctrl+C) interrupts a `sem_wait()` call — without the retry, the interrupted semaphore is not decremented, causing the parent/child count to fall out of sync and the simulation to hang.
 
 The guarantee: all children complete step t before the parent starts step t+1's detection.
 
