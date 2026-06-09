@@ -13,13 +13,13 @@ participant ":RemovePilotUI" as ui <<presentation>>
 participant ":RemovePilotController" as ctrl <<application>>
 participant ":AuthorizationService" as authz <<framework>>
 participant ":PilotRepository" as pilotRepo <<repository>>
-participant ":FlightPlanRepository" as flightRepo <<repository>>
+participant ":FlightRepository" as flightRepo <<repository>>
 participant "p:Pilot" as pilot <<domain>>
 
 actor -> ui : remove pilot
 activate ui
 
-ui -> ctrl : getActivePilots()
+ui -> ctrl : allPilots()
 activate ctrl
 
 ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ATC_COLLABORATOR)
@@ -27,20 +27,15 @@ activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
-activate authz
-authz --> ctrl : atccUser
-deactivate authz
-
-ctrl -> pilotRepo : findActiveByCompany(\n  atccUser.company())
+ctrl -> pilotRepo : findAll()
 activate pilotRepo
-pilotRepo --> ctrl : activePilots
+pilotRepo --> ctrl : pilots
 deactivate pilotRepo
 
-ctrl --> ui : activePilots
+ctrl --> ui : pilots
 deactivate ctrl
 
-note right of ui : ATCC selects pilot\nfrom the active roster\nand confirms deactivation
+note right of ui : ATCC selects pilot\nfrom the full list\n(active and inactive)\nand confirms deactivation
 
 ui -> ctrl : deactivatePilot(pilotId)
 activate ctrl
@@ -50,28 +45,23 @@ activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> authz : loggedinUserWithPermission(\n  ATC_COLLABORATOR)
-activate authz
-authz --> ctrl : atccUser
-deactivate authz
-
-ctrl -> pilotRepo : findActiveByIdAndCompany(\n  pilotId, atccUser.company())
+ctrl -> pilotRepo : findByLicenseNumber(pilotId)
 activate pilotRepo
-pilotRepo --> ctrl : pilot
+pilotRepo --> ctrl : optional<Pilot>
 deactivate pilotRepo
 
-note right of ctrl : throws exception if pilot\nnot found or does not\nbelong to ATCC's company
+note right of ctrl : throws IllegalArgumentException\nif pilot not found
 
-ctrl -> flightRepo : existsActiveByPilot(pilot)
+ctrl -> flightRepo : existsByPilotLicense(pilotId)
 activate flightRepo
-flightRepo --> ctrl : hasActiveFlightPlans
+flightRepo --> ctrl : hasAssignedFlights
 deactivate flightRepo
 
-note right of ctrl : throws exception if pilot\nhas flight plans in a\nnon-terminal state
+note right of ctrl : throws IllegalStateException\nif pilot has flight plans assigned
 
 ctrl -> pilot : deactivate()
 activate pilot
-note right of pilot : sets status to INACTIVE;\nenforces valid transition\nfrom ACTIVE only
+note right of pilot : sets active = false;\nthrows if already inactive
 pilot --> ctrl
 deactivate pilot
 
