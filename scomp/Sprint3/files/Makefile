@@ -1,6 +1,8 @@
 CC = gcc
 TEST_DIR = ../test
-CFLAGS = -Wall -Wextra -g
+CFLAGS = -Wall -Wextra -g \
+         -I. -I../us105 -I../us106 -I../us107 -I../us108 -I../us109 -I../us110
+VPATH = ../us105:../us106:../us107:../us108:../us109:../us110
 LDFLAGS = -lpthread -lrt -lm
 
 OBJS = main.o physics.o ui.o us105_init.o us106_threads.o \
