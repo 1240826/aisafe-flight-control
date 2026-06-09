@@ -65,6 +65,12 @@ class FlightRouteTest {
     }
 
     @Test
+    void ensureCompanyIataIsPreserved() {
+        final var route = validRoute();
+        assertEquals(CompanyIATA.valueOf("TP"), route.companyIATA());
+    }
+
+    @Test
     void ensureDeactivationSetsRouteInactive() {
         // AT1: route with no planned flights after the date → deactivation succeeds
         final var route = validRoute();
@@ -86,6 +92,15 @@ class FlightRouteTest {
         final var route = validRoute();
         route.deactivate(TODAY);
         assertFalse(route.isActive());
+    }
+
+    @Test
+    void ensureDeactivationWithPastDateSucceeds() {
+        // The domain does not forbid past dates — that constraint lives in the UI layer
+        final var route = validRoute();
+        route.deactivate(PAST_DATE);
+        assertFalse(route.isActive());
+        assertEquals(PAST_DATE, route.deactivationDate());
     }
 
     // ── Guard clauses ─────────────────────────────────────────────────────────

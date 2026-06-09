@@ -51,6 +51,9 @@ import eapli.aisafe.ui.pilot.RemovePilotUI;
 import eapli.aisafe.ui.flight.AddWeatherToFlightUI;
 import eapli.aisafe.ui.flight.FetchWeatherForFlightUI;
 import eapli.aisafe.ui.report.GenerateMonthlyReportUI;
+import eapli.aisafe.ui.simulation.GenerateSimulationReportAction;
+import eapli.aisafe.ui.simulation.RunAreaSimulationAction;
+import eapli.aisafe.ui.simulation.SaveSimulationUI;
 import eapli.aisafe.infrastructure.Application;
 import eapli.aisafe.ui.authz.ActivateUserUI;
 import eapli.aisafe.ui.authz.AddUserUI;
@@ -137,6 +140,9 @@ public class MainMenu extends AbstractUI {
 
 	// REPORTS submenu
 	private static final int GENERATE_MONTHLY_REPORT_OPTION = 1;
+	private static final int GENERATE_SIMULATION_REPORT_OPTION = 2;
+	private static final int SAVE_SIMULATION_OPTION = 3;
+	private static final int RUN_AREA_SIMULATION_OPTION = 4;
 
 	// FLIGHT PLANS submenu
 	private static final int IMPORT_FLIGHT_PLAN_OPTION = 1;
@@ -418,6 +424,9 @@ public class MainMenu extends AbstractUI {
 	private Menu buildReportsMenu() {
 		final var menu = new Menu("Reports >");
 		menu.addItem(GENERATE_MONTHLY_REPORT_OPTION, "Generate Monthly Report (US112)", () -> { new GenerateMonthlyReportUI().show(); return false; });
+		menu.addItem(GENERATE_SIMULATION_REPORT_OPTION, "Generate Simulation Report (US111)", new GenerateSimulationReportAction());
+		menu.addItem(SAVE_SIMULATION_OPTION, "Save Simulation (US110)", () -> { new SaveSimulationUI().show(); return false; });
+		menu.addItem(RUN_AREA_SIMULATION_OPTION, "Run Area Simulation (US111)", new RunAreaSimulationAction());
 		menu.addItem(EXIT_OPTION, RETURN_LABEL, Actions.SUCCESS);
 		return menu;
 	}

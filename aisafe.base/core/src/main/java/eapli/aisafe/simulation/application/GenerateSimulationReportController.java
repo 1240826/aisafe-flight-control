@@ -9,7 +9,6 @@ import eapli.framework.application.UseCaseController;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import eapli.framework.infrastructure.authz.application.AuthzRegistry;
 
-import java.io.File;
 import java.util.NoSuchElementException;
 import java.util.stream.StreamSupport;
 
@@ -73,9 +72,7 @@ public class GenerateSimulationReportController {
                 .orElseThrow(() -> new NoSuchElementException(
                         "No simulation found for area code: " + areaCode));
 
-        final String outputPath = System.getProperty("java.io.tmpdir")
-                + File.separator
-                + "simulation_report_" + code + ".txt";
+        final String outputPath = "reports/simulation_report_" + code + ".txt";
 
         return writer.writeToFile(simulation, outputPath);
     }

@@ -153,6 +153,20 @@ class DeleteFlightRouteControllerTest {
                 "deactivateRoute must throw IllegalArgumentException when route is not found");
     }
 
+    @Test
+    void ensureDeactivateAlreadyInactiveRouteThrows() {
+        // AT4: domain guard must propagate through the controller
+        final var route = activeRoute();
+        route.deactivate(FUTURE_DATE);                 // deactivate once in the domain
+        when(routeRepo.ofIdentity(FlightRouteName.valueOf("TP123"))).thenReturn(Optional.of(route));
+        when(flightRepo.existsByRouteNameAndDepartureTimeAfter(any(), any())).thenReturn(false);
+
+        assertThrows(IllegalStateException.class,
+                () -> controller.deactivateRoute("TP123", FUTURE_DATE.plusDays(10)),
+                "Deactivating an already-inactive route must throw IllegalStateException");
+        verify(routeRepo, never()).save(any());
+    }
+
     // ── Guard clauses ─────────────────────────────────────────────────────────
 
     @Test
