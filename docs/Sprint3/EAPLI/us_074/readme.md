@@ -1,4 +1,4 @@
-﻿# US074 — Delete a Flight Route
+# US074 — Delete a Flight Route
 
 ## 1. Context
 
@@ -24,13 +24,13 @@ This user story is assigned to **Sprint 3** as part of the EAPLI-related work. I
 - **US074.1** A route that is deactivated must not allow new flights to be created on it from the deactivation date onwards.
 - **US074.2** A route **cannot** be deactivated if there are planned (future) flights scheduled after the chosen deactivation date.
 - **US074.3** The deactivation date must be provided by the user and must be a valid calendar date.
-- **US074.4** Only an authenticated Air Transport Company Collaborator belonging to the route's company may deactivate a route.
+- **US074.4** Only an authenticated Air Transport Company Collaborator may deactivate a route.
 - **US074.5** The system must confirm the deactivation to the user upon success.
 
 ### Dependencies/References
 
 - **US073** — Create a flight route (the route must exist before it can be deactivated).
-- **US080** — Create a flight plan (flights on the route must be checked before deactivation; `isActiveOn(date)` is used by US080 to block scheduling on deactivated routes).
+- **US080** — Create a flight plan (flights on the route must be checked before deactivation; `isActive()` is used by US080 to block scheduling on deactivated routes).
 - **US030** — Authentication and authorization infrastructure.
 - **NFR08** — Database by configuration (in-memory vs RDBMS); the JPA repository implementation must support both persistence modes.
 - **NFR09** — Authentication and authorization must be enforced.
@@ -47,29 +47,26 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 **LLM suggestions adopted:**
 - Use a `deactivationDate` field (`LocalDate`, nullable) on `FlightRoute` — `null` means active, a date value means deactivated from that date onwards.
-- The business rule check (no planned flights after deactivation date) belongs in the application controller, since it requires querying the `FlightPlan` repository (cross-aggregate query — not suitable for the domain layer alone).
+- The business rule check (no planned flights after deactivation date) belongs in the application controller, since it requires querying the `FlightRepository` (cross-aggregate query — not suitable for the domain layer alone).
 
 **Decisions made by the team:**
 - The route is **not physically deleted** from the database — it is soft-deactivated by setting `deactivationDate`.
-- The check for planned flights is done in the controller before invoking the domain method, querying `FlightPlanRepository.existsPlannedFlightAfterDate(routeId, deactivationDate)`.
-- The ATCC can only deactivate routes belonging to their own company; the controller resolves the authenticated user's company via `UserSession` and compares it against the route's owning company.
+- The check for planned flights is done in the controller before invoking the domain method, querying `FlightRepository.existsByRouteNameAndDepartureTimeAfter(routeName, dateTime)`.
 
 ### 3.1 Domain Rules
 
 | Rule | Where enforced |
 |------|---------------|
-| Route must belong to the ATCC's company | `DeactivateFlightRouteController` — company resolved from authenticated session |
-| No planned flights exist after deactivation date | `DeactivateFlightRouteController` (via `FlightPlanRepository` query) |
-| Deactivation date must be a valid calendar date | Input validation in UI layer |
-| A deactivated route cannot be deactivated again | `FlightRoute.deactivate()` — guard clause |
-| New flights cannot be created on a deactivated route | `FlightRoute.isActiveOn(date)` — used by US080 |
-| Route name format: 2 letters + up to 4 digits (e.g. TP123) | `RouteName` value object — enforced at creation (US073); read-only in this US |
+| No planned flights exist after deactivation date | `DeleteFlightRouteController` — via `FlightRepository` query before calling `deactivate()` |
+| Deactivation date must be a valid calendar date | Input validation in `DeleteFlightRouteUI` layer |
+| A deactivated route cannot be deactivated again | `FlightRoute.deactivate()` — guard clause via `Invariants.ensure(isActive(), ...)` |
+| New flights cannot be created on a deactivated route | `FlightRoute.isActive()` — checked by US080 controller |
+| Route name format: 2 letters + up to 4 digits (e.g. TP123) | `FlightRouteName` value object — enforced at creation (US073); read-only in this US |
 
 ### 3.2 Key Domain Concepts
 
-- **FlightRoute** — Aggregate root. Has a `routeName` (2 letters + up to 4 digits, e.g. TP123, unique per company as per US073), origin airport, destination airport, owning `AirTransportCompany`, and an optional `deactivationDate`.
-- **FlightPlan** — References a `FlightRoute`. A flight plan's departure date is compared against the route's deactivation date to determine if scheduling is still permitted.
-- **AirTransportCompany** — The owning company of the route and its collaborators. The authenticated ATCC's company is resolved at runtime via `UserSession` to enforce ownership.
+- **FlightRoute** — Aggregate root. Has a `FlightRouteName` identity (e.g. `TP123`), `CompanyIATA`, `AirportIATA` origin, `AirportIATA` destination, and an optional `deactivationDate` (`LocalDate`, null = active).
+- **FlightRepository** — Cross-aggregate query repository used to check for planned flights on a route before deactivation.
 
 ---
 
@@ -77,61 +74,20 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.1 Classes Involved
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `FlightRoute` | `aisafe.core` | Domain aggregate; holds `deactivationDate`; exposes `deactivate(LocalDate)`, `isActiveOn(LocalDate)`, `isDeactivated()` |
-| `FlightRouteRepository` | `aisafe.core` | Repository interface; `findActiveRoutesByCompany(companyId)`, `findById(routeId)`, `save(route)` |
-| `FlightPlanRepository` | `aisafe.core` | Repository interface; `existsPlannedFlightAfterDate(routeId, date)` |
-| `DeactivateFlightRouteController` | `aisafe.core.application` | Application controller; resolves company from session, enforces authorization, checks business rules, invokes domain |
-| `DeactivateFlightRouteUI` | `aisafe.app.backoffice.console` | Console UI; collects route selection and deactivation date from the user |
-| `JpaFlightRouteRepository` | `aisafe.persistence.impl` | JPA implementation of `FlightRouteRepository` (supports NFR08 — in-memory and RDBMS modes) |
-| `InMemoryFlightRouteRepository` | `aisafe.persistence.impl` | In-memory implementation of `FlightRouteRepository` (used during development/testing per NFR08) |
+| Class | Package | Responsibility |
+|-------|---------|----------------|
+| `FlightRoute` | `eapli.aisafe.flightroute.domain` | Aggregate root; holds `deactivationDate`; exposes `deactivate(LocalDate)` and `isActive()` |
+| `FlightRouteName` | `eapli.aisafe.flightroute.domain` | Value object; identity of `FlightRoute`; format 2 letters + up to 4 digits |
+| `FlightRouteRepository` | `eapli.aisafe.flightroute.repositories` | Repository interface; `findAllActive()`, `ofIdentity(name)`, `save(route)` |
+| `FlightRepository` | `eapli.aisafe.flight.repositories` | Repository interface; `existsByRouteNameAndDepartureTimeAfter(routeName, dateTime)` |
+| `DeleteFlightRouteController` | `eapli.aisafe.flightroute.application` | Application controller; enforces authorization, checks business rules, invokes domain |
+| `DeleteFlightRouteUI` | `eapli.aisafe.ui.flightroute` | Console UI; collects route selection and deactivation date from the user |
 
-### 4.2 Sequence Diagram (PlantUML)
+### 4.2 Sequence Diagram
 
-```plantuml
-@startuml sd_us074_deactivate_flight_route
+![Sequence Diagram — Delete Flight Route](SD_US074_DeleteFlightRoute.puml)
 
-actor "ATC Collaborator" as ATCC
-participant "DeactivateFlightRouteUI" as UI
-participant "DeactivateFlightRouteController" as CTRL
-participant "AuthzRegistry" as AUTHZ
-participant "FlightRouteRepository" as ROUTE_REPO
-participant "FlightPlanRepository" as PLAN_REPO
-participant "FlightRoute" as ROUTE
-
-== List available routes ==
-ATCC -> UI : selects "Deactivate Flight Route"
-UI -> CTRL : listRoutesForCompany()
-CTRL -> AUTHZ : ensureAuthenticatedUserHasAnyOf(ATC_COLLABORATOR)
-AUTHZ --> CTRL : ok
-CTRL -> ROUTE_REPO : findActiveRoutesByCompany(companyId)
-ROUTE_REPO --> CTRL : List<FlightRoute>
-CTRL --> UI : List<FlightRoute>
-
-== Deactivate selected route ==
-ATCC -> UI : selects route + enters deactivationDate
-UI -> CTRL : deactivateRoute(routeId, deactivationDate)
-CTRL -> AUTHZ : ensureAuthenticatedUserHasAnyOf(ATC_COLLABORATOR)
-AUTHZ --> CTRL : ok
-CTRL -> ROUTE_REPO : findById(routeId)
-ROUTE_REPO --> CTRL : FlightRoute
-CTRL -> CTRL : ensureRouteBelongsToCollaboratorCompany(route)
-CTRL -> PLAN_REPO : existsPlannedFlightAfterDate(routeId, deactivationDate)
-PLAN_REPO --> CTRL : false (no planned flights)
-CTRL -> ROUTE : deactivate(deactivationDate)
-ROUTE --> CTRL : ok
-CTRL -> ROUTE_REPO : save(FlightRoute)
-ROUTE_REPO --> CTRL : ok
-CTRL --> UI : success
-UI --> ATCC : "Route deactivated successfully."
-
-@enduml
-```
-
-> **Alternative flow:** If `existsPlannedFlightAfterDate(...)` returns `true`, the controller throws a `BusinessRulesException` and the UI displays: *"Cannot deactivate route: there are planned flights after the selected date."*
-
-> **Alternative flow 2:** If the route does not belong to the ATCC's company, the controller throws an `IllegalArgumentException` and the UI displays: *"You are not authorized to deactivate this route."*
+The sequence diagram source is in `SD_US074_DeleteFlightRoute.puml`. The rendered images are `US074__Deactivate_Flight_Route.svg` / `.png`.
 
 ### 4.3 Domain Model — Relevant Fragment
 
@@ -139,148 +95,153 @@ UI --> ATCC : "Route deactivated successfully."
 @startuml dm_us074
 
 class FlightRoute {
-    - routeId : RouteId
-    - routeName : RouteName
-    - originAirport : Airport
-    - destinationAirport : Airport
-    - company : AirTransportCompany
+    - name : FlightRouteName  «@EmbeddedId»
+    - companyIATA : CompanyIATA
+    - origin : AirportIATA
+    - destination : AirportIATA
     - deactivationDate : LocalDate  «nullable»
     --
     + deactivate(date : LocalDate) : void
-    + isActiveOn(date : LocalDate) : boolean
-    + isDeactivated() : boolean
+    + isActive() : boolean
+    + deactivationDate() : LocalDate
 }
 
 note right of FlightRoute
-  routeName format: 2 letters + up to 4 digits
-  e.g. TP123 (defined in US073)
-  deactivationDate = null means active
+  deactivationDate = null → route is active
+  deactivationDate set   → route is inactive
+  from that date onwards
 end note
 
-class FlightPlan {
-    - flightPlanId : FlightPlanId
-    - route : FlightRoute
-    - departureDateTime : LocalDateTime
-    - status : FlightPlanStatus
+class Flight {
+    - designator : FlightDesignator
+    - routeName : FlightRouteName  «cross-aggregate ref»
+    - departureTime : LocalDateTime
 }
 
-FlightRoute "1" <-- "0..*" FlightPlan : is planned on >
+FlightRoute "1" <-- "0..*" Flight : is planned on >
 
 @enduml
 ```
 
 ### 4.4 FlightRoute — Key Domain Methods
 
+Actual implementation in `eapli.aisafe.flightroute.domain.FlightRoute`:
+
 ```java
-// Mark the route as deactivated from the given date onwards
-public void deactivate(final LocalDate deactivationDate) {
-    Preconditions.nonNull(deactivationDate, "Deactivation date must not be null");
-    if (this.deactivationDate != null) {
-        throw new IllegalStateException("Route is already deactivated.");
-    }
-    this.deactivationDate = deactivationDate;
+// Mark the route as deactivated from the given date onwards (US074)
+public void deactivate(final LocalDate date) {
+    Preconditions.noneNull(date);
+    Invariants.ensure(isActive(), "Route is already deactivated");
+    this.deactivationDate = date;
 }
 
-// Used by US080 and other USs to check if new flights may be scheduled
-public boolean isActiveOn(final LocalDate date) {
-    return deactivationDate == null || date.isBefore(deactivationDate);
+// Returns true if the route is currently active (not yet deactivated)
+public boolean isActive() {
+    return deactivationDate == null;
 }
 
-public boolean isDeactivated() {
-    return deactivationDate != null;
+public LocalDate deactivationDate() {
+    return deactivationDate;
 }
 ```
 
 ### 4.5 Controller — Core Logic
 
+Actual implementation in `eapli.aisafe.flightroute.application.DeleteFlightRouteController`:
+
 ```java
-public void deactivateRoute(final RouteId routeId, final LocalDate deactivationDate) {
-    // Authorization check (enforced on every entry point per US030)
+public Iterable<FlightRoute> activeRoutes() {
+    authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ATC_COLLABORATOR);
+    return repo.findAllActive();
+}
+
+public FlightRoute deactivateRoute(final String routeName, final LocalDate deactivationDate) {
+    Preconditions.noneNull(routeName, deactivationDate);
     authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ATC_COLLABORATOR);
 
-    final FlightRoute route = routeRepository.findById(routeId)
-        .orElseThrow(() -> new IllegalArgumentException("Route not found."));
+    final FlightRouteName name = FlightRouteName.valueOf(routeName);
 
-    // Ensure the route belongs to the logged-in collaborator's company.
-    // The company is resolved from the authenticated SystemUser's username,
-    // looked up via the AirTransportCompanyCollaboratorRepository.
-    final AirTransportCompany collaboratorCompany = resolveCompanyFromSession();
-    if (!route.company().equals(collaboratorCompany)) {
-        throw new IllegalArgumentException(
-            "You are not authorized to deactivate this route.");
-    }
+    final FlightRoute route = repo.ofIdentity(name)
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "Flight route not found: " + routeName));
 
-    // Business rule: no planned flights after deactivation date (US074.2)
-    if (flightPlanRepository.existsPlannedFlightAfterDate(routeId, deactivationDate)) {
-        throw new BusinessRulesException(
-            "Cannot deactivate route: there are planned flights after " + deactivationDate);
+    // Business rule US074.2: no planned flights on or after deactivation date
+    if (flightRepo.existsByRouteNameAndDepartureTimeAfter(name,
+            deactivationDate.atStartOfDay())) {
+        throw new IllegalStateException(
+                "Cannot deactivate route " + routeName
+                        + ": planned flights exist on or after " + deactivationDate);
     }
 
     route.deactivate(deactivationDate);
-    routeRepository.save(route);
-}
-
-private AirTransportCompany resolveCompanyFromSession() {
-    final String username = authz.session().get().authenticatedUser().username().value();
-    return collaboratorRepository.findCompanyByUsername(username)
-        .orElseThrow(() -> new IllegalStateException("Collaborator company not found."));
+    return repo.save(route);
 }
 ```
 
 ---
 
-## 5. Acceptance Tests
+## 5. Implementation
 
-**AT1 — Successful deactivation (no future flights)**
+**Key files:**
 
-Given an active route with no planned flights after 2026-06-01,
-When the ATCC deactivates the route with deactivation date 2026-06-01,
-Then the route's `deactivationDate` is set to 2026-06-01 and a success message is shown.
+| File | Package |
+|------|---------|
+| `FlightRoute.java` | `eapli.aisafe.flightroute.domain` |
+| `FlightRouteName.java` | `eapli.aisafe.flightroute.domain` |
+| `FlightRouteRepository.java` | `eapli.aisafe.flightroute.repositories` |
+| `FlightRepository.java` | `eapli.aisafe.flight.repositories` |
+| `DeleteFlightRouteController.java` | `eapli.aisafe.flightroute.application` |
+| `DeleteFlightRouteUI.java` | `eapli.aisafe.ui.flightroute` |
+| `FlightRouteTest.java` | `eapli.aisafe.flightroute.domain` (test) |
+| `DeleteFlightRouteControllerTest.java` | `eapli.aisafe.flightroute.application` (test) |
 
-**AT2 — Deactivation blocked by planned flights**
+**Major commits:**
 
-Given an active route with a planned flight on 2026-06-15,
-When the ATCC tries to deactivate the route with deactivation date 2026-06-01,
-Then the system rejects the operation with the message: *"Cannot deactivate route: there are planned flights after the selected date."*
-
-**AT3 — New flight creation blocked on deactivated route**
-
-Given a route deactivated from 2026-06-01,
-When a pilot tries to create a flight on that route with departure date 2026-06-10,
-Then the system rejects the flight creation (checked via `isActiveOn(date)` returning `false`).
-
-**AT4 — Deactivation of already-deactivated route is rejected**
-
-Given a route already deactivated on 2026-05-01,
-When the ATCC tries to deactivate it again,
-Then the system rejects with: *"Route is already deactivated."*
-
-**AT5 — Unauthorized deactivation is rejected (wrong company)**
-
-Given an ATCC authenticated for company "TAP",
-When they attempt to deactivate a route belonging to company "RYA",
-Then the system denies the operation with: *"You are not authorized to deactivate this route."*
-
-**AT6 — Unauthenticated access is rejected**
-
-Given a user not authenticated as ATC_COLLABORATOR,
-When they attempt to deactivate a route,
-Then the system denies access with an authorization error (enforced by `AuthzRegistry`).
+- `49a0011` — Readme of US74 : references #87
+- `da0cdcc` — Design of US74 : references #87
+- `cb3626a` — Design of US74 : references #87
+- `204474c` — TDD and start of implementation of US74 : references #87
+- `ff1f1f3` — flight route test update References #68
 
 ---
 
-## 6. Implementation Notes
+## 6. Acceptance Tests
 
-- `deactivationDate` is stored as a nullable `LocalDate` column in the `flight_route` table (`DEACTIVATION_DATE DATE NULL`), consistent with NFR08 (both in-memory H2 and remote RDBMS must support this schema).
-- `FlightRoute.isActiveOn(date)` must be used by **US080** (Create flight plan) to prevent scheduling on deactivated routes — this is a cross-cutting enforcement point that should be verified in the US080 implementation.
-- `FlightPlanRepository.existsPlannedFlightAfterDate(routeId, date)` should be implemented as a JPQL query:
-  ```jpql
-  SELECT COUNT(fp) > 0 FROM FlightPlan fp
-  WHERE fp.route.id = :routeId
-  AND fp.departureDateTime > :date
-  AND fp.status NOT IN ('CANCELLED')
-  ```
-- Both `JpaFlightRouteRepository` and `InMemoryFlightRouteRepository` must be provided per NFR08.
+**AT1 — Successful deactivation (no future flights)**
+
+Given an active route `TP123` with no planned flights after 2026-06-01,
+When the ATCC deactivates the route with deactivation date 2026-06-01,
+Then `route.isActive()` returns `false`, `route.deactivationDate()` equals 2026-06-01, and a success message is shown.
+
+**AT2 — Deactivation blocked by planned flights**
+
+Given an active route with a planned flight departing on 2026-06-15,
+When the ATCC tries to deactivate the route with deactivation date 2026-06-01,
+Then the system rejects the operation with: *"Cannot deactivate route: planned flights exist on or after the selected date."*
+
+**AT3 — New flight creation blocked on deactivated route**
+
+Given a route where `isActive()` returns `false`,
+When a collaborator attempts to create a new flight on that route,
+Then the US080 controller rejects the creation because the route is inactive.
+
+**AT4 — Deactivation of already-deactivated route is rejected**
+
+Given a route already deactivated (deactivationDate is set),
+When the ATCC tries to deactivate it again,
+Then the domain throws `IllegalStateException`: *"Route is already deactivated."*
+
+**AT5 — Unauthenticated access is rejected**
+
+Given a user not authenticated as `ATC_COLLABORATOR`,
+When they attempt to deactivate a route,
+Then the system denies access with an authorization error (enforced by `AuthorizationService`).
+
+**AT6 — Non-existent route is rejected**
+
+Given a route name that does not exist in the repository,
+When the ATCC attempts to deactivate it,
+Then the system throws `IllegalArgumentException`: *"Flight route not found: <name>"*
 
 ---
 
@@ -288,4 +249,5 @@ Then the system denies access with an authorization error (enforced by `AuthzReg
 
 - The term "delete" in the user story is interpreted as a **logical/soft deactivation**, not a physical removal, consistent with DDD practices and the requirement that existing planned flights must be preserved.
 - The `deactivationDate` field makes it possible to schedule deactivation in the future (e.g., deactivate from next month), which is explicitly supported by the requirement *"from a given date onwards"*.
-- The `resolveCompanyFromSession()` helper depends on a link between the framework's `SystemUser` (identified by username) and the domain's `AirTransportCompanyCollaborator`. This is the same pattern used in other ATCC user stories (e.g., US073, US070).
+- The check for planned flights uses `FlightRepository.existsByRouteNameAndDepartureTimeAfter(routeName, dateTime)` (cross-aggregate query). `FlightRouteRepository` also declares `hasPlannedFlightsAfter(name, date)` but this method is not used by the current controller — `FlightRepository` is the authoritative source for this check.
+- Per NFR08, both JPA and in-memory implementations of `FlightRouteRepository` must support the `findAllActive()` query.
