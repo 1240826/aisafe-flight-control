@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Pilot Roster" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Manage certified pilots across air transport companies" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search by pilot ID, name, email or company..." styleClass="search-bar" />
+
+        <HBox spacing="12">
+            <ComboBox fx:id="filterCompany" promptText="Filter by company" styleClass="form-field" prefWidth="200" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Refresh" onAction="#refreshTable" styleClass="btn-secondary" />
+        </HBox>
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="pilotsTable" VBox.vgrow="ALWAYS" prefHeight="240">
+            <columns>
+                <TableColumn fx:id="colPilotId" text="Pilot ID" prefWidth="100" />
+                <TableColumn fx:id="colEmail" text="Email" prefWidth="200" />
+                <TableColumn fx:id="colCompany" text="Company" prefWidth="120" />
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="100" />
+            </columns>
+        </TableView>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Add New Pilot" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Email" styleClass="form-label" />
+                    <TextField fx:id="newEmail" promptText="e.g. pilot@company.com" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Name" styleClass="form-label" />
+                    <TextField fx:id="newName" promptText="e.g. John Smith" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Company" styleClass="form-label" />
+                    <ComboBox fx:id="newCompany" styleClass="form-field" promptText="Select company..." HBox.hgrow="ALWAYS" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <Button text="Add Pilot" onAction="#addPilot" styleClass="btn-primary" HBox.hgrow="ALWAYS" />
+                <Button text="Deactivate Selected" onAction="#removePilot" styleClass="btn-danger" HBox.hgrow="ALWAYS" />
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

@@ -1,0 +1,19 @@
+// INVALID — tests that the arrival block is mandatory inside a leg
+// Error: arrival is missing. Grammar enforces departure -> arrival -> fuel -> segment+
+// Expected error (parser): mismatched input 'fuel' expecting 'arrival'
+
+flight TP9004 : regular {
+
+    route { origin: LIS; destination: LHR; }
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+        departure { airport: LIS; day: Monday; datetime: 2026-05-18T08:30+01:00; }
+        fuel      { quantity: 15000 kg; }
+        segment {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m WIDTH 60 m];
+        }
+    }
+}

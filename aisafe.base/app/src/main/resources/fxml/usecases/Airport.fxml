@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Airports" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Register and manage airports worldwide" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search airports by name, IATA, ICAO, city or country..." styleClass="search-bar" />
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="airportsTable" VBox.vgrow="ALWAYS" prefHeight="240">
+            <columns>
+                <TableColumn fx:id="colIata" text="IATA" prefWidth="70" />
+                <TableColumn fx:id="colIcao" text="ICAO" prefWidth="80" />
+                <TableColumn fx:id="colName" text="Airport Name" prefWidth="200" />
+                <TableColumn fx:id="colCity" text="City" prefWidth="150" />
+                <TableColumn fx:id="colCountry" text="Country" prefWidth="150" />
+                <TableColumn fx:id="colArea" text="Control Area" prefWidth="120" />
+            </columns>
+        </TableView>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Register New Airport" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="IATA Code" styleClass="form-label" />
+                    <TextField fx:id="newIata" promptText="e.g. LIS" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="ICAO Code" styleClass="form-label" />
+                    <TextField fx:id="newIcao" promptText="e.g. LPPT" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Airport Name" styleClass="form-label" />
+                    <TextField fx:id="newName" promptText="e.g. Lisbon Airport" styleClass="form-field" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="City" styleClass="form-label" />
+                    <TextField fx:id="newCity" promptText="e.g. Lisbon" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Country" styleClass="form-label" />
+                    <TextField fx:id="newCountry" promptText="e.g. Portugal" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Air Control Area" styleClass="form-label" />
+                    <ComboBox fx:id="newArea" styleClass="form-field" promptText="Select control area..." HBox.hgrow="ALWAYS" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Latitude" styleClass="form-label" />
+                    <TextField fx:id="newLatitude" promptText="e.g. 38.774" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Longitude" styleClass="form-label" />
+                    <TextField fx:id="newLongitude" promptText="e.g. -9.134" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Elevation (m)" styleClass="form-label" />
+                    <TextField fx:id="newElevation" promptText="e.g. 114" styleClass="form-field" />
+                </VBox>
+            </HBox>
+            <Button text="Register Airport" onAction="#addAirport" styleClass="btn-primary" maxWidth="Infinity" />
+        </VBox>
+    </VBox>
+</ScrollPane>

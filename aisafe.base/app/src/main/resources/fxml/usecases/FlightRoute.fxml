@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Flight Routes" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Manage flight routes between airports" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search by route name, origin, destination or company..." styleClass="search-bar" />
+
+        <HBox spacing="12">
+            <ComboBox fx:id="filterCompany" promptText="Filter by company" styleClass="form-field" prefWidth="200" />
+            <ComboBox fx:id="filterStatus" promptText="Filter by status" styleClass="form-field" prefWidth="160" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="🗺 View on Map" onAction="#viewOnMap" styleClass="btn-zoom" />
+            <Button text="Refresh" onAction="#refreshTable" styleClass="btn-secondary" />
+        </HBox>
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="routesTable" VBox.vgrow="ALWAYS" prefHeight="240">
+            <columns>
+                <TableColumn fx:id="colName" text="Route Name" prefWidth="100" />
+                <TableColumn fx:id="colOrigin" text="Origin" prefWidth="100" />
+                <TableColumn fx:id="colDestination" text="Destination" prefWidth="100" />
+                <TableColumn fx:id="colCompany" text="Company" prefWidth="100" />
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="120" />
+            </columns>
+        </TableView>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Create New Route" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Route Name" styleClass="form-label" />
+                    <TextField fx:id="newName" promptText="e.g. TP123" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Origin Airport" styleClass="form-label" />
+                    <ComboBox fx:id="newOrigin" styleClass="form-field" promptText="Select origin..." HBox.hgrow="ALWAYS" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Destination Airport" styleClass="form-label" />
+                    <ComboBox fx:id="newDestination" styleClass="form-field" promptText="Select destination..." HBox.hgrow="ALWAYS" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Company" styleClass="form-label" />
+                    <ComboBox fx:id="newCompany" styleClass="form-field" promptText="Select company..." HBox.hgrow="ALWAYS" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <Button text="Create Route" onAction="#addRoute" styleClass="btn-primary" HBox.hgrow="ALWAYS" />
+                <Button text="Delete Selected Route" onAction="#deleteRoute" styleClass="btn-danger" HBox.hgrow="ALWAYS" />
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

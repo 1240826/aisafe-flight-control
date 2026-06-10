@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Simulation Reports &amp; Live Monitor" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Real-time flight simulation monitoring with analytics and company insights" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <!-- Controls Bar -->
+        <HBox spacing="12" alignment="CENTER_LEFT">
+            <Label text="Simulation:" styleClass="form-label" />
+            <ComboBox fx:id="simulationSelector" prefWidth="350" styleClass="form-field" />
+            <Button text="Generate Report File" onAction="#generateReport" styleClass="btn-primary" />
+            <Button text="Refresh" onAction="#loadSimulations" styleClass="btn-secondary" />
+            <Region HBox.hgrow="ALWAYS" />
+            <HBox spacing="6" alignment="CENTER_LEFT">
+                <Label text="Auto-refresh" style="-fx-font-size: 12px; -fx-text-fill: #8b949e;" />
+                <Label fx:id="liveIndicator" text="●" style="-fx-font-size: 14px; -fx-text-fill: #484f58;" />
+            </HBox>
+        </HBox>
+
+        <!-- Summary Metrics -->
+        <HBox spacing="16">
+            <VBox styleClass="metric-card, metric-blue" spacing="6" HBox.hgrow="ALWAYS">
+                <Label text="Total Flights" styleClass="metric-label" />
+                <Label fx:id="metricFlights" text="-" styleClass="metric-value" />
+            </VBox>
+            <VBox styleClass="metric-card, metric-green" spacing="6" HBox.hgrow="ALWAYS">
+                <Label text="Violations" styleClass="metric-label" />
+                <Label fx:id="metricViolations" text="-" styleClass="metric-value" />
+            </VBox>
+            <VBox styleClass="metric-card, metric-amber" spacing="6" HBox.hgrow="ALWAYS">
+                <Label text="Pass Rate" styleClass="metric-label" />
+                <Label fx:id="metricPassRate" text="-" styleClass="metric-value" />
+            </VBox>
+            <VBox styleClass="metric-card, metric-purple" spacing="6" HBox.hgrow="ALWAYS">
+                <Label text="Companies Involved" styleClass="metric-label" />
+                <Label fx:id="metricCompanies" text="-" styleClass="metric-value" />
+            </VBox>
+        </HBox>
+
+        <!-- Simulation Details Card -->
+        <VBox styleClass="content-card" spacing="12">
+            <Label text="Simulation Details" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="40">
+                <VBox spacing="6">
+                    <HBox spacing="8"><Label text="Area:" style="-fx-font-size: 12px; -fx-text-fill: #8b949e;" /><Label fx:id="simAreaLabel" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" /></HBox>
+                    <HBox spacing="8"><Label text="Time Range:" style="-fx-font-size: 12px; -fx-text-fill: #8b949e;" /><Label fx:id="simTimeRangeLabel" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" /></HBox>
+                </VBox>
+                <VBox spacing="6">
+                    <HBox spacing="8"><Label text="Threshold:" style="-fx-font-size: 12px; -fx-text-fill: #8b949e;" /><Label fx:id="simSafetyThresholdLabel" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" /></HBox>
+                    <HBox spacing="8"><Label text="Result:" style="-fx-font-size: 12px; -fx-text-fill: #8b949e;" /><Label fx:id="simStatusLabel" text="-" styleClass="status-badge" /></HBox>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Charts Section -->
+        <Label text="Analytics Dashboard" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+        <VBox fx:id="chartsContainer" spacing="16">
+            <!-- Row 1: Violations Bar + Validation Pie -->
+            <HBox spacing="16">
+                <VBox styleClass="content-card" spacing="12" HBox.hgrow="ALWAYS">
+                    <Label text="Safety Violations by Type" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <BarChart fx:id="violationsChart" prefHeight="280" prefWidth="500" animated="true" legendVisible="false">
+                        <xAxis><CategoryAxis fx:id="violationsXAxis" tickLabelFill="#8b949e" /></xAxis>
+                        <yAxis><NumberAxis fx:id="violationsYAxis" autoRanging="true" tickLabelFill="#8b949e" /></yAxis>
+                    </BarChart>
+                </VBox>
+                <VBox styleClass="content-card" spacing="12" HBox.hgrow="ALWAYS">
+                    <Label text="Validation Outcome" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <PieChart fx:id="validationPieChart" prefHeight="280" prefWidth="400"
+                              labelsVisible="true" legendVisible="true" startAngle="90" animated="true" />
+                </VBox>
+            </HBox>
+
+            <!-- Row 2: Violations Over Time + Company Breakdown -->
+            <HBox spacing="16">
+                <VBox styleClass="content-card" spacing="12" HBox.hgrow="ALWAYS">
+                    <Label text="Violations Over Simulation Time" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <LineChart fx:id="violationsTrendChart" prefHeight="280" prefWidth="500" animated="true" legendVisible="true" createSymbols="true">
+                        <xAxis><NumberAxis fx:id="trendXAxis" label="Time Step" tickLabelFill="#8b949e" /></xAxis>
+                        <yAxis><NumberAxis fx:id="trendYAxis" label="Violations" autoRanging="true" tickLabelFill="#8b949e" /></yAxis>
+                    </LineChart>
+                </VBox>
+                <VBox styleClass="content-card" spacing="12" HBox.hgrow="ALWAYS">
+                    <Label text="Company Flight Distribution" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <BarChart fx:id="companyChart" prefHeight="280" prefWidth="500" animated="true" legendVisible="false" categoryGap="8">
+                        <xAxis><CategoryAxis fx:id="companyXAxis" tickLabelFill="#8b949e" /></xAxis>
+                        <yAxis><NumberAxis fx:id="companyYAxis" label="Number of Flights" autoRanging="true" tickLabelFill="#8b949e" /></yAxis>
+                    </BarChart>
+                </VBox>
+            </HBox>
+
+            <!-- Row 3: Flights per Hour -->
+            <VBox styleClass="content-card" spacing="12">
+                <Label text="Flights per Hour" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                <BarChart fx:id="flightsPerHourChart" prefHeight="250" animated="true" legendVisible="false">
+                    <xAxis><CategoryAxis fx:id="hourXAxis" tickLabelFill="#8b949e" /></xAxis>
+                    <yAxis><NumberAxis fx:id="hourYAxis" autoRanging="true" tickLabelFill="#8b949e" /></yAxis>
+                </BarChart>
+            </VBox>
+        </VBox>
+
+        <!-- Raw Report (collapsible) -->
+        <VBox styleClass="content-card" spacing="8">
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Label text="Raw Report Output" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" HBox.hgrow="ALWAYS" />
+                <Button text="⛶ Zoom" onAction="#onZoomReport" styleClass="btn-zoom" />
+            </HBox>
+            <TextArea fx:id="reportOutput" editable="false" prefHeight="150" styleClass="form-field" promptText="Report content..." VBox.vgrow="ALWAYS" />
+        </VBox>
+    </VBox>
+</ScrollPane>

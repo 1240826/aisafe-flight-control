@@ -31,6 +31,8 @@
 		<sonar.exclusions>src/main/java/**/*/package-info.java</sonar.exclusions>
 
 		<antlr4.version>4.13.1</antlr4.version>
+
+		<javafx.version>21.0.5</javafx.version>
 	</properties>
 	<modules>
 		<module>../aisafe.dsl</module>

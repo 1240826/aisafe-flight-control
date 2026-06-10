@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Weather Data" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Register, import and consult weather observations for air control areas" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search by area, provider or date..." styleClass="search-bar" />
+
+        <HBox spacing="12">
+            <ComboBox fx:id="filterArea" promptText="Filter by area" styleClass="form-field" prefWidth="200" />
+            <DatePicker fx:id="filterDate" promptText="Filter by date" styleClass="form-field" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Refresh" onAction="#refreshTable" styleClass="btn-secondary" />
+        </HBox>
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="weatherTable" VBox.vgrow="ALWAYS" prefHeight="220">
+            <columns>
+                <TableColumn fx:id="colDate" text="Date/Time" prefWidth="160" />
+                <TableColumn fx:id="colArea" text="Control Area" prefWidth="100" />
+                <TableColumn fx:id="colWindSpeed" text="Wind Speed (kt)" prefWidth="120" />
+                <TableColumn fx:id="colWindDir" text="Wind Dir (°)" prefWidth="100" />
+                <TableColumn fx:id="colTemp" text="Temp (°C)" prefWidth="90" />
+                <TableColumn fx:id="colProvider" text="Provider" prefWidth="140" />
+            </columns>
+        </TableView>
+
+        <TabPane>
+            <Tab text="Register Weather">
+                <VBox spacing="16" styleClass="content-card">
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Air Control Area" styleClass="form-label" />
+                            <ComboBox fx:id="newArea" styleClass="form-field" promptText="Select area..." HBox.hgrow="ALWAYS" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Date &amp; Time" styleClass="form-label" />
+                            <DatePicker fx:id="newDate" styleClass="form-field" HBox.hgrow="ALWAYS" />
+                        </VBox>
+                    </HBox>
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Wind Speed (knots)" styleClass="form-label" />
+                            <TextField fx:id="newWindSpeed" promptText="e.g. 25" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Wind Direction (°)" styleClass="form-label" />
+                            <TextField fx:id="newWindDir" promptText="e.g. 270" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Temperature (°C)" styleClass="form-label" />
+                            <TextField fx:id="newTemp" promptText="e.g. 15" styleClass="form-field" />
+                        </VBox>
+                    </HBox>
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Latitude" styleClass="form-label" />
+                            <TextField fx:id="newLat" promptText="e.g. 38.7" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Longitude" styleClass="form-label" />
+                            <TextField fx:id="newLon" promptText="e.g. -9.1" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Altitude (m)" styleClass="form-label" />
+                            <TextField fx:id="newAlt" promptText="e.g. 1000" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Provider" styleClass="form-label" />
+                            <TextField fx:id="newProvider" promptText="e.g. MetOffice" styleClass="form-field" />
+                        </VBox>
+                    </HBox>
+                    <Button text="Register Weather Data" onAction="#addWeather" styleClass="btn-primary" maxWidth="Infinity" />
+                </VBox>
+            </Tab>
+            <Tab text="Bulk Import">
+                <VBox spacing="16" styleClass="content-card">
+                    <Label text="Import from CSV File" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <HBox spacing="12">
+                        <TextField fx:id="csvPath" promptText="Select a CSV file..." styleClass="form-field" editable="false" HBox.hgrow="ALWAYS" />
+                        <Button text="Browse..." onAction="#chooseCsv" styleClass="btn-secondary" />
+                    </HBox>
+                    <Button text="Import CSV" onAction="#importCsv" styleClass="btn-primary" maxWidth="Infinity" />
+                </VBox>
+            </Tab>
+        </TabPane>
+    </VBox>
+</ScrollPane>

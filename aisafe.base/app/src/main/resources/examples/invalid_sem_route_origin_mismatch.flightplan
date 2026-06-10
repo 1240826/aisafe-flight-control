@@ -1,0 +1,22 @@
+// INVALID — R5: route origin is 'OPO' but first leg departs from 'LIS'
+
+flight TP105 : charter {
+
+    route {
+        origin      : OPO;
+        destination : LHR;
+    }
+
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+        departure { airport: LIS; datetime: 2026-05-20T08:00+01:00; }
+        arrival   { airport: LHR; datetime: 2026-05-20T10:00+01:00; }
+        fuel      { quantity: 15000 kg; }
+        segment {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m WIDTH 60 m];
+        }
+    }
+}

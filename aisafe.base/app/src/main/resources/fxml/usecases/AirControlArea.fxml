@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Air Control Areas" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Define airspace sectors and their geographic boundaries" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search by area code or name..." styleClass="search-bar" />
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="areasTable" VBox.vgrow="ALWAYS" prefHeight="240">
+            <columns>
+                <TableColumn fx:id="colCode" text="Area Code" prefWidth="100" />
+                <TableColumn fx:id="colName" text="Area Name" prefWidth="200" />
+                <TableColumn text="Min Latitude" prefWidth="120" />
+                <TableColumn text="Max Latitude" prefWidth="120" />
+                <TableColumn text="Min Longitude" prefWidth="120" />
+                <TableColumn text="Max Longitude" prefWidth="120" />
+            </columns>
+        </TableView>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Register New Air Control Area" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Area Code" styleClass="form-label" />
+                    <TextField fx:id="newCode" promptText="e.g. LPPC" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Area Name" styleClass="form-label" />
+                    <TextField fx:id="newName" promptText="e.g. Lisboa FIR" styleClass="form-field" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Minimum Latitude" styleClass="form-label" />
+                    <TextField fx:id="newMinLat" promptText="e.g. 30.0" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Maximum Latitude" styleClass="form-label" />
+                    <TextField fx:id="newMaxLat" promptText="e.g. 48.0" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Minimum Longitude" styleClass="form-label" />
+                    <TextField fx:id="newMinLon" promptText="e.g. -15.0" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Maximum Longitude" styleClass="form-label" />
+                    <TextField fx:id="newMaxLon" promptText="e.g. -5.0" styleClass="form-field" />
+                </VBox>
+            </HBox>
+            <Button text="Create Air Control Area" onAction="#addArea" styleClass="btn-primary" maxWidth="Infinity" />
+        </VBox>
+    </VBox>
+</ScrollPane>

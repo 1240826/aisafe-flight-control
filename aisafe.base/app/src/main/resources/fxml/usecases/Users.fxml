@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="User Management" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Register, enable, disable and manage system users" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search by username, name, email, role or status..." styleClass="search-bar" />
+
+        <HBox spacing="12">
+            <ComboBox fx:id="filterRole" promptText="Filter by role" styleClass="form-field" prefWidth="200" />
+            <ComboBox fx:id="filterStatus" promptText="Filter by status" styleClass="form-field" prefWidth="160" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Refresh" onAction="#refreshTable" styleClass="btn-secondary" />
+        </HBox>
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="usersTable" VBox.vgrow="ALWAYS" prefHeight="240">
+            <columns>
+                <TableColumn fx:id="colUsername" text="Username" prefWidth="140" />
+                <TableColumn fx:id="colDisplayName" text="Display Name" prefWidth="160" />
+                <TableColumn fx:id="colEmail" text="Email" prefWidth="220" />
+                <TableColumn fx:id="colRoles" text="Roles" prefWidth="160" />
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="100" />
+            </columns>
+        </TableView>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Register New User" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Username" styleClass="form-label" />
+                    <TextField fx:id="newUsername" promptText="e.g. jdoe" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Display Name" styleClass="form-label" />
+                    <TextField fx:id="newDisplayName" promptText="e.g. John Doe" styleClass="form-field" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Email" styleClass="form-label" />
+                    <TextField fx:id="newEmail" promptText="e.g. jdoe@company.com" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Password" styleClass="form-label" />
+                    <PasswordField fx:id="newPassword" promptText="Enter password" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Role" styleClass="form-label" />
+                    <ComboBox fx:id="newRole" styleClass="form-field" promptText="Select role..." HBox.hgrow="ALWAYS" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <Button text="Create User" onAction="#addUser" styleClass="btn-primary" HBox.hgrow="ALWAYS" />
+                <Button text="Disable Selected" onAction="#disableUser" styleClass="btn-danger" HBox.hgrow="ALWAYS" />
+                <Button text="Enable Selected" onAction="#enableUser" styleClass="btn-secondary" HBox.hgrow="ALWAYS" />
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

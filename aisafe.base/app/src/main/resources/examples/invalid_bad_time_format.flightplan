@@ -1,0 +1,27 @@
+// INVALID — tests that regular departure must use datetime: (not time:) after day:
+//
+// Error: using the old 'time:' keyword instead of 'datetime:' in a regular departure.
+// After 'day: Monday;' the grammar expects 'datetime: TIMESTAMP;' but finds 'time'.
+//
+// Expected error (parser): mismatched input 'time' expecting 'datetime'
+
+flight TP9009 : regular {
+
+    route { origin: LIS; destination: LHR; }
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+        departure {
+            airport : LIS;
+            day     : Monday;
+            time    : 08:30;       // ERROR: 'time:' not accepted here — use 'datetime:'
+        }
+        arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
+        fuel      { quantity: 15000 kg; }
+        segment {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m WIDTH 60 m];
+        }
+    }
+}

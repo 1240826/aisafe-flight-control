@@ -1,0 +1,31 @@
+// Demo - Conflict scenario: LIS -> OPO (flight B)
+// Same departure time as conflict A, same route -> guaranteed conflict near LIS
+flight TP2000 : charter {
+
+    route {
+        origin      : LIS;
+        destination : OPO;
+    }
+
+    aircraft : CS-TAC;
+    pilot    : P12345;
+
+    leg {
+        departure {
+            airport  : LIS;
+            datetime : 2026-06-02T10:00+01:00;
+        }
+        arrival {
+            airport  : OPO;
+            datetime : 2026-06-02T11:05+01:00;
+        }
+        fuel {
+            quantity : 5000 kg;
+        }
+        segment {
+            from      : (38.7813, -9.1359);
+            to        : (41.2481, -8.6814);
+            altitudes : [9000 m WIDTH 50 m];
+        }
+    }
+}

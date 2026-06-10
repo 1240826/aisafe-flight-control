@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="System Settings" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="View system configuration and runtime information" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Application" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="12">
+                <Label text="Version:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <Label text="1.4.0" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+            </HBox>
+            <HBox spacing="12">
+                <Label text="Persistence:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <Label text="JPA / PostgreSQL" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+            </HBox>
+            <HBox spacing="12">
+                <Label text="Auth Provider:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <Label text="EAPLI Framework" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+            </HBox>
+            <HBox spacing="12">
+                <Label text="Java Runtime:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <Label fx:id="javaVersion" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+            </HBox>
+            <HBox spacing="12">
+                <Label text="OS:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <Label fx:id="osInfo" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+            </HBox>
+        </VBox>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Simulator Connection" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="12">
+                <Label text="Host:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <Label fx:id="simulatorHost" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+            </HBox>
+            <HBox spacing="12">
+                <Label text="Port:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <Label fx:id="simulatorPort" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+            </HBox>
+        </VBox>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="About AISafe" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="AISafe Flight Control System — Advanced air traffic management platform. Designed for safety, scalability, and real-time coordination of global flight operations." wrapText="true" style="-fx-font-size: 12px; -fx-text-fill: #8b949e; -fx-line-spacing: 4;" />
+            <Label text="© 2026 AISafe. All rights reserved." style="-fx-font-size: 11px; -fx-text-fill: #484f58;" />
+        </VBox>
+    </VBox>
+</ScrollPane>

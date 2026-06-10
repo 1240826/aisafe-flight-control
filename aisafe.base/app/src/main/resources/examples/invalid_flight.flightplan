@@ -1,0 +1,28 @@
+// INVALID flight plan — intentional errors to test error reporting
+// Expected errors:
+//   [PARSER]  missing ';' at '}'   (missing semicolon after datetime value)
+//   [LEXER]   token recognition error at: '@'
+
+flight TP9999 : regular {
+
+    route { origin: LIS; destination: LHR; }
+    aircraft : REG001;
+    pilot    : P99999;
+
+    leg {
+        departure {
+            airport  : LIS;
+            day      : Monday;
+            datetime : 2026-05-18T08:30+01:00   // ERROR: missing semicolon
+        }
+        arrival {
+            airport  : @LHR;         // ERROR: '@' is not a valid token
+            datetime : 2026-05-18T10:45+01:00;
+        }
+        fuel    { quantity: 15000 kg; }
+        segment {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m WIDTH 60 m];
+        }
+    }
+}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Air Transport Companies" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Register and manage air transport companies" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search by company name, IATA or ICAO code..." styleClass="search-bar" />
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="companiesTable" VBox.vgrow="ALWAYS" prefHeight="240">
+            <columns>
+                <TableColumn fx:id="colName" text="Company Name" prefWidth="250" />
+                <TableColumn fx:id="colIata" text="IATA" prefWidth="80" />
+                <TableColumn fx:id="colIcao" text="ICAO" prefWidth="80" />
+            </columns>
+        </TableView>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Register New Company" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Company Name" styleClass="form-label" />
+                    <TextField fx:id="newName" promptText="e.g. TAP Air Portugal" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="IATA Code (2 letters)" styleClass="form-label" />
+                    <TextField fx:id="newIata" promptText="e.g. TP" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="ICAO Code (2-3 letters)" styleClass="form-label" />
+                    <TextField fx:id="newIcao" promptText="e.g. TAP" styleClass="form-field" />
+                </VBox>
+            </HBox>
+            <Button text="Register Company" onAction="#addCompany" styleClass="btn-primary" maxWidth="Infinity" />
+        </VBox>
+    </VBox>
+</ScrollPane>

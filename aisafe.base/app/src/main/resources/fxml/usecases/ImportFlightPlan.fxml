@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Import Flight Plan" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Import, validate and test flight plans from DSL files" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <HBox spacing="12" alignment="CENTER_LEFT">
+            <ComboBox fx:id="exampleSelector" promptText="Load an example..." styleClass="form-field" prefWidth="300" HBox.hgrow="ALWAYS" />
+            <Button text="Load Example" onAction="#loadExample" styleClass="btn-secondary" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Browse File..." onAction="#chooseFile" styleClass="btn-outline" />
+        </HBox>
+
+        <HBox spacing="12">
+            <TextField fx:id="filePathField" promptText="No file selected..." styleClass="form-field" editable="false" HBox.hgrow="ALWAYS" />
+        </HBox>
+
+        <VBox styleClass="content-card" spacing="12">
+            <Label text="Flight Plan DSL" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <TextArea fx:id="dslContent" editable="false" prefHeight="200" styleClass="form-field"
+                      promptText="Flight plan DSL content..." />
+            <HBox spacing="12">
+                <Button text="🔍 Validate &amp; Import" onAction="#importPlan" styleClass="btn-primary" HBox.hgrow="ALWAYS" />
+                <Button text="🌤 Add Weather" onAction="#addWeatherData" styleClass="btn-outline" HBox.hgrow="ALWAYS" />
+            </HBox>
+        </VBox>
+
+        <VBox fx:id="validationResult" managed="false" visible="false" styleClass="content-card" spacing="8">
+            <Label fx:id="validationTitle" text="Validation Result" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <TextArea fx:id="validationDetails" editable="false" prefHeight="80" styleClass="form-field" />
+            <Button fx:id="simulateButton" text="▶ Run Simulation" onAction="#runSimulation" styleClass="btn-primary" maxWidth="Infinity" managed="false" visible="false" />
+        </VBox>
+
+        <VBox fx:id="simulationResult" managed="false" visible="false" styleClass="content-card" spacing="8">
+            <Label fx:id="simulationTitle" text="Simulation Result" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <TextArea fx:id="simulationReport" editable="false" prefHeight="150" styleClass="form-field" />
+        </VBox>
+    </VBox>
+</ScrollPane>

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Monthly Reports &amp; Analytics" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Generate, visualize and export periodic compliance and operational reports" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <!-- Controls -->
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Report Parameters" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Select Month" styleClass="form-label" />
+                    <DatePicker fx:id="monthPicker" styleClass="form-field" promptText="Select month..." />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Report Type" styleClass="form-label" />
+                    <ComboBox fx:id="reportTypeCombo" styleClass="form-field" promptText="Select report type..." HBox.hgrow="ALWAYS" />
+                </VBox>
+            </HBox>
+            <HBox spacing="12">
+                <Button text="Generate Report" onAction="#generateReport" styleClass="btn-primary" HBox.hgrow="ALWAYS" />
+                <Button text="Export to File" onAction="#exportReport" styleClass="btn-secondary" HBox.hgrow="ALWAYS" />
+            </HBox>
+        </VBox>
+
+        <!-- Summary Metrics -->
+        <VBox fx:id="metricsSection" managed="false" visible="false" spacing="16">
+            <Label text="Key Metrics" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox styleClass="metric-card, metric-blue" spacing="6" HBox.hgrow="ALWAYS">
+                    <Label text="Total Flights" styleClass="metric-label" />
+                    <Label fx:id="metricTotalFlights" text="-" styleClass="metric-value" />
+                </VBox>
+                <VBox styleClass="metric-card, metric-green" spacing="6" HBox.hgrow="ALWAYS">
+                    <Label text="Test Pass Rate" styleClass="metric-label" />
+                    <Label fx:id="metricPassRate" text="-" styleClass="metric-value" />
+                </VBox>
+                <VBox styleClass="metric-card, metric-amber" spacing="6" HBox.hgrow="ALWAYS">
+                    <Label text="Active Pilots" styleClass="metric-label" />
+                    <Label fx:id="metricActivePilots" text="-" styleClass="metric-value" />
+                </VBox>
+                <VBox styleClass="metric-card, metric-purple" spacing="6" HBox.hgrow="ALWAYS">
+                    <Label text="Aircraft" styleClass="metric-label" />
+                    <Label fx:id="metricAircraft" text="-" styleClass="metric-value" />
+                </VBox>
+                <VBox styleClass="metric-card" spacing="6" HBox.hgrow="ALWAYS"
+                      style="-fx-background-color: linear-gradient(to bottom right, #3d0027, #0d1117); -fx-border-color: #f85149;">
+                    <Label text="Weather Records" styleClass="metric-label" />
+                    <Label fx:id="metricWeather" text="-" styleClass="metric-value" />
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Charts Section -->
+        <VBox fx:id="chartsSection" managed="false" visible="false" spacing="16">
+            <Label text="Analytics" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+
+            <!-- Row 1: Flight Plan Status + Pass Rate Trend -->
+            <HBox spacing="16">
+                <VBox styleClass="content-card" spacing="12" HBox.hgrow="ALWAYS">
+                    <Label text="Flight Plan Status Distribution" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <BarChart fx:id="statusChart" prefHeight="280" prefWidth="500" animated="true" legendVisible="false">
+                        <xAxis><CategoryAxis fx:id="statusXAxis" tickLabelFill="#8b949e" /></xAxis>
+                        <yAxis><NumberAxis fx:id="statusYAxis" autoRanging="true" tickLabelFill="#8b949e" /></yAxis>
+                    </BarChart>
+                </VBox>
+                <VBox styleClass="content-card" spacing="12" HBox.hgrow="ALWAYS">
+                    <Label text="Pass Rate Trend" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <LineChart fx:id="passRateChart" prefHeight="280" prefWidth="500" animated="true" createSymbols="true">
+                        <xAxis><NumberAxis fx:id="passRateXAxis" label="Month" tickLabelFill="#8b949e" /></xAxis>
+                        <yAxis><NumberAxis fx:id="passRateYAxis" label="Pass Rate (%)" upperBound="100" autoRanging="false" tickLabelFill="#8b949e" /></yAxis>
+                    </LineChart>
+                </VBox>
+            </HBox>
+
+            <!-- Row 2: Distribution Pie + Company Activity -->
+            <HBox spacing="16">
+                <VBox styleClass="content-card" spacing="12" HBox.hgrow="ALWAYS">
+                    <Label text="Flight Plan Distribution" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <PieChart fx:id="distributionPieChart" prefHeight="280" prefWidth="400"
+                              labelsVisible="true" legendVisible="true" startAngle="90" animated="true" />
+                </VBox>
+                <VBox styleClass="content-card" spacing="12" HBox.hgrow="ALWAYS">
+                    <Label text="Flights per Week" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+                    <BarChart fx:id="weeklyChart" prefHeight="280" prefWidth="500" animated="true" legendVisible="false">
+                        <xAxis><CategoryAxis fx:id="weeklyXAxis" tickLabelFill="#8b949e" /></xAxis>
+                        <yAxis><NumberAxis fx:id="weeklyYAxis" label="Flights" autoRanging="true" tickLabelFill="#8b949e" /></yAxis>
+                    </BarChart>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Text Report (always visible for export) -->
+        <VBox styleClass="content-card" spacing="8" VBox.vgrow="ALWAYS">
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Label text="Report Output" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" HBox.hgrow="ALWAYS" />
+                <Button text="⛶ Zoom" onAction="#onZoomReport" styleClass="btn-zoom" />
+            </HBox>
+            <TextArea fx:id="reportOutput" editable="false" prefHeight="200" styleClass="form-field"
+                      promptText="Generate a report to see the output..." VBox.vgrow="ALWAYS" />
+        </VBox>
+    </VBox>
+</ScrollPane>

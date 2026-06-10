@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="24" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Dashboard" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: #f0f6fc;" />
+            <Label text="Welcome back — here is your system overview" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <!-- Metric Cards -->
+        <HBox spacing="16">
+            <VBox styleClass="metric-card, metric-blue" spacing="8" HBox.hgrow="ALWAYS">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="✈" styleClass="metric-icon" />
+                    <Label text="Aircraft Fleet" styleClass="metric-label" />
+                </HBox>
+                <Label fx:id="totalAircraft" text="-" styleClass="metric-value" />
+                <Label text="Registered aircraft" style="-fx-font-size: 11px; -fx-text-fill: #8b949e;" />
+            </VBox>
+            <VBox styleClass="metric-card, metric-green" spacing="8" HBox.hgrow="ALWAYS">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="🛫" styleClass="metric-icon" />
+                    <Label text="Airports" styleClass="metric-label" />
+                </HBox>
+                <Label fx:id="totalAirports" text="-" styleClass="metric-value" />
+                <Label text="Registered airports" style="-fx-font-size: 11px; -fx-text-fill: #8b949e;" />
+            </VBox>
+            <VBox styleClass="metric-card, metric-amber" spacing="8" HBox.hgrow="ALWAYS">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="🏢" styleClass="metric-icon" />
+                    <Label text="Companies" styleClass="metric-label" />
+                </HBox>
+                <Label fx:id="totalCompanies" text="-" styleClass="metric-value" />
+                <Label text="Active companies" style="-fx-font-size: 11px; -fx-text-fill: #8b949e;" />
+            </VBox>
+            <VBox styleClass="metric-card, metric-purple" spacing="8" HBox.hgrow="ALWAYS">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="📋" styleClass="metric-icon" />
+                    <Label text="Flight Plans" styleClass="metric-label" />
+                </HBox>
+                <Label fx:id="totalFlightPlans" text="-" styleClass="metric-value" />
+                <Label text="Active flight plans" style="-fx-font-size: 11px; -fx-text-fill: #8b949e;" />
+            </VBox>
+        </HBox>
+
+        <!-- Quick Actions -->
+        <Label text="Quick Actions" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+        <FlowPane hgap="12" vgap="12">
+            <VBox styleClass="quick-action-card" onMouseClicked="#onQuickAirport" prefWidth="180">
+                <Label text="🛫" style="-fx-font-size: 28px; -fx-padding: 0 0 8 0;" />
+                <Label text="Register Airport" styleClass="quick-action-title" />
+                <Label text="Add a new airport" styleClass="quick-action-desc" />
+            </VBox>
+            <VBox styleClass="quick-action-card" onMouseClicked="#onQuickAircraft" prefWidth="180">
+                <Label text="✈" style="-fx-font-size: 28px; -fx-padding: 0 0 8 0;" />
+                <Label text="Add Aircraft" styleClass="quick-action-title" />
+                <Label text="Register to a fleet" styleClass="quick-action-desc" />
+            </VBox>
+            <VBox styleClass="quick-action-card" onMouseClicked="#onQuickRoute" prefWidth="180">
+                <Label text="🛤" style="-fx-font-size: 28px; -fx-padding: 0 0 8 0;" />
+                <Label text="Create Route" styleClass="quick-action-title" />
+                <Label text="Define a flight route" styleClass="quick-action-desc" />
+            </VBox>
+            <VBox styleClass="quick-action-card" onMouseClicked="#onQuickFlightPlan" prefWidth="180">
+                <Label text="📄" style="-fx-font-size: 28px; -fx-padding: 0 0 8 0;" />
+                <Label text="Import Flight Plan" styleClass="quick-action-title" />
+                <Label text="Import from DSL file" styleClass="quick-action-desc" />
+            </VBox>
+            <VBox styleClass="quick-action-card" onMouseClicked="#onQuickWeather" prefWidth="180">
+                <Label text="🌤" style="-fx-font-size: 28px; -fx-padding: 0 0 8 0;" />
+                <Label text="Weather Data" styleClass="quick-action-title" />
+                <Label text="Register observations" styleClass="quick-action-desc" />
+            </VBox>
+        </FlowPane>
+
+        <!-- System Overview Section -->
+        <HBox spacing="16">
+            <VBox styleClass="activity-feed" HBox.hgrow="ALWAYS" prefWidth="400">
+                <Label text="Recent Activity" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc; -fx-padding: 0 0 12 0;" />
+                <VBox spacing="0">
+                    <HBox styleClass="activity-item" spacing="12" alignment="CENTER_LEFT">
+                        <Label text="●" style="-fx-text-fill: #3fb950; -fx-font-size: 10px;" />
+                        <VBox spacing="2">
+                            <Label text="System initialized" styleClass="activity-text" />
+                            <Label text="All modules loaded successfully" styleClass="activity-time" />
+                        </VBox>
+                    </HBox>
+                    <HBox styleClass="activity-item" spacing="12" alignment="CENTER_LEFT">
+                        <Label text="●" style="-fx-text-fill: #58a6ff; -fx-font-size: 10px;" />
+                        <VBox spacing="2">
+                            <Label text="Database connected" styleClass="activity-text" />
+                            <Label text="PostgreSQL" styleClass="activity-time" />
+                        </VBox>
+                    </HBox>
+                    <HBox styleClass="activity-item" spacing="12" alignment="CENTER_LEFT">
+                        <Label text="●" style="-fx-text-fill: #d29922; -fx-font-size: 10px;" />
+                        <VBox spacing="2">
+                            <Label text="User session active" styleClass="activity-text" />
+                            <Label text="" fx:id="activityUser" styleClass="activity-time" />
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </VBox>
+
+            <VBox styleClass="activity-feed" HBox.hgrow="ALWAYS" prefWidth="300">
+                <Label text="System Information" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc; -fx-padding: 0 0 12 0;" />
+                <VBox spacing="12">
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Label text="Version:" style="-fx-font-size: 12px; -fx-text-fill: #8b949e; -fx-min-width: 80;" />
+                        <Label text="1.4.0" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+                    </HBox>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Label text="Database:" style="-fx-font-size: 12px; -fx-text-fill: #8b949e; -fx-min-width: 80;" />
+                        <Label text="PostgreSQL" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+                    </HBox>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Label text="Runtime:" style="-fx-font-size: 12px; -fx-text-fill: #8b949e; -fx-min-width: 80;" />
+                        <Label fx:id="systemRuntime" text="-" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+                    </HBox>
+                    <Region prefHeight="10" />
+                    <HBox styleClass="system-status" spacing="6" alignment="CENTER">
+                        <Label text="●" style="-fx-text-fill: #3fb950; -fx-font-size: 10px;" />
+                        <Label text="All Systems Operational" style="-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #3fb950;" />
+                    </HBox>
+                </VBox>
+            </VBox>
+        </HBox>
+    </VBox>
+</ScrollPane>

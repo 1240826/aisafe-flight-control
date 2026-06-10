@@ -1,0 +1,24 @@
+// INVALID — tests airport code format enforcement
+// Error: 'LI' is only 2 letters; neither IATA (3 letters) nor ICAO (4 letters) match.
+// Expected error (parser): mismatched input 'LI' expecting {ICAO_CODE, IATA_CODE}
+
+flight TP9010 : regular {
+
+    route {
+        origin      : LI;             // ERROR: only 2 letters
+        destination : LHR;
+    }
+
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+        departure { airport: LIS; day: Monday; datetime: 2026-05-18T08:30+01:00; }
+        arrival   { airport: LHR; datetime: 2026-05-18T10:45+01:00; }
+        fuel      { quantity: 15000 kg; }
+        segment {
+            from: (38.7813, -9.1359); to: (51.4775, -0.4614);
+            altitudes: [10000 m WIDTH 60 m];
+        }
+    }
+}

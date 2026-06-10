@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Collaborators" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Manage customer collaborators across air transport companies and control areas" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search by name, email, company or status..." styleClass="search-bar" />
+
+        <HBox spacing="12">
+            <ComboBox fx:id="filterCustomer" promptText="Filter by customer" styleClass="form-field" prefWidth="200" />
+            <ComboBox fx:id="filterStatus" promptText="Filter by status" styleClass="form-field" prefWidth="160" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Refresh" onAction="#refreshTable" styleClass="btn-secondary" />
+        </HBox>
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="collaboratorsTable" VBox.vgrow="ALWAYS" prefHeight="240">
+            <columns>
+                <TableColumn fx:id="colEmail" text="Email" prefWidth="200" />
+                <TableColumn fx:id="colName" text="Name" prefWidth="160" />
+                <TableColumn text="Type" prefWidth="100" />
+                <TableColumn fx:id="colCustomer" text="Customer" prefWidth="120" />
+                <TableColumn fx:id="colPhone" text="Phone" prefWidth="130" />
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="90" />
+            </columns>
+        </TableView>
+
+        <VBox styleClass="content-card" spacing="16">
+            <Label text="Register New Collaborator" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Email" styleClass="form-label" />
+                    <TextField fx:id="newEmail" promptText="e.g. user@company.com" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Name" styleClass="form-label" />
+                    <TextField fx:id="newName" promptText="e.g. John Doe" styleClass="form-field" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Phone" styleClass="form-label" />
+                    <TextField fx:id="newPhone" promptText="e.g. +351 912345678" styleClass="form-field" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Collaborator Type" styleClass="form-label" />
+                    <ComboBox styleClass="form-field" promptText="Select type..." HBox.hgrow="ALWAYS" />
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Customer (Air Transport Company)" styleClass="form-label" />
+                    <ComboBox fx:id="newCustomer" styleClass="form-field" promptText="Select company..." HBox.hgrow="ALWAYS" />
+                </VBox>
+            </HBox>
+            <Button text="Add Collaborator" onAction="#addCollaborator" styleClass="btn-primary" maxWidth="Infinity" />
+        </VBox>
+    </VBox>
+</ScrollPane>

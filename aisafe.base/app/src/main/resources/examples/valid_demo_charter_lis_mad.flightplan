@@ -1,0 +1,42 @@
+// Demo — Charter flight: Lisbon (LIS) -> Madrid (MAD)
+// Single short-haul leg with approach segments
+
+flight TP4567 : charter {
+
+    route {
+        origin      : LIS;
+        destination : MAD;
+    }
+
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+
+        departure {
+            airport  : LIS;
+            datetime : 2026-06-15T14:00+01:00;
+        }
+
+        arrival {
+            airport  : MAD;
+            datetime : 2026-06-15T16:30+02:00;
+        }
+
+        fuel {
+            quantity : 8000 kg;
+        }
+
+        segment {
+            from      : (38.7813, -9.1359);
+            to        : (39.5000, -6.0000);
+            altitudes : [9000 m WIDTH 50 m];
+        }
+
+        segment {
+            from      : (39.5000, -6.0000);
+            to        : (40.4983, -3.5676);
+            altitudes : [9000 m WIDTH 50 m, 7000 m WIDTH 40 m];
+        }
+    }
+}

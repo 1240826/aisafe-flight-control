@@ -1,0 +1,42 @@
+// INVALID — R7: round trip LIS -> CDG -> LHR -> LIS revisits origin airport
+
+flight TP107 : charter {
+
+    route {
+        origin      : LIS;
+        destination : LIS;
+    }
+
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+        departure { airport: LIS; datetime: 2026-07-10T07:00+01:00; }
+        arrival   { airport: CDG; datetime: 2026-07-10T09:30+02:00; }
+        fuel      { quantity: 14000 kg; }
+        segment {
+            from: (38.7813, -9.1359); to: (49.0097, 2.5479);
+            altitudes: [10000 m WIDTH 60 m];
+        }
+    }
+
+    leg {
+        departure { airport: CDG; datetime: 2026-07-10T11:00+02:00; }
+        arrival   { airport: LHR; datetime: 2026-07-10T12:00+01:00; }
+        fuel      { quantity: 8000 kg; }
+        segment {
+            from: (49.0097, 2.5479); to: (51.4775, -0.4614);
+            altitudes: [9000 m WIDTH 60 m];
+        }
+    }
+
+    leg {
+        departure { airport: LHR; datetime: 2026-07-10T14:00+01:00; }
+        arrival   { airport: LIS; datetime: 2026-07-10T16:30+01:00; }
+        fuel      { quantity: 16000 kg; }
+        segment {
+            from: (51.4775, -0.4614); to: (38.7813, -9.1359);
+            altitudes: [10000 m WIDTH 60 m];
+        }
+    }
+}

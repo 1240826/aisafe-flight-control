@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+    <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
+        <VBox spacing="4">
+            <Label text="Aircraft Models" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <Label text="Configure aircraft models and their certified engines" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+        </VBox>
+
+        <TextField fx:id="searchField" promptText="Search by model code, name or manufacturer..." styleClass="search-bar" />
+
+        <HBox alignment="CENTER_RIGHT">
+            <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
+        </HBox>
+        <TableView fx:id="modelsTable" VBox.vgrow="ALWAYS" prefHeight="220">
+            <columns>
+                <TableColumn fx:id="colCode" text="Model Code" prefWidth="100" />
+                <TableColumn fx:id="colName" text="Name" prefWidth="160" />
+                <TableColumn fx:id="colManufacturer" text="Manufacturer" prefWidth="140" />
+                <TableColumn fx:id="colType" text="Type" prefWidth="100" />
+                <TableColumn fx:id="colPassengers" text="Max Passengers" prefWidth="120" />
+                <TableColumn fx:id="colEngines" text="Certified Engines" prefWidth="120" />
+            </columns>
+        </TableView>
+
+        <TabPane>
+            <Tab text="Identification">
+                <VBox spacing="14" styleClass="content-card">
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Model Code" styleClass="form-label" />
+                            <TextField fx:id="newCode" promptText="e.g. B738" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Model Name" styleClass="form-label" />
+                            <TextField fx:id="newName" promptText="e.g. 737-800" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Manufacturer" styleClass="form-label" />
+                            <ComboBox fx:id="newManufacturer" styleClass="form-field" promptText="Select manufacturer..." HBox.hgrow="ALWAYS" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Type" styleClass="form-label" />
+                            <ComboBox fx:id="newType" styleClass="form-field" promptText="Select type..." HBox.hgrow="ALWAYS" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Max Passengers" styleClass="form-label" />
+                            <TextField fx:id="newMaxPassengers" promptText="e.g. 189" styleClass="form-field" />
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </Tab>
+            <Tab text="Weights">
+                <VBox spacing="14" styleClass="content-card">
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Empty Weight (kg)" styleClass="form-label" />
+                            <TextField fx:id="newEmptyWeight" promptText="e.g. 41413" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="MTOW (kg)" styleClass="form-label" />
+                            <TextField fx:id="newMtow" promptText="e.g. 79010" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="MZFW (kg)" styleClass="form-label" />
+                            <TextField fx:id="newMzfw" promptText="e.g. 62730" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Max Fuel Capacity (L)" styleClass="form-label" />
+                            <TextField fx:id="newFuelCapacity" promptText="e.g. 26020" styleClass="form-field" />
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </Tab>
+            <Tab text="Performance">
+                <VBox spacing="14" styleClass="content-card">
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Service Ceiling (m)" styleClass="form-label" />
+                            <TextField fx:id="newCeiling" promptText="e.g. 12500" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Cruise Speed (km/h)" styleClass="form-label" />
+                            <TextField fx:id="newCruiseSpeed" promptText="e.g. 842" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Max Range (km)" styleClass="form-label" />
+                            <TextField fx:id="newMaxRange" promptText="e.g. 5436" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Wing Area (m²)" styleClass="form-label" />
+                            <TextField fx:id="newWingArea" promptText="e.g. 125" styleClass="form-field" />
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </Tab>
+            <Tab text="Aerodynamics">
+                <VBox spacing="14" styleClass="content-card">
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Drag Coefficient (Cd)" styleClass="form-label" />
+                            <TextField fx:id="newCd" promptText="e.g. 0.021" styleClass="form-field" />
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Lift Coefficient (Cl)" styleClass="form-label" />
+                            <TextField fx:id="newCl" promptText="e.g. 0.5" styleClass="form-field" />
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </Tab>
+        </TabPane>
+
+        <Button text="Create Aircraft Model" onAction="#addAircraftModel" styleClass="btn-primary" maxWidth="Infinity" />
+    </VBox>
+</ScrollPane>

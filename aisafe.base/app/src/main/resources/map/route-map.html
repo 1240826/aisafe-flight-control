@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #0d1117; font-family: 'Segoe UI', sans-serif; }
+  #map { height: 100%; width: 100%; }
+  .airport-label { font-weight: 700; font-size: 13px; color: #f0f6fc; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+  .airport-label small { display: block; font-weight: 400; font-size: 11px; color: #8b949e; }
+  .route-info {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    padding: 10px 24px; color: #f0f6fc; font-size: 13px; font-weight: 600;
+    z-index: 1000; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .route-info span { color: #58a6ff; margin: 0 8px; }
+  .leaflet-control-attribution { display: none !important; }
+  .leaflet-popup-content-wrapper { background: #1c2128; color: #f0f6fc; border: 1px solid #30363d; border-radius: 8px; }
+  .leaflet-popup-tip { background: #1c2128; border: 1px solid #30363d; }
+  .leaflet-popup-close-button { color: #8b949e !important; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="route-info" id="routeInfo"></div>
+
+<script>
+const routeName = '{{ROUTE_NAME}}';
+
+const origin = { code: '{{ORIGIN_CODE}}', name: '{{ORIGIN_NAME}}', lat: {{ORIGIN_LAT}}, lng: {{ORIGIN_LON}} };
+const dest   = { code: '{{DEST_CODE}}',   name: '{{DEST_NAME}}',   lat: {{DEST_LAT}},   lng: {{DEST_LON}}   };
+
+const map = L.map('map', {
+  center: [(origin.lat + dest.lat) / 2, (origin.lng + dest.lng) / 2],
+  zoom: 5,
+  zoomControl: false,
+  attributionControl: false
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+// Origin marker (blue)
+const originIcon = L.divIcon({
+  className: '',
+  html: `<div style="display:flex;flex-direction:column;align-items:center;">
+    <div style="width:16px;height:16px;background:#58a6ff;border:3px solid #fff;border-radius:50%;box-shadow:0 0 12px rgba(88,166,255,0.6);"></div>
+    <div class="airport-label" style="color:#58a6ff;margin-top:4px;">${origin.code}<small>${origin.name}</small></div>
+  </div>`,
+  iconSize: [120, 50],
+  iconAnchor: [60, 50]
+});
+
+// Dest marker (green)
+const destIcon = L.divIcon({
+  className: '',
+  html: `<div style="display:flex;flex-direction:column;align-items:center;">
+    <div style="width:16px;height:16px;background:#3fb950;border:3px solid #fff;border-radius:50%;box-shadow:0 0 12px rgba(63,185,80,0.6);"></div>
+    <div class="airport-label" style="color:#3fb950;margin-top:4px;">${dest.code}<small>${dest.name}</small></div>
+  </div>`,
+  iconSize: [120, 50],
+  iconAnchor: [60, 50]
+});
+
+L.marker([origin.lat, origin.lng], { icon: originIcon }).addTo(map);
+L.marker([dest.lat, dest.lng], { icon: destIcon }).addTo(map);
+
+// Curved route line using Leaflet.curve or polyline with offset
+const midLat = (origin.lat + dest.lat) / 2;
+const midLng = (origin.lng + dest.lng) / 2;
+const dLng = dest.lng - origin.lng;
+const offset = Math.max(Math.abs(dLng) * 0.3, 2);
+const ctrlLat = midLat + (dLng > 0 ? -offset : offset);
+
+const points = [];
+const steps = 50;
+for (let i = 0; i <= steps; i++) {
+  const t = i / steps;
+  const t1 = 1 - t;
+  const lat = t1*t1*origin.lat + 2*t1*t*ctrlLat + t*t*dest.lat;
+  const lng = t1*t1*origin.lng + 2*t1*t*midLng + t*t*dest.lng;
+  points.push([lat, lng]);
+}
+
+// Glow path
+L.polyline(points, {
+  color: '#58a6ff', weight: 5, opacity: 0.15, smoothFactor: 2
+}).addTo(map);
+// Main path
+L.polyline(points, {
+  color: '#58a6ff', weight: 2.5, opacity: 0.7, smoothFactor: 2
+}).addTo(map);
+// Dashed overlay
+L.polyline(points, {
+  color: '#58a6ff', weight: 1, opacity: 0.3, dashArray: '6 8', smoothFactor: 2
+}).addTo(map);
+
+// Plane icon at midpoint
+const midIdx = Math.floor(steps / 2);
+const angle = Math.atan2(
+  points[midIdx + 1][0] - points[midIdx - 1][0],
+  points[midIdx + 1][1] - points[midIdx - 1][1]
+) * (180 / Math.PI);
+
+const planeIcon = L.divIcon({
+  className: '',
+  html: `<div style="font-size:24px;transform:rotate(${angle-90}deg);text-shadow:0 2px 8px rgba(0,0,0,0.6);">✈</div>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
+});
+L.marker(points[midIdx], { icon: planeIcon, interactive: false }).addTo(map);
+
+// Route info
+document.getElementById('routeInfo').innerHTML =
+  `${origin.code} <span>→</span> ${dest.code} &mdash; ${routeName}`;
+
+// Fit map to markers with padding
+const bounds = L.latLngBounds([origin.lat, origin.lng], [dest.lat, dest.lng]);
+map.fitBounds(bounds, { padding: [60, 60], maxZoom: 8 });
+</script>
+</body>
+</html>
