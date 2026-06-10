@@ -85,7 +85,7 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 ### 4.2 Sequence Diagram
 
-![Sequence Diagram — Delete Flight Route](SD_US074_DeleteFlightRoute.puml)
+![Sequence Diagram — Delete Flight Route](SD_US074_DeleteFlightRoute.png)
 
 The sequence diagram source is in `SD_US074_DeleteFlightRoute.puml`. The rendered images are `US074__Deactivate_Flight_Route.svg` / `.png`.
 

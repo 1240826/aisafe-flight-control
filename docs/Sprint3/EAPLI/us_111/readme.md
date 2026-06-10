@@ -96,7 +96,7 @@ Generative AI (Claude, Anthropic) was used to support the analysis and design of
 
 **Sequence Diagram — Generate Simulation Report:**
 
-![Sequence Diagram — Generate Simulation Report](SD_US111_GenerateSimulationReport.png)
+![Sequence Diagram — Generate Simulation Report](SD_US111_Generate_a_Simulation_Report.png)
 
 ### 4.2 Acceptance Tests
 
