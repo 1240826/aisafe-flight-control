@@ -18,50 +18,45 @@ participant ":SimulationReportFileWriter"        as writer   <<application>>
 actor -> ui : selects "Generate Simulation Report"
 activate ui
 
-ui -> ctrl : getConcludedSimulations()
+ui -> ctrl : allSimulations()
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  FLIGHT_CONTROL_OPERATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, FLIGHT_CONTROL_OPERATOR)
 activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> simRepo : findConcluded()
+ctrl -> simRepo : findAll()
 activate simRepo
-simRepo --> ctrl : concludedSimulations
+simRepo --> ctrl : simulations
 deactivate simRepo
 
-ctrl --> ui : concludedSimulations
+ctrl --> ui : simulations
 deactivate ctrl
 
-ui -> actor : displays list of concluded simulations
+ui -> actor : displays list of simulations
 actor -> ui : selects simulation
 
-ui -> ctrl : generateReport(simulationId)
+ui -> ctrl : generateReport(areaCode)
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  FLIGHT_CONTROL_OPERATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(\n  ADMIN, FLIGHT_CONTROL_OPERATOR)
 activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> simRepo : findById(simulationId)
+ctrl -> simRepo : findByAreaCode(areaCode)
 activate simRepo
 simRepo --> ctrl : simulation
 deactivate simRepo
 
-ctrl -> ctrl : buildReport(simulation)
-
 note right of ctrl
-  aggregates:
-  - total number of flights
-  - individual execution statuses
-  - safety violation events
-    (timestamp + positions)
-  - overall PASS/FAIL result
+  outputPath =
+  "reports/simulation_report_" + areaCode + ".txt"
+  writer reads simulation.report().content()
 end note
 
-ctrl -> writer : writeToFile(simulationReport)
+ctrl -> writer : writeToFile(simulation, outputPath)
 activate writer
 writer --> ctrl : filePath
 deactivate writer
@@ -69,7 +64,7 @@ deactivate writer
 ctrl --> ui : filePath
 deactivate ctrl
 
-ui --> actor : "Report saved to <filePath>"
+ui --> actor : "Report generated successfully: <filePath>"
 deactivate ui
 
 @enduml
