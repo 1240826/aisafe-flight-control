@@ -2,6 +2,10 @@
 REM ============================================
 REM AISafe Flight Control System - JavaFX GUI (Full)
 REM ============================================
+REM Usage: run-gui-full [SIM_HOST]
+REM   SIM_HOST  = Simulator host IP (default: localhost)
+REM   Example:  run-gui-full 192.168.1.100
+REM ============================================
 REM 1. Build project (quickbuild)
 REM 2. Run bootstrap (demo data)
 REM 3. Start JavaFX GUI with SCOMP simulator config
@@ -33,7 +37,7 @@ echo.
 
 REM --- Step 1: Build ---
 echo [INFO] Building project (quickbuild)...
-call %MVN_CMD% -B verify dependency:copy-dependencies -D maven.javadoc.skip=true
+call %MVN_CMD% -B install dependency:copy-dependencies -D maven.javadoc.skip=true
 if %errorlevel% neq 0 (
     echo [ERROR] Build failed.
     pause
@@ -54,9 +58,17 @@ REM --- Step 3: Start JavaFX GUI ---
 echo [INFO] Starting JavaFX GUI with SCOMP simulator config...
 echo.
 
-SET SIM_HOST=localhost
+if "%1"=="" (
+    set SIM_HOST=localhost
+) else (
+    set SIM_HOST=%1
+)
 SET SIM_PORT=9999
 SET LOG_HOST=localhost
+
+echo [INFO] Simulator: %SIM_HOST%:%SIM_PORT%
+echo [INFO] Usage: run-gui-full.bat [SIM_HOST]  (e.g. run-gui-full.bat 192.168.1.100)
+echo.
 
 %MVN_CMD% javafx:run -pl app -DskipTests ^
     -Daisafe.simulator.host=%SIM_HOST% ^

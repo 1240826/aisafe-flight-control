@@ -25,6 +25,7 @@
                 <TableColumn fx:id="colCountry" text="Country" prefWidth="150" />
                 <TableColumn fx:id="colArea" text="Control Area" prefWidth="120" />
             </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>
 
         <VBox styleClass="content-card" spacing="16">
@@ -33,42 +34,51 @@
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="IATA Code" styleClass="form-label" />
                     <TextField fx:id="newIata" promptText="e.g. LIS" styleClass="form-field" />
+                    <Label fx:id="newIataError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="ICAO Code" styleClass="form-label" />
                     <TextField fx:id="newIcao" promptText="e.g. LPPT" styleClass="form-field" />
+                    <Label fx:id="newIcaoError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Airport Name" styleClass="form-label" />
                     <TextField fx:id="newName" promptText="e.g. Lisbon Airport" styleClass="form-field" />
+                    <Label fx:id="newNameError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <HBox spacing="16">
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="City" styleClass="form-label" />
                     <TextField fx:id="newCity" promptText="e.g. Lisbon" styleClass="form-field" />
+                    <Label fx:id="newCityError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Country" styleClass="form-label" />
                     <TextField fx:id="newCountry" promptText="e.g. Portugal" styleClass="form-field" />
+                    <Label fx:id="newCountryError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Air Control Area" styleClass="form-label" />
                     <ComboBox fx:id="newArea" styleClass="form-field" promptText="Select control area..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newAreaError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <HBox spacing="16">
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Latitude" styleClass="form-label" />
                     <TextField fx:id="newLatitude" promptText="e.g. 38.774" styleClass="form-field" />
+                    <Label fx:id="newLatitudeError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Longitude" styleClass="form-label" />
                     <TextField fx:id="newLongitude" promptText="e.g. -9.134" styleClass="form-field" />
+                    <Label fx:id="newLongitudeError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Elevation (m)" styleClass="form-label" />
                     <TextField fx:id="newElevation" promptText="e.g. 114" styleClass="form-field" />
+                    <Label fx:id="newElevationError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <Button text="Register Airport" onAction="#addAirport" styleClass="btn-primary" maxWidth="Infinity" />

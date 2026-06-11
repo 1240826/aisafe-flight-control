@@ -8,7 +8,7 @@
     <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
         <VBox spacing="4">
             <Label text="System Settings" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
-            <Label text="View system configuration and runtime information" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+            <Label text="View and configure system settings" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
         </VBox>
 
         <VBox styleClass="content-card" spacing="16">
@@ -37,13 +37,25 @@
 
         <VBox styleClass="content-card" spacing="16">
             <Label text="Simulator Connection" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
-            <HBox spacing="12">
+            <HBox spacing="12" alignment="CENTER_LEFT">
                 <Label text="Host:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
-                <Label fx:id="simulatorHost" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+                <TextField fx:id="simulatorHostField" promptText="e.g. localhost or VM IP" styleClass="form-field" prefWidth="250" />
+                <Label fx:id="simulatorHostFieldError" styleClass="field-error-label" managed="false" visible="false" />
+            </HBox>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="Port:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <TextField fx:id="simulatorPortField" promptText="e.g. 9999" styleClass="form-field" prefWidth="120" />
+                <Label fx:id="simulatorPortFieldError" styleClass="field-error-label" managed="false" visible="false" />
+            </HBox>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="Timeout (s):" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
+                <TextField fx:id="simulatorTimeoutField" promptText="e.g. 180" styleClass="form-field" prefWidth="120" />
+                <Label fx:id="simulatorTimeoutFieldError" styleClass="field-error-label" managed="false" visible="false" />
+                <Label text="(10\u20133600)" style="-fx-font-size: 12px; -fx-text-fill: #484f58;" />
             </HBox>
             <HBox spacing="12">
-                <Label text="Port:" style="-fx-font-size: 13px; -fx-text-fill: #8b949e; -fx-min-width: 100;" />
-                <Label fx:id="simulatorPort" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #c9d1d9;" />
+                <Button fx:id="saveSimulatorBtn" text="Save &amp; Test Connection" onAction="#onSaveSimulatorConfig" styleClass="btn-primary" />
+                <Label fx:id="connectionStatus" style="-fx-font-size: 12px; -fx-text-fill: #8b949e;" />
             </HBox>
         </VBox>
 

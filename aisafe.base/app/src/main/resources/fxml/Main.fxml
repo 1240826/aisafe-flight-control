@@ -28,11 +28,11 @@
             </VBox>
 
             <!-- Navigation -->
-            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+            <ScrollPane fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: transparent;">
                 <VBox fx:id="navItems" spacing="0">
                     <!-- Dashboard -->
                     <Button styleClass="nav-item" onAction="#showDashboard">
-                        <graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📊" styleClass="nav-item-icon" /><Label text="Dashboard" styleClass="nav-item-text" /></HBox></graphic>
+                        <graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📊" styleClass="nav-item-icon, icon-dashboard" /><Label text="Dashboard" styleClass="nav-item-text" /></HBox></graphic>
                     </Button>
 
                     <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
@@ -41,7 +41,7 @@
                     <VBox fx:id="adminSection" managed="false" visible="false">
                         <Label text="Administration" styleClass="sidebar-nav-label" />
                         <Button styleClass="nav-item" onAction="#showUsers">
-                            <graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="👥" styleClass="nav-item-icon" /><Label text="User Management" styleClass="nav-item-text" /></HBox></graphic>
+                            <graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="👥" styleClass="nav-item-icon, icon-users" /><Label text="User Management" styleClass="nav-item-text" /></HBox></graphic>
                         </Button>
                         <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
                     </VBox>
@@ -49,64 +49,53 @@
                     <!-- Configuration Section -->
                     <VBox fx:id="backofficeSection" managed="false" visible="false">
                         <Label text="Configuration" styleClass="sidebar-nav-label" />
-                        <Button styleClass="nav-item" onAction="#showManufacturers"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🏭" styleClass="nav-item-icon" /><Label text="Manufacturers" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showEngineModels"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="⚙️" styleClass="nav-item-icon" /><Label text="Engine Models" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showAircraftModels"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🛩️" styleClass="nav-item-icon" /><Label text="Aircraft Models" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showAirControlAreas"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🗺️" styleClass="nav-item-icon" /><Label text="Air Control Areas" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showAirports"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🛫" styleClass="nav-item-icon" /><Label text="Airports" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showAirTransportCompanies"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🏢" styleClass="nav-item-icon" /><Label text="Air Transport Companies" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showCollaborators"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🤝" styleClass="nav-item-icon" /><Label text="Collaborators" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showManufacturers"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🏭" styleClass="nav-item-icon, icon-manufacturer" /><Label text="Manufacturers" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showEngineModels"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="⚙️" styleClass="nav-item-icon, icon-engine" /><Label text="Engine Models" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showAircraftModels"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🛩️" styleClass="nav-item-icon, icon-aircraft-model" /><Label text="Aircraft Models" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showAirControlAreas"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🗺️" styleClass="nav-item-icon, icon-air-control" /><Label text="Air Control Areas" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showAirports"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🛫" styleClass="nav-item-icon, icon-airport" /><Label text="Airports" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showAirTransportCompanies"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🏢" styleClass="nav-item-icon, icon-company" /><Label text="Air Transport Companies" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showCollaborators"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🤝" styleClass="nav-item-icon, icon-collaborator" /><Label text="Collaborators" styleClass="nav-item-text" /></HBox></graphic></Button>
                         <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
                     </VBox>
 
                     <!-- Fleet Management Section -->
                     <VBox fx:id="fleetSection" managed="false" visible="false">
                         <Label text="Fleet Management" styleClass="sidebar-nav-label" />
-                        <Button styleClass="nav-item" onAction="#showAircraft"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🛩️" styleClass="nav-item-icon" /><Label text="Aircraft Fleet" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showFlightRoutes"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🛤️" styleClass="nav-item-icon" /><Label text="Flight Routes" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showPilots"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="👨‍✈️" styleClass="nav-item-icon" /><Label text="Pilot Roster" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showAircraft"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🛩️" styleClass="nav-item-icon, icon-aircraft" /><Label text="Aircraft Fleet" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showFlightRoutes"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🛤️" styleClass="nav-item-icon, icon-route" /><Label text="Flight Routes" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showPilots"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="👨‍✈️" styleClass="nav-item-icon, icon-pilot" /><Label text="Pilot Roster" styleClass="nav-item-text" /></HBox></graphic></Button>
                         <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
                     </VBox>
 
                     <!-- Operations Section -->
                     <VBox fx:id="operationsSection" managed="false" visible="false">
                         <Label text="Flight Operations" styleClass="sidebar-nav-label" />
-                        <Button styleClass="nav-item" onAction="#showImportFlightPlan"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📄" styleClass="nav-item-icon" /><Label text="Import Flight Plan" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showWeatherData"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🌤️" styleClass="nav-item-icon" /><Label text="Weather Data" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showImportFlightPlan"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📄" styleClass="nav-item-icon, icon-flight-plan" /><Label text="Import Flight Plan" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showTestFlightPlans"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🧪" styleClass="nav-item-icon" /><Label text="Test Flight Plans" styleClass="nav-item-text" /></HBox></graphic></Button>
                         <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
                     </VBox>
 
                     <!-- Weather Section -->
                     <VBox fx:id="weatherSection" managed="false" visible="false">
                         <Label text="Weather Service" styleClass="sidebar-nav-label" />
-                        <Button styleClass="nav-item" onAction="#showWeatherData"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🌤️" styleClass="nav-item-icon" /><Label text="Weather Data" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showWeatherData"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🌤️" styleClass="nav-item-icon, icon-weather" /><Label text="Weather Data" styleClass="nav-item-text" /></HBox></graphic></Button>
                         <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
                     </VBox>
 
                     <!-- Pilot Section -->
                     <VBox fx:id="pilotSection" managed="false" visible="false">
                         <Label text="Pilot Tools" styleClass="sidebar-nav-label" />
-                        <Button styleClass="nav-item" onAction="#showImportFlightPlan"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📄" styleClass="nav-item-icon" /><Label text="Import Flight Plan" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showImportFlightPlan"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📄" styleClass="nav-item-icon, icon-flight-plan" /><Label text="Import Flight Plan" styleClass="nav-item-text" /></HBox></graphic></Button>
                         <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
                     </VBox>
 
                     <!-- Reports Section -->
                     <VBox fx:id="reportsSection" managed="false" visible="false">
                         <Label text="Reports &amp; Analysis" styleClass="sidebar-nav-label" />
-                        <Button styleClass="nav-item" onAction="#showReports"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📈" styleClass="nav-item-icon" /><Label text="Monthly Reports" styleClass="nav-item-text" /></HBox></graphic></Button>
-                        <Button styleClass="nav-item" onAction="#showSimulationReports"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📋" styleClass="nav-item-icon" /><Label text="Simulation Reports" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showReports"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📈" styleClass="nav-item-icon, icon-reports" /><Label text="Monthly Reports" styleClass="nav-item-text" /></HBox></graphic></Button>
+                        <Button styleClass="nav-item" onAction="#showSimulationReports"><graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="📋" styleClass="nav-item-icon, icon-simulation" /><Label text="Simulation Reports" styleClass="nav-item-text" /></HBox></graphic></Button>
                         <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
-                    </VBox>
-
-                    <!-- Settings & Logout -->
-                    <VBox spacing="0">
-                        <Separator style="-fx-background-color: #21262d; -fx-padding: 4 16;" />
-                        <Button styleClass="nav-item" onAction="#showSettings">
-                            <graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="⚙️" styleClass="nav-item-icon" /><Label text="Settings" styleClass="nav-item-text" /></HBox></graphic>
-                        </Button>
-                        <Button styleClass="nav-item" onAction="#handleLogout" style="-fx-text-fill: #f85149;">
-                            <graphic><HBox spacing="10" alignment="CENTER_LEFT"><Label text="🚪" styleClass="nav-item-icon" /><Label text="Sign Out" styleClass="nav-item-text" style="-fx-text-fill: #f85149;" /></HBox></graphic>
-                        </Button>
                     </VBox>
                 </VBox>
             </ScrollPane>
@@ -123,8 +112,12 @@
                     <Label text="System Ready" styleClass="system-status-text" />
                 </HBox>
                 <HBox spacing="4" style="-fx-padding: 0 0 0 12;">
-                    <Button text="⚙" onAction="#showSettings" styleClass="btn-icon" />
-                    <Button text="🚪" onAction="#handleLogout" styleClass="btn-icon" />
+                    <Button onAction="#showSettings" styleClass="btn-icon-settings">
+                        <graphic><HBox spacing="4" alignment="CENTER_LEFT"><Label text="⚙" styleClass="icon-settings" /><Label text="Settings" styleClass="btn-icon-label" /></HBox></graphic>
+                    </Button>
+                    <Button onAction="#handleLogout" styleClass="btn-icon-logout">
+                        <graphic><HBox spacing="4" alignment="CENTER_LEFT"><Label text="🚪" styleClass="icon-logout" /><Label text="Sign Out" styleClass="btn-icon-label" /></HBox></graphic>
+                    </Button>
                 </HBox>
             </HBox>
 

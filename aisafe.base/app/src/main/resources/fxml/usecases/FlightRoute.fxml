@@ -32,6 +32,7 @@
                 <TableColumn fx:id="colCompany" text="Company" prefWidth="100" />
                 <TableColumn fx:id="colStatus" text="Status" prefWidth="120" />
             </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>
 
         <VBox styleClass="content-card" spacing="16">
@@ -40,18 +41,22 @@
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Route Name" styleClass="form-label" />
                     <TextField fx:id="newName" promptText="e.g. TP123" styleClass="form-field" />
+                    <Label fx:id="newNameError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Origin Airport" styleClass="form-label" />
                     <ComboBox fx:id="newOrigin" styleClass="form-field" promptText="Select origin..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newOriginError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Destination Airport" styleClass="form-label" />
                     <ComboBox fx:id="newDestination" styleClass="form-field" promptText="Select destination..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newDestinationError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Company" styleClass="form-label" />
                     <ComboBox fx:id="newCompany" styleClass="form-field" promptText="Select company..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newCompanyError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <HBox spacing="16">

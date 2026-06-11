@@ -1,0 +1,21 @@
+============================================
+  AISafe Simulation Report
+  Generated: Mon Jun  8 20:40:58 2026
+  Total steps: 16987  (16987 seconds simulated)
+  Flights: 8
+  Total violations detected: 0
+============================================
+
+FLIGHT SUMMARY:
+  AA101: n_viol=0  ever_in_area=yes  completed=yes
+  UA202: n_viol=0  ever_in_area=yes  completed=yes
+  TP201: n_viol=0  ever_in_area=yes  completed=yes
+  TP1234: n_viol=0  ever_in_area=yes  completed=yes
+  IB202: n_viol=0  ever_in_area=yes  completed=yes
+  FR202: n_viol=0  ever_in_area=yes  completed=yes
+  DLH505: n_viol=0  ever_in_area=yes  completed=yes
+  VY404: n_viol=0  ever_in_area=no  completed=yes
+
+============================================
+  RESULT: PASS
+============================================

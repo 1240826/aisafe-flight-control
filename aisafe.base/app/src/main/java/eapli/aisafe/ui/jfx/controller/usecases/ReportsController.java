@@ -251,21 +251,29 @@ public class ReportsController {
 
     @FXML
     private void onZoomReport() {
-        final TextArea copy = new TextArea(reportOutput.getText());
-        copy.setEditable(false);
-        copy.setStyle(reportOutput.getStyle());
-        copy.setWrapText(true);
+        final String text = reportOutput.getText();
+        if (text == null || text.isBlank()) return;
 
-        final BorderPane root = new BorderPane(copy);
+        final String title = currentReport != null
+                ? "Monthly Report \u2014 " + currentReport.period()
+                : "Report Output";
+
+        final var area = new TextArea(text);
+        area.setEditable(false);
+        area.setStyle("-fx-control-inner-background: #0d1117; -fx-text-fill: #e6edf3;"
+                + "-fx-font-family: 'Consolas', monospace; -fx-font-size: 13px;");
+        area.setWrapText(false);
+
+        final var root = new BorderPane(area);
         root.setStyle("-fx-background-color: #0d1117;");
 
-        final Stage stage = new Stage();
+        final var stage = new Stage();
         stage.initModality(Modality.WINDOW_MODAL);
         final var iconStream = SceneManager.class.getResourceAsStream("/icons/aisafe-icon.png");
         if (iconStream != null) {
             stage.getIcons().add(new Image(iconStream));
         }
-        stage.setTitle("Report Output — Zoom View");
+        stage.setTitle(title);
         stage.setMaximized(true);
         stage.setMinWidth(600);
         stage.setMinHeight(400);

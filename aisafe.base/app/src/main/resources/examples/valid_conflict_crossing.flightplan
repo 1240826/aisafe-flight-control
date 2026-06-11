@@ -1,0 +1,30 @@
+// Crossing conflict: LIS -> MAD crosses OPO -> CDG at same altitude/time
+flight TP4000 : charter {
+
+    route {
+        origin      : LIS;
+        destination : MAD;
+    }
+
+    aircraft : CS-TAC;
+    pilot    : P12345;
+
+    leg {
+        departure {
+            airport  : LIS;
+            datetime : 2026-06-02T10:30+01:00;
+        }
+        arrival {
+            airport  : MAD;
+            datetime : 2026-06-02T12:00+01:00;
+        }
+        fuel {
+            quantity : 6000 kg;
+        }
+        segment {
+            from      : (38.7813, -9.1359);
+            to        : (40.4168, -3.7038);
+            altitudes : [10000 m WIDTH 50 m];
+        }
+    }
+}

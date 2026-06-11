@@ -24,6 +24,7 @@
                 <TableColumn fx:id="colThrust" text="Static Thrust" prefWidth="120" />
                 <TableColumn fx:id="colFuel" text="Fuel Type" prefWidth="100" />
             </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>
 
         <VBox styleClass="content-card" spacing="16">
@@ -32,42 +33,51 @@
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Engine Code" styleClass="form-label" />
                     <TextField fx:id="newCode" promptText="e.g. GE90-94B" styleClass="form-field" />
+                    <Label fx:id="newCodeError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Engine Name" styleClass="form-label" />
                     <TextField fx:id="newName" promptText="e.g. GE90-94B" styleClass="form-field" />
+                    <Label fx:id="newNameError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Manufacturer" styleClass="form-label" />
                     <ComboBox fx:id="newManufacturer" styleClass="form-field" promptText="Select manufacturer..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newManufacturerError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <HBox spacing="16">
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Motorization Type" styleClass="form-label" />
                     <ComboBox fx:id="newMotorization" styleClass="form-field" promptText="Select type..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newMotorizationError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Fuel Type" styleClass="form-label" />
                     <ComboBox fx:id="newFuelType" styleClass="form-field" promptText="Select fuel..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newFuelTypeError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <HBox spacing="16">
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Power (kW)" styleClass="form-label" />
                     <TextField fx:id="newPower" promptText="e.g. 50000" styleClass="form-field" />
+                    <Label fx:id="newPowerError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Static Thrust (kN)" styleClass="form-label" />
                     <TextField fx:id="newStaticThrust" promptText="e.g. 514" styleClass="form-field" />
+                    <Label fx:id="newStaticThrustError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Cruise Thrust (kN)" styleClass="form-label" />
                     <TextField fx:id="newCruiseThrust" promptText="e.g. 85" styleClass="form-field" />
+                    <Label fx:id="newCruiseThrustError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="TSFC" styleClass="form-label" />
                     <TextField fx:id="newTsfc" promptText="e.g. 0.56" styleClass="form-field" />
+                    <Label fx:id="newTsfcError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <Button text="Create Engine Model" onAction="#addEngine" styleClass="btn-primary" maxWidth="Infinity" />

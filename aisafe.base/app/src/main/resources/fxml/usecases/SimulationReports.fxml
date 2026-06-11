@@ -111,7 +111,8 @@
         <VBox styleClass="content-card" spacing="8">
             <HBox alignment="CENTER_LEFT" spacing="12">
                 <Label text="Raw Report Output" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" HBox.hgrow="ALWAYS" />
-                <Button text="⛶ Zoom" onAction="#onZoomReport" styleClass="btn-zoom" />
+                <Button text="💾 Save to File" onAction="#onSaveReport" styleClass="btn-zoom" />
+                <Button text="⛶ Expand" onAction="#onZoomReport" styleClass="btn-zoom" />
             </HBox>
             <TextArea fx:id="reportOutput" editable="false" prefHeight="150" styleClass="form-field" promptText="Report content..." VBox.vgrow="ALWAYS" />
         </VBox>

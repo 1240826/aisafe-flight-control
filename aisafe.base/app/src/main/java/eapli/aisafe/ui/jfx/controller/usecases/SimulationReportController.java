@@ -1,5 +1,9 @@
 package eapli.aisafe.ui.jfx.controller.usecases;
 
+import eapli.aisafe.flight.domain.Flight;
+import eapli.aisafe.flight.domain.FlightDesignator;
+import eapli.aisafe.flight.repositories.FlightRepository;
+import eapli.aisafe.infrastructure.persistence.PersistenceContext;
 import eapli.aisafe.simulation.application.GenerateSimulationReportController;
 import eapli.aisafe.simulation.domain.Simulation;
 import eapli.aisafe.simulation.domain.ValidationResult;
@@ -16,12 +20,16 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 public class SimulationReportController {
@@ -102,9 +110,17 @@ public class SimulationReportController {
     private TextArea reportOutput;
 
     private final GenerateSimulationReportController ctrl = new GenerateSimulationReportController();
+    private final FlightRepository flightRepo = PersistenceContext.repositories().flights();
     private final ObservableList<SimulationRow> sims = FXCollections.observableArrayList();
     private Timeline autoRefresh;
     private boolean liveMode = false;
+
+    private static final Pattern SUMMARY_LINE = Pattern.compile(
+            "Flights:\\s*(\\d+)\\s+Violations:\\s*(\\d+)");
+    private static final Pattern FLIGHT_LINE = Pattern.compile(
+            "[\\s●•]*([A-Z]{2}\\d{3,4})\\s+(\\w+)\\s+violations=(\\d+)");
+    private static final Pattern RESULT_LINE = Pattern.compile(
+            "RESULT:\\s*(PASS|FAIL)", Pattern.CASE_INSENSITIVE);
 
     @FXML
     private void initialize() {
@@ -118,6 +134,7 @@ public class SimulationReportController {
     private void startAutoRefresh() {
         autoRefresh = new Timeline(new KeyFrame(Duration.seconds(5), e -> {
             if (liveMode && simulationSelector.getValue() != null) {
+                reloadSimulationData();
                 refreshCharts();
             }
         }));
@@ -140,6 +157,25 @@ public class SimulationReportController {
         } catch (final Exception e) {
             reportOutput.setText("Error loading simulations: " + e.getMessage());
         }
+    }
+
+    private void reloadSimulationData() {
+        try {
+            final var selectedName = simulationSelector.getValue();
+            final var freshSims = new ArrayList<SimulationRow>();
+            StreamSupport.stream(ctrl.allSimulations().spliterator(), false)
+                    .forEach(s -> freshSims.add(new SimulationRow(s)));
+            sims.clear();
+            sims.addAll(freshSims);
+            final var items = FXCollections.observableArrayList(
+                    freshSims.stream().map(SimulationRow::getDisplayName).toList());
+            simulationSelector.setItems(items);
+            if (selectedName != null && items.contains(selectedName)) {
+                simulationSelector.setValue(selectedName);
+            } else if (!items.isEmpty()) {
+                simulationSelector.getSelectionModel().selectFirst();
+            }
+        } catch (final Exception ignored) {}
     }
 
     private void showSimulationDetails(final String displayName) {
@@ -175,18 +211,27 @@ public class SimulationReportController {
 
         final var reportText = sim.reportContent();
 
-        final var violations = parseViolations(reportText);
-        final var flights = parseFlights(reportText);
-        final var companies = parseCompanies(reportText);
-        final var hourly = parseFlightsPerHour(reportText);
-        final var trend = parseViolationsTrend(reportText);
+        final var parsed = parseCReport(reportText);
+        final var flightIds = parsed.flightIds();
+        final var perFlight = parsed.perFlightViolations();
 
-        updateMetrics(flights.size(), violations.size(), companies.size(), sim.validationResult());
-        buildViolationsChart(violations);
-        buildValidationPieChart(sim.validationResult());
-        buildViolationsTrendChart(trend);
-        buildCompanyChart(companies, flights);
-        buildFlightsPerHourChart(hourly);
+        final var totalFlights = parsed.totalFlights();
+        final var totalViolations = parsed.totalViolations();
+
+        final var companies = lookupCompanies(flightIds);
+        final var validationResult = parsed.validationResult() != null
+                ? parsed.validationResult() : sim.validationResult();
+
+        updateMetrics(totalFlights, totalViolations, companies.size(), validationResult);
+        buildViolationsChart(perFlight);
+        buildValidationPieChart(validationResult);
+        buildViolationsTrendChart(parsed.trend());
+        buildCompanyChart(companies, flightIds);
+        buildFlightsPerHourChart(sim);
+    }
+
+    private static int sum(final Map<String, Integer> map) {
+        return map.values().stream().mapToInt(Integer::intValue).sum();
     }
 
     private void updateMetrics(final int totalFlights, final int totalViolations,
@@ -198,15 +243,93 @@ public class SimulationReportController {
                 result == ValidationResult.FAILED ? "0%" : "Pending");
     }
 
-    private void buildViolationsChart(final Map<String, Integer> violations) {
+    private CReportParseResult parseCReport(final String content) {
+        int totalFlights = 0;
+        int totalViolations = 0;
+        ValidationResult vr = null;
+        final List<String> flightIds = new ArrayList<>();
+        final Map<String, Integer> perFlightViolations = new LinkedHashMap<>();
+        final List<Integer> trend = new ArrayList<>();
+
+        if (content == null || content.isBlank()) {
+            return new CReportParseResult(0, 0, null, List.of(), Map.of(), trend);
+        }
+
+        // Parse only from "SIMULATION SUMMARY" to end
+        final var lines = content.lines().toList();
+        int summaryStart = 0;
+        for (int i = lines.size() - 1; i >= 0; i--) {
+            if (lines.get(i).contains("SIMULATION SUMMARY")) {
+                summaryStart = i;
+                break;
+            }
+        }
+
+        for (int i = summaryStart; i < lines.size(); i++) {
+            final var line = lines.get(i);
+
+            final var summaryMatcher = SUMMARY_LINE.matcher(line);
+            if (summaryMatcher.find()) {
+                totalFlights = Integer.parseInt(summaryMatcher.group(1));
+                totalViolations = Integer.parseInt(summaryMatcher.group(2));
+            }
+
+            final var resultMatcher = RESULT_LINE.matcher(line);
+            if (resultMatcher.find()) {
+                vr = "PASS".equalsIgnoreCase(resultMatcher.group(1))
+                        ? ValidationResult.PASSED : ValidationResult.FAILED;
+            }
+
+            final var flightMatcher = FLIGHT_LINE.matcher(line);
+            if (flightMatcher.find()) {
+                final var fid = flightMatcher.group(1);
+                final var fv = Integer.parseInt(flightMatcher.group(3));
+                flightIds.add(fid);
+                perFlightViolations.put(fid, fv);
+            }
+
+            // Parse violation details for trend
+            final var lower = line.toLowerCase();
+            if (lower.contains("step=") && lower.contains("<->")) {
+                trend.add(1);
+            }
+        }
+
+        return new CReportParseResult(totalFlights, totalViolations, vr,
+                flightIds, perFlightViolations, trend);
+    }
+
+    private Map<String, Integer> lookupCompanies(final List<String> flightIds) {
+        final Map<String, Integer> result = new LinkedHashMap<>();
+        for (final var fid : flightIds) {
+            try {
+                final var designator = FlightDesignator.valueOf(fid);
+                final var flight = flightRepo.ofIdentity(designator).orElse(null);
+                if (flight != null && flight.routeName() != null) {
+                    final var routeName = flight.routeName().toString();
+                    // Extract company from route name prefix (e.g., "TP123" -> "TP")
+                    final var company = routeName.replaceAll("\\d+", "");
+                    if (!company.isEmpty()) {
+                        result.merge(company.toUpperCase(), 1, Integer::sum);
+                    }
+                }
+            } catch (final Exception ignored) {}
+        }
+        if (result.isEmpty() && !flightIds.isEmpty()) {
+            result.put("Unknown", flightIds.size());
+        }
+        return result;
+    }
+
+    private void buildViolationsChart(final Map<String, Integer> perFlight) {
         violationsChart.getData().clear();
         final var series = new XYChart.Series<String, Number>();
         series.setName("Violations");
-        if (violations.isEmpty()) {
+        if (perFlight.isEmpty()) {
             series.getData().add(new XYChart.Data<>("No Violations", 0));
         } else {
-            violations.forEach((type, count) ->
-                    series.getData().add(new XYChart.Data<>(type, count)));
+            perFlight.forEach((flight, count) ->
+                    series.getData().add(new XYChart.Data<>(flight, count)));
         }
         violationsChart.getData().add(series);
     }
@@ -233,25 +356,28 @@ public class SimulationReportController {
 
     private void buildViolationsTrendChart(final List<Integer> trend) {
         violationsTrendChart.getData().clear();
-        final var proximitySeries = new XYChart.Series<Number, Number>();
-        proximitySeries.setName("Proximity");
-        final var altitudeSeries = new XYChart.Series<Number, Number>();
-        altitudeSeries.setName("Altitude");
-
-        for (int i = 0; i < trend.size(); i++) {
-            final var step = trend.get(i);
-            proximitySeries.getData().add(new XYChart.Data<>(i, step));
+        if (trend.isEmpty()) {
+            final var series = new XYChart.Series<Number, Number>();
+            series.setName("Violations");
+            series.getData().add(new XYChart.Data<>(0, 0));
+            violationsTrendChart.getData().add(series);
+            return;
         }
-        violationsTrendChart.getData().addAll(proximitySeries, altitudeSeries);
+        final var series = new XYChart.Series<Number, Number>();
+        series.setName("Violations");
+        for (int i = 0; i < trend.size(); i++) {
+            series.getData().add(new XYChart.Data<>(i, trend.get(i)));
+        }
+        violationsTrendChart.getData().add(series);
     }
 
     private void buildCompanyChart(final Map<String, Integer> companies,
-                                    final Map<String, Integer> flights) {
+                                    final List<String> flightIds) {
         companyChart.getData().clear();
         final var series = new XYChart.Series<String, Number>();
         series.setName("Flights");
-        if (companies.isEmpty() && !flights.isEmpty()) {
-            series.getData().add(new XYChart.Data<>("Unknown", flights.size()));
+        if (companies.isEmpty()) {
+            series.getData().add(new XYChart.Data<>("Unknown", flightIds.size()));
         } else {
             companies.entrySet().stream()
                     .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
@@ -260,34 +386,74 @@ public class SimulationReportController {
         companyChart.getData().add(series);
     }
 
-    private void buildFlightsPerHourChart(final Map<Integer, Integer> hourly) {
+    private void buildFlightsPerHourChart(final SimulationRow sim) {
         flightsPerHourChart.getData().clear();
         final var series = new XYChart.Series<String, Number>();
         series.setName("Flights");
-        for (int h = 0; h < 24; h++) {
-            final var count = hourly.getOrDefault(h, 0);
-            series.getData().add(new XYChart.Data<>(String.format("%02d:00", h), count));
+        // Parse time range from sim metadata
+        try {
+            final var range = sim.timeRange();
+            final var parts = range.split("\\s+");
+            int startHour = 0, endHour = 23;
+            if (parts.length >= 2) {
+                final var timePattern = Pattern.compile("(\\d{1,2}):\\d{2}");
+                var m = timePattern.matcher(parts[0]);
+                if (m.find()) startHour = Integer.parseInt(m.group(1));
+                m = timePattern.matcher(parts[parts.length - 1]);
+                if (m.find()) endHour = Integer.parseInt(m.group(1));
+            }
+            for (int h = 0; h < 24; h++) {
+                int count = (h >= startHour && h <= endHour) ? 1 : 0;
+                series.getData().add(new XYChart.Data<>(String.format("%02d:00", h), count));
+            }
+        } catch (final Exception e) {
+            for (int h = 0; h < 24; h++) {
+                series.getData().add(new XYChart.Data<>(String.format("%02d:00", h), 0));
+            }
         }
         flightsPerHourChart.getData().add(series);
     }
 
     @FXML
-    private void onZoomReport() {
-        final TextArea copy = new TextArea(reportOutput.getText());
-        copy.setEditable(false);
-        copy.setStyle(reportOutput.getStyle());
-        copy.setWrapText(true);
+    private void onSaveReport() {
+        final var content = reportOutput.getText();
+        if (content == null || content.isBlank()) return;
+        final var chooser = new FileChooser();
+        chooser.setTitle("Save Simulation Report");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
+        chooser.setInitialFileName("simulation_report.txt");
+        final var file = chooser.showSaveDialog(null);
+        if (file != null) {
+            try {
+                Files.writeString(file.toPath(), content);
+                reportOutput.setText("Report saved to: " + file.getAbsolutePath() + "\n\n" + content);
+            } catch (final IOException e) {
+                reportOutput.setText("Error saving: " + e.getMessage());
+            }
+        }
+    }
 
-        final BorderPane root = new BorderPane(copy);
+    @FXML
+    private void onZoomReport() {
+        final String text = reportOutput.getText();
+        if (text == null || text.isBlank()) return;
+
+        final var area = new TextArea(text);
+        area.setEditable(false);
+        area.setStyle("-fx-control-inner-background: #0d1117; -fx-text-fill: #e6edf3;"
+                + "-fx-font-family: 'Consolas', monospace; -fx-font-size: 13px;");
+        area.setWrapText(false);
+
+        final var root = new BorderPane(area);
         root.setStyle("-fx-background-color: #0d1117;");
 
-        final Stage stage = new Stage();
+        final var stage = new Stage();
         stage.initModality(Modality.WINDOW_MODAL);
         final var iconStream = SceneManager.class.getResourceAsStream("/icons/aisafe-icon.png");
         if (iconStream != null) {
             stage.getIcons().add(new Image(iconStream));
         }
-        stage.setTitle("Report Output — Zoom View");
+        stage.setTitle("Simulation Report \u2014 Zoom View");
         stage.setMaximized(true);
         stage.setMinWidth(600);
         stage.setMinHeight(400);
@@ -312,89 +478,11 @@ public class SimulationReportController {
         }
     }
 
-    private Map<String, Integer> parseViolations(final String content) {
-        final Map<String, Integer> map = new LinkedHashMap<>();
-        if (content == null) return map;
-        for (final var line : content.lines().toList()) {
-            final var lower = line.toLowerCase();
-            if (lower.contains("proximity") || lower.contains("close")) map.merge("Proximity", 1, Integer::sum);
-            else if (lower.contains("altitude")) map.merge("Altitude", 1, Integer::sum);
-            else if (lower.contains("fuel")) map.merge("Fuel", 1, Integer::sum);
-            else if (lower.contains("violation") || lower.contains("conflict")) map.merge("Other", 1, Integer::sum);
-        }
-        if (map.isEmpty()) map.put("No Violations", 0);
-        return map;
-    }
-
-    private Map<String, Integer> parseCompanies(final String content) {
-        final Map<String, Integer> map = new LinkedHashMap<>();
-        if (content == null) return map;
-        for (final var line : content.lines().toList()) {
-            final var lower = line.toLowerCase();
-            if (lower.contains("company:") || lower.contains("airline:")) {
-                final var parts = line.split(":");
-                if (parts.length >= 2) {
-                    final var company = parts[1].trim().replaceAll("[\\[\\]{}()]", "");
-                    if (!company.isEmpty()) map.merge(company.toUpperCase(), 1, Integer::sum);
-                }
-            }
-            for (final var known : KNOWN_COMPANIES) {
-                if (lower.contains(known.toLowerCase())) {
-                    map.merge(known, 1, Integer::sum);
-                    break;
-                }
-            }
-        }
-        return map;
-    }
-
-    private Map<String, Integer> parseFlights(final String content) {
-        final Map<String, Integer> map = new LinkedHashMap<>();
-        if (content == null) return map;
-        for (final var line : content.lines().toList()) {
-            if (line.matches(".*[A-Z]{2}\\d{3,4}.*") || line.toLowerCase().contains("flight:")) {
-                map.merge("flights", 1, Integer::sum);
-            }
-        }
-        return map;
-    }
-
-    private Map<Integer, Integer> parseFlightsPerHour(final String content) {
-        final Map<Integer, Integer> map = new HashMap<>();
-        if (content == null) return map;
-        for (final var line : content.lines().toList()) {
-            if (line.matches(".*\\d{1,2}:\\d{2}.*")) {
-                try {
-                    final var matcher = java.util.regex.Pattern.compile("(\\d{1,2}):\\d{2}").matcher(line);
-                    if (matcher.find()) {
-                        final var hour = Integer.parseInt(matcher.group(1));
-                        if (hour >= 0 && hour < 24) map.merge(hour, 1, Integer::sum);
-                    }
-                } catch (final Exception ignored) {}
-            }
-        }
-        return map;
-    }
-
-    private List<Integer> parseViolationsTrend(final String content) {
-        final List<Integer> trend = new ArrayList<>();
-        if (content == null) return trend;
-        for (final var line : content.lines().toList()) {
-            final var lower = line.toLowerCase();
-            if (lower.contains("step:") || lower.contains("time step") || lower.contains("t=")) {
-                int count = 0;
-                if (lower.contains("violation") || lower.contains("conflict")) count++;
-                trend.add(count);
-            }
-        }
-        if (trend.isEmpty()) trend.add(0);
-        return trend;
-    }
-
-    private static final List<String> KNOWN_COMPANIES = List.of(
-            "TAP", "RYANAIR", "BRITISH AIRWAYS", "LUFTHANSA",
-            "AIR FRANCE", "IBERIA", "AMERICAN AIRLINES", "DELTA", "UNITED", "KLM"
-    );
+    private record CReportParseResult(int totalFlights, int totalViolations,
+                                       ValidationResult validationResult,
+                                       List<String> flightIds,
+                                       Map<String, Integer> perFlightViolations,
+                                       List<Integer> trend) {}
 
     public static class SimulationRow {
         private final Simulation sim;

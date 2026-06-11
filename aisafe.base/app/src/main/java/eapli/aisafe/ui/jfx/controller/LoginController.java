@@ -17,7 +17,6 @@ public class LoginController {
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
     @FXML private Label errorLabel;
-    @FXML private Label infoLabel;
     @FXML private VBox loginForm;
 
     private final Authenticator authenticator = AuthzRegistry.authenticationService();
@@ -28,22 +27,12 @@ public class LoginController {
         loginForm.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 newScene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                    if (event.getCode() == KeyCode.ENTER && loginForm.isVisible()) {
+                    if (event.getCode() == KeyCode.ENTER && loginForm.getScene() != null && loginForm.isVisible()) {
                         handleLogin();
                     }
                 });
             }
         });
-        setInfoText();
-    }
-
-    private void setInfoText() {
-        final String javaVer = System.getProperty("java.version", "?");
-        final String osName = System.getProperty("os.name", "?");
-        final String simHost = System.getProperty("aisafe.simulator.host", "localhost");
-        final String simPort = System.getProperty("aisafe.simulator.port", "9999");
-        infoLabel.setText("Java " + javaVer + " | " + osName + " | Simulator " + simHost + ":" + simPort);
-        infoLabel.setVisible(true);
     }
 
     @FXML

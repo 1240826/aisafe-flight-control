@@ -13,7 +13,8 @@
 
         <TextField fx:id="searchField" promptText="Search by manufacturer name or country..." styleClass="search-bar" />
 
-        <HBox alignment="CENTER_RIGHT">
+        <HBox alignment="CENTER_RIGHT" spacing="8">
+            <Button text="🗑 Remove Selected" onAction="#removeManufacturer" styleClass="btn-danger" />
             <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
         </HBox>
         <TableView fx:id="manufacturersTable" VBox.vgrow="ALWAYS" prefHeight="240">
@@ -21,6 +22,7 @@
                 <TableColumn fx:id="colName" text="Manufacturer Name" prefWidth="300" />
                 <TableColumn fx:id="colCountry" text="Country" prefWidth="200" />
             </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>
 
         <VBox styleClass="content-card" spacing="16">
@@ -29,10 +31,12 @@
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Manufacturer Name" styleClass="form-label" />
                     <TextField fx:id="newName" promptText="e.g. Boeing" styleClass="form-field" />
+                    <Label fx:id="newNameError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Country" styleClass="form-label" />
                     <TextField fx:id="newCountry" promptText="e.g. USA" styleClass="form-field" />
+                    <Label fx:id="newCountryError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <Button text="Register Manufacturer" onAction="#addManufacturer" styleClass="btn-primary" maxWidth="Infinity" />

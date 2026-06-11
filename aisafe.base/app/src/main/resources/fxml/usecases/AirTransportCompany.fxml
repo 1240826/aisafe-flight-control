@@ -22,6 +22,7 @@
                 <TableColumn fx:id="colIata" text="IATA" prefWidth="80" />
                 <TableColumn fx:id="colIcao" text="ICAO" prefWidth="80" />
             </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>
 
         <VBox styleClass="content-card" spacing="16">
@@ -30,14 +31,17 @@
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Company Name" styleClass="form-label" />
                     <TextField fx:id="newName" promptText="e.g. TAP Air Portugal" styleClass="form-field" />
+                    <Label fx:id="newNameError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="IATA Code (2 letters)" styleClass="form-label" />
                     <TextField fx:id="newIata" promptText="e.g. TP" styleClass="form-field" />
+                    <Label fx:id="newIataError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="ICAO Code (2-3 letters)" styleClass="form-label" />
                     <TextField fx:id="newIcao" promptText="e.g. TAP" styleClass="form-field" />
+                    <Label fx:id="newIcaoError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <Button text="Register Company" onAction="#addCompany" styleClass="btn-primary" maxWidth="Infinity" />

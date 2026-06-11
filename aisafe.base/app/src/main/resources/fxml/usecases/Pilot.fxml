@@ -4,14 +4,14 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fitToWidth="true" fitToHeight="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+             fitToWidth="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
     <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
         <VBox spacing="4">
             <Label text="Pilot Roster" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
             <Label text="Manage certified pilots across air transport companies" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
         </VBox>
 
-        <TextField fx:id="searchField" promptText="Search by pilot ID, name, email or company..." styleClass="search-bar" />
+        <TextField fx:id="searchField" promptText="Search by pilot ID, license, name or company..." styleClass="search-bar" />
 
         <HBox spacing="12">
             <ComboBox fx:id="filterCompany" promptText="Filter by company" styleClass="form-field" prefWidth="200" />
@@ -19,37 +19,50 @@
             <Button text="Refresh" onAction="#refreshTable" styleClass="btn-secondary" />
         </HBox>
 
-        <HBox alignment="CENTER_RIGHT">
+        <HBox alignment="CENTER_RIGHT" spacing="8">
+            <Button text="🗑 Remove Selected" onAction="#removePilot" styleClass="btn-danger" />
             <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
         </HBox>
-        <TableView fx:id="pilotsTable" VBox.vgrow="ALWAYS" prefHeight="240">
+        <TableView fx:id="pilotsTable" prefHeight="250">
             <columns>
                 <TableColumn fx:id="colPilotId" text="Pilot ID" prefWidth="100" />
-                <TableColumn fx:id="colEmail" text="Email" prefWidth="200" />
-                <TableColumn fx:id="colCompany" text="Company" prefWidth="120" />
+                <TableColumn fx:id="colLicenseNumber" text="License Number" prefWidth="180" />
+                <TableColumn fx:id="colCompany" text="Company" prefWidth="100" />
+                <TableColumn fx:id="colCertifiedModels" text="Certified Models" prefWidth="200" />
                 <TableColumn fx:id="colStatus" text="Status" prefWidth="100" />
             </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>
 
         <VBox styleClass="content-card" spacing="16">
             <Label text="Add New Pilot" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
             <HBox spacing="16">
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Email" styleClass="form-label" />
-                    <TextField fx:id="newEmail" promptText="e.g. pilot@company.com" styleClass="form-field" />
+                    <Label text="License Number" styleClass="form-label" />
+                    <TextField fx:id="newLicenseNumber" promptText="e.g. P12345" styleClass="form-field" />
+                    <Label fx:id="newLicenseNumberError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Name" styleClass="form-label" />
                     <TextField fx:id="newName" promptText="e.g. John Smith" styleClass="form-field" />
+                    <Label fx:id="newNameError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Company" styleClass="form-label" />
                     <ComboBox fx:id="newCompany" styleClass="form-field" promptText="Select company..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newCompanyError" styleClass="field-error-label" managed="false" visible="false" />
+                </VBox>
+            </HBox>
+            <HBox spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Certified Aircraft Models (Ctrl+click to select multiple)" styleClass="form-label" />
+                    <ListView fx:id="certifiedModelsList" styleClass="cert-list-view" prefHeight="400" />
                 </VBox>
             </HBox>
             <HBox spacing="16">
                 <Button text="Add Pilot" onAction="#addPilot" styleClass="btn-primary" HBox.hgrow="ALWAYS" />
                 <Button text="Deactivate Selected" onAction="#removePilot" styleClass="btn-danger" HBox.hgrow="ALWAYS" />
+                <Button text="Activate Selected" onAction="#activatePilot" styleClass="btn-success" HBox.hgrow="ALWAYS" />
             </HBox>
         </VBox>
     </VBox>

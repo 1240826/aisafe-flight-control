@@ -5,6 +5,9 @@ import eapli.aisafe.aircraft.application.DecommissionAircraftController;
 import eapli.aisafe.aircraft.application.ListCompanyFleetController;
 import eapli.aisafe.aircraft.domain.Aircraft;
 import eapli.aisafe.aircraft.domain.SeatClass;
+import eapli.aisafe.ui.jfx.util.DataCache;
+import eapli.aisafe.ui.jfx.util.ExportUtil;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
 import javafx.beans.property.SimpleStringProperty;
@@ -16,6 +19,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class AircraftController {
@@ -66,6 +70,24 @@ public class AircraftController {
     private ComboBox<String> newCompany;
 
     @FXML
+    private Label newRegError;
+
+    @FXML
+    private Label newRegCountryError;
+
+    @FXML
+    private Label newModelError;
+
+    @FXML
+    private Label newCompanyError;
+
+    @FXML
+    private Label newCrewError;
+
+    @FXML
+    private Label newSeatsError;
+
+    @FXML
     private TextField newCrew;
 
     @FXML
@@ -95,17 +117,30 @@ public class AircraftController {
         filterCompany.getSelectionModel().selectFirst();
         filterStatus.getSelectionModel().selectFirst();
 
+        FieldValidator.onRequired(newReg, newRegError, "Registration");
+        FieldValidator.onRequiredCombo(newModel, newModelError, "Model");
+        FieldValidator.onRequiredCombo(newCompany, newCompanyError, "Company");
+        FieldValidator.onNumeric(newCrew, newCrewError, "Crew");
+        FieldValidator.onNumeric(newSeats, newSeatsError, "Seats");
+
+        filterModel.valueProperty().addListener((o, a, b) -> refreshTable());
+        filterCompany.valueProperty().addListener((o, a, b) -> refreshTable());
+        filterStatus.valueProperty().addListener((o, a, b) -> refreshTable());
+        searchField.textProperty().addListener((o, a, b) -> refreshTable());
+
         refreshTable();
     }
 
     private void loadModels() {
         try {
-            final var ctrl = new eapli.aisafe.aircraftmodel.application.CreateAircraftModelController();
-            StreamSupport.stream(ctrl.allAircraftModels().spliterator(), false)
-                    .forEach(m -> {
-                        newModel.getItems().add(m.identity().toString());
-                        filterModel.getItems().add(m.identity().toString());
-                    });
+            final List<String> data = DataCache.getOrLoad("aircraftModels", () -> {
+                final var ctrl = new eapli.aisafe.aircraftmodel.application.CreateAircraftModelController();
+                return StreamSupport.stream(ctrl.allAircraftModels().spliterator(), false)
+                        .map(m -> m.identity().toString())
+                        .collect(Collectors.toList());
+            });
+            newModel.getItems().addAll(data);
+            filterModel.getItems().addAll(data);
         } catch (final Exception e) {
             NotificationManager.error("Error", "Could not load models: " + e.getMessage());
         }
@@ -113,12 +148,14 @@ public class AircraftController {
 
     private void loadCompanies() {
         try {
-            final var ctrl = new eapli.aisafe.company.application.RegisterAirTransportCompanyController();
-            StreamSupport.stream(ctrl.allCompanies().spliterator(), false)
-                    .forEach(c -> {
-                        newCompany.getItems().add(c.identity().toString());
-                        filterCompany.getItems().add(c.identity().toString());
-                    });
+            final List<String> data = DataCache.getOrLoad("companies", () -> {
+                final var ctrl = new eapli.aisafe.company.application.RegisterAirTransportCompanyController();
+                return StreamSupport.stream(ctrl.allCompanies().spliterator(), false)
+                        .map(c -> c.identity().toString())
+                        .collect(Collectors.toList());
+            });
+            newCompany.getItems().addAll(data);
+            filterCompany.getItems().addAll(data);
         } catch (final Exception e) {
             NotificationManager.error("Error", "Could not load companies: " + e.getMessage());
         }
@@ -154,11 +191,12 @@ public class AircraftController {
 
     @FXML
     private void addAircraft() {
+        if (!FieldValidator.isFormValid(newRegError, newRegCountryError,
+                newModelError, newCompanyError, newCrewError, newSeatsError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
-            if (newReg.getText().isBlank() || newModel.getValue() == null || newCompany.getValue() == null) {
-                NotificationManager.error("Validation Error", "Registration, Model, and Company are required.");
-                return;
-            }
             final int seats = newSeats.getText().isBlank() ? 0 : Integer.parseInt(newSeats.getText());
             final int crew = newCrew.getText().isBlank() ? 2 : Integer.parseInt(newCrew.getText());
             final String regCountry = newRegCountry.getText().isBlank() ? "Unknown" : newRegCountry.getText();
@@ -174,6 +212,11 @@ public class AircraftController {
         } catch (final Exception e) {
             NotificationManager.error("Registration Failed", e.getMessage());
         }
+    }
+
+    @FXML
+    private void onExport() {
+        ExportUtil.exportToCSV(aircraftTable, "aircraft-fleet.csv");
     }
 
     @FXML

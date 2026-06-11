@@ -2,6 +2,7 @@ package eapli.aisafe.ui.jfx.controller.usecases;
 
 import eapli.aisafe.weatherdata.application.RegisterWeatherDataController;
 import eapli.aisafe.weatherdata.application.ImportBulkWeatherDataController;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
 import javafx.beans.property.SimpleStringProperty;
@@ -16,6 +17,8 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.StreamSupport;
 
 public class WeatherDataController {
@@ -78,13 +81,40 @@ public class WeatherDataController {
     private TextField newProvider;
 
     @FXML
+    private Label newAreaError;
+
+    @FXML
+    private Label newDateError;
+
+    @FXML
+    private Label newWindSpeedError;
+
+    @FXML
+    private Label newWindDirError;
+
+    @FXML
+    private Label newTempError;
+
+    @FXML
+    private Label newLatError;
+
+    @FXML
+    private Label newLonError;
+
+    @FXML
+    private Label newAltError;
+
+    @FXML
+    private Label newProviderError;
+
+    @FXML
     private TextField csvPath;
 
     private final RegisterWeatherDataController regCtrl = new RegisterWeatherDataController();
     private final ImportBulkWeatherDataController bulkCtrl = new ImportBulkWeatherDataController();
 
-    private final ObservableList<WeatherRow> items = FXCollections.observableArrayList();
-    private String selectedAreaCode;
+    private final ObservableList<WeatherRow> allItems = FXCollections.observableArrayList();
+    private final List<String> areaCodes = new ArrayList<>();
 
     @FXML
     private void initialize() {
@@ -95,6 +125,19 @@ public class WeatherDataController {
         colTemp.setCellValueFactory(d -> d.getValue().temp);
         colProvider.setCellValueFactory(d -> d.getValue().provider);
 
+        FieldValidator.onRequiredCombo(newArea, newAreaError, "Area");
+        FieldValidator.onRequiredDate(newDate, newDateError, "Date");
+        FieldValidator.onRequiredNumericRange(newWindSpeed, newWindSpeedError, "Wind speed", 0.0, 500.0);
+        FieldValidator.onRequiredNumericRange(newWindDir, newWindDirError, "Wind direction", 0.0, 360.0);
+        FieldValidator.onNumeric(newTemp, newTempError, "Temperature");
+        FieldValidator.onRequiredNumericRange(newLat, newLatError, "Latitude", -90.0, 90.0);
+        FieldValidator.onRequiredNumericRange(newLon, newLonError, "Longitude", -180.0, 180.0);
+        FieldValidator.onNumeric(newAlt, newAltError, "Altitude");
+
+        filterArea.valueProperty().addListener((o, a, b) -> applyFilters());
+        filterDate.valueProperty().addListener((o, a, b) -> applyFilters());
+        searchField.textProperty().addListener((o, a, b) -> applyFilters());
+
         loadAreas();
     }
 
@@ -104,8 +147,10 @@ public class WeatherDataController {
                     .RegisterAirControlAreaController().allAirControlAreas();
             StreamSupport.stream(areas.spliterator(), false)
                     .forEach(a -> {
-                        newArea.getItems().add(a.identity().toString());
-                        filterArea.getItems().add(a.identity().toString());
+                        final var code = a.identity().toString();
+                        areaCodes.add(code);
+                        newArea.getItems().add(code);
+                        filterArea.getItems().add(code);
                     });
         } catch (final Exception e) {
             NotificationManager.error("Error", "Could not load areas: " + e.getMessage());
@@ -115,43 +160,66 @@ public class WeatherDataController {
         }
         filterArea.getItems().add(0, "All");
         filterArea.getSelectionModel().selectFirst();
+        loadAllData();
+    }
+
+    private void loadAllData() {
+        allItems.clear();
+        for (final var code : areaCodes) {
+            try {
+                final var records = regCtrl.weatherDataForArea(code);
+                StreamSupport.stream(records.spliterator(), false)
+                        .forEach(w -> {
+                            final var wind = w.windCondition();
+                            allItems.add(new WeatherRow(
+                                    w.recordedDateTime().toString(),
+                                    w.areaCode().toString(),
+                                    String.valueOf(wind.speedKnots()),
+                                    wind.directionDegrees() + "\u00B0",
+                                    String.format("%.1f", w.temperatureCelsius()),
+                                    w.sourceProvider()
+                            ));
+                        });
+            } catch (final Exception ignored) {
+            }
+        }
+        applyFilters();
     }
 
     @FXML
     private void refreshTable() {
-        items.clear();
-        final String areaCode = newArea.getValue();
-        if (areaCode == null) return;
-        try {
-            final var records = regCtrl.weatherDataForArea(areaCode);
-            StreamSupport.stream(records.spliterator(), false)
-                    .forEach(w -> {
-                        final var wind = w.windCondition();
-                        items.add(new WeatherRow(
-                                w.recordedDateTime().toString(),
-                                w.areaCode().toString(),
-                                String.valueOf(wind.speedKnots()),
-                                wind.directionDegrees() + "\u00B0",
-                                String.format("%.1f", w.temperatureCelsius()),
-                                w.sourceProvider()
-                        ));
-                    });
-            weatherTable.setItems(items);
-        } catch (final Exception e) {
-            NotificationManager.error("Error", e.getMessage());
+        loadAllData();
+    }
+
+    private void applyFilters() {
+        final String areaFilter = filterArea.getValue();
+        final LocalDate dateFilter = filterDate.getValue();
+        final String searchText = searchField.getText();
+
+        final ObservableList<WeatherRow> filtered = FXCollections.observableArrayList();
+        for (final var row : allItems) {
+            if (areaFilter != null && !"All".equals(areaFilter)
+                    && !row.area.get().equals(areaFilter)) continue;
+            if (dateFilter != null && !row.date.get().startsWith(dateFilter.toString())) continue;
+            if (searchText != null && !searchText.isBlank()
+                    && !row.area.get().toLowerCase().contains(searchText.toLowerCase())
+                    && !row.provider.get().toLowerCase().contains(searchText.toLowerCase())) continue;
+            filtered.add(row);
         }
+        weatherTable.setItems(filtered);
     }
 
     @FXML
     private void addWeather() {
+        if (!FieldValidator.isFormValid(newAreaError, newDateError, newWindSpeedError,
+                newWindDirError, newTempError, newLatError, newLonError,
+                newAltError, newProviderError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
             final var date = newDate.getValue();
             final var area = newArea.getValue();
-
-            if (date == null || area == null) {
-                NotificationManager.error("Validation Error", "Date and area are required.");
-                return;
-            }
 
             final double lat = parseDouble(newLat, 0.0);
             final double lon = parseDouble(newLon, 0.0);
@@ -165,7 +233,7 @@ public class WeatherDataController {
                     area, lat, lon, alt, speed, dir, temp, provider,
                     LocalDateTime.of(date, LocalTime.now()));
             NotificationManager.success("Weather Data", "Weather data registered!");
-            refreshTable();
+            loadAllData();
         } catch (final Exception e) {
             NotificationManager.error("Error", e.getMessage());
         }
@@ -205,7 +273,7 @@ public class WeatherDataController {
             } else {
                 NotificationManager.success("Import Complete", msg);
             }
-            refreshTable();
+            loadAllData();
         } catch (final IOException e) {
             NotificationManager.error("Error", "Error reading file: " + e.getMessage());
         } catch (final Exception e) {

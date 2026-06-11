@@ -2,6 +2,7 @@ package eapli.aisafe.ui.jfx.controller.usecases;
 
 import eapli.aisafe.company.application.RegisterAirTransportCompanyController;
 import eapli.aisafe.company.domain.AirTransportCompany;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
 import javafx.beans.property.SimpleStringProperty;
@@ -38,6 +39,15 @@ public class AirTransportCompanyController {
     @FXML
     private TextField newName;
 
+    @FXML
+    private Label newIataError;
+
+    @FXML
+    private Label newIcaoError;
+
+    @FXML
+    private Label newNameError;
+
     private final RegisterAirTransportCompanyController ctrl = new RegisterAirTransportCompanyController();
     private final ObservableList<CompanyRow> items = FXCollections.observableArrayList();
 
@@ -46,13 +56,27 @@ public class AirTransportCompanyController {
         colName.setCellValueFactory(d -> d.getValue().name);
         colIata.setCellValueFactory(d -> d.getValue().iata);
         colIcao.setCellValueFactory(d -> d.getValue().icao);
+
+        FieldValidator.onRequired(newName, newNameError, "Company name");
+        FieldValidator.onRequired(newIata, newIataError, "IATA code");
+        FieldValidator.onPattern(newIata, newIataError, "[A-Z0-9]{2}", "IATA must be exactly 2 letters/numbers.");
+        FieldValidator.onRequired(newIcao, newIcaoError, "ICAO code");
+        FieldValidator.onPattern(newIcao, newIcaoError, "[A-Z]{3}", "ICAO must be exactly 3 letters.");
+
+        searchField.textProperty().addListener((o, a, b) -> refreshTable());
+
         refreshTable();
     }
 
     @FXML
     private void refreshTable() {
         items.clear();
+        final String searchText = searchField.getText();
         StreamSupport.stream(ctrl.allCompanies().spliterator(), false)
+                .filter(c -> searchText == null || searchText.isBlank()
+                        || c.name().toLowerCase().contains(searchText.toLowerCase())
+                        || c.iata().toString().toLowerCase().contains(searchText.toLowerCase())
+                        || c.icao().toString().toLowerCase().contains(searchText.toLowerCase()))
                 .forEach(c -> items.add(new CompanyRow(
                         c.name(),
                         c.iata().toString(),
@@ -63,11 +87,11 @@ public class AirTransportCompanyController {
 
     @FXML
     private void addCompany() {
+        if (!FieldValidator.isFormValid(newNameError, newIataError, newIcaoError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
-            if (newIata.getText().isBlank() || newIcao.getText().isBlank() || newName.getText().isBlank()) {
-                NotificationManager.error("Validation Error", "IATA, ICAO, and Name are required.");
-                return;
-            }
             ctrl.registerCompany(
                     newIata.getText(),
                     newIcao.getText(),

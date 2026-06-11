@@ -3,6 +3,7 @@ package eapli.aisafe.ui.jfx.controller.usecases;
 import eapli.aisafe.aircraftmodel.application.CreateAircraftModelController;
 import eapli.aisafe.aircraftmodel.domain.AircraftModel;
 import eapli.aisafe.aircraftmodel.domain.AircraftType;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
 import javafx.beans.property.SimpleStringProperty;
@@ -52,6 +53,51 @@ public class AircraftModelController {
     private ComboBox<AircraftType> newType;
 
     @FXML
+    private Label newCodeError;
+
+    @FXML
+    private Label newNameError;
+
+    @FXML
+    private Label newManufacturerError;
+
+    @FXML
+    private Label newTypeError;
+
+    @FXML
+    private Label newMaxPassengersError;
+
+    @FXML
+    private Label newEmptyWeightError;
+
+    @FXML
+    private Label newMtowError;
+
+    @FXML
+    private Label newMzfwError;
+
+    @FXML
+    private Label newFuelCapacityError;
+
+    @FXML
+    private Label newCeilingError;
+
+    @FXML
+    private Label newCruiseSpeedError;
+
+    @FXML
+    private Label newMaxRangeError;
+
+    @FXML
+    private Label newWingAreaError;
+
+    @FXML
+    private Label newCdError;
+
+    @FXML
+    private Label newClError;
+
+    @FXML
     private TextField newMaxPassengers;
 
     @FXML
@@ -99,7 +145,25 @@ public class AircraftModelController {
         newType.getItems().addAll(AircraftType.values());
         newType.getSelectionModel().selectFirst();
 
+        FieldValidator.onRequired(newCode, newCodeError, "Model code");
+        FieldValidator.onRequired(newName, newNameError, "Model name");
+        FieldValidator.onRequiredCombo(newManufacturer, newManufacturerError, "Manufacturer");
+        FieldValidator.onNumeric(newMaxPassengers, newMaxPassengersError, "Max passengers");
+        FieldValidator.onNumeric(newEmptyWeight, newEmptyWeightError, "Empty weight");
+        FieldValidator.onNumeric(newMtow, newMtowError, "MTOW");
+        FieldValidator.onNumeric(newMzfw, newMzfwError, "MZFW");
+        FieldValidator.onNumeric(newFuelCapacity, newFuelCapacityError, "Fuel capacity");
+        FieldValidator.onNumeric(newCeiling, newCeilingError, "Ceiling");
+        FieldValidator.onNumeric(newCruiseSpeed, newCruiseSpeedError, "Cruise speed");
+        FieldValidator.onNumeric(newMaxRange, newMaxRangeError, "Max range");
+        FieldValidator.onNumeric(newWingArea, newWingAreaError, "Wing area");
+        FieldValidator.onNumeric(newCd, newCdError, "Drag coefficient");
+        FieldValidator.onNumeric(newCl, newClError, "Lift coefficient");
+
         loadManufacturers();
+
+        searchField.textProperty().addListener((o, a, b) -> refreshTable());
+
         refreshTable();
     }
 
@@ -118,18 +182,28 @@ public class AircraftModelController {
     @FXML
     private void refreshTable() {
         items.clear();
+        final String searchText = searchField.getText();
         StreamSupport.stream(ctrl.allAircraftModels().spliterator(), false)
+                .filter(m -> searchText == null || searchText.isBlank()
+                        || m.identity().toString().toLowerCase().contains(searchText.toLowerCase())
+                        || m.name().toLowerCase().contains(searchText.toLowerCase())
+                        || m.manufacturerName().toLowerCase().contains(searchText.toLowerCase())
+                        || m.aircraftType().toString().toLowerCase().contains(searchText.toLowerCase()))
                 .forEach(m -> items.add(new ModelRow(m)));
         modelsTable.setItems(items);
     }
 
     @FXML
     private void addAircraftModel() {
+        if (!FieldValidator.isFormValid(newCodeError, newNameError, newManufacturerError,
+                newTypeError, newMaxPassengersError, newEmptyWeightError,
+                newMtowError, newMzfwError, newFuelCapacityError,
+                newCeilingError, newCruiseSpeedError, newMaxRangeError,
+                newWingAreaError, newCdError, newClError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
-            if (newCode.getText().isBlank() || newManufacturer.getValue() == null) {
-                NotificationManager.error("Validation Error", "Code and manufacturer are required.");
-                return;
-            }
             ctrl.createAircraftModel(
                     newCode.getText(),
                     newName.getText().isBlank() ? newCode.getText() : newName.getText(),

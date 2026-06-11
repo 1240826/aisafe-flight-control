@@ -1,0 +1,30 @@
+// Multi-aircraft: LIS -> RAI
+flight TP8002 : charter {
+
+    route {
+        origin      : LIS;
+        destination : RAI;
+    }
+
+    aircraft : CS-TAC;
+    pilot    : P12345;
+
+    leg {
+        departure {
+            airport  : LIS;
+            datetime : 2026-06-02T12:00+01:00;
+        }
+        arrival {
+            airport  : RAI;
+            datetime : 2026-06-02T16:00+01:00;
+        }
+        fuel {
+            quantity : 15000 kg;
+        }
+        segment {
+            from      : (38.7813, -9.1359);
+            to        : (14.9245, -23.4935);
+            altitudes : [11000 m WIDTH 50 m];
+        }
+    }
+}

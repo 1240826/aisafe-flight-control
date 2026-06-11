@@ -42,7 +42,6 @@
             </HBox>
         </VBox>
 
-        <Label fx:id="infoLabel" text="Loading system info..." styleClass="login-info" />
         <Label text="© 2026 AISafe. All rights reserved." styleClass="login-footer" />
     </VBox>
 </AnchorPane>

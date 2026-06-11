@@ -2,8 +2,11 @@
 REM ============================================
 REM AISafe Flight Control System - JavaFX GUI (Quick)
 REM ============================================
-REM Assumes project already built (mvn verify done).
-REM Skips build and bootstrap.
+REM Usage: run-gui [SIM_HOST]
+REM   SIM_HOST  = Simulator host IP (default: localhost)
+REM   Example:  run-gui 192.168.1.100
+REM ============================================
+REM Prereq: project already built (mvn verify done).
 REM ============================================
 
 echo.
@@ -25,12 +28,18 @@ if %errorlevel% neq 0 (
     )
 )
 
-SET SIM_HOST=localhost
+REM --- Simulator host (default localhost) ---
+if "%1"=="" (
+    set SIM_HOST=localhost
+) else (
+    set SIM_HOST=%1
+)
 SET SIM_PORT=9999
 SET LOG_HOST=localhost
 
 echo [INFO] Starting JavaFX GUI...
 echo [INFO] Simulator: %SIM_HOST%:%SIM_PORT%
+echo [INFO] Usage: run-gui.bat [SIM_HOST]  (e.g. run-gui.bat 192.168.1.100)
 echo.
 
 %MVN_CMD% javafx:run -pl app -DskipTests ^

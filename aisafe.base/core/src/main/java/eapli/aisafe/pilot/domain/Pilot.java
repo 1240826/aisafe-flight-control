@@ -93,6 +93,15 @@ public class Pilot implements AggregateRoot<PilotId> {
         this.active = false;
     }
 
+    /**
+     * Activates this pilot.
+     * Cannot activate if already active.
+     */
+    public void activate() {
+        Invariants.ensure(!active, "Pilot is already active");
+        this.active = true;
+    }
+
     public boolean isActive() {
         return active;
     }

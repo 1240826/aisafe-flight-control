@@ -1,0 +1,30 @@
+// Multi-aircraft: LIS -> PDL
+flight TP8001 : charter {
+
+    route {
+        origin      : LIS;
+        destination : PDL;
+    }
+
+    aircraft : CS-TAC;
+    pilot    : P12345;
+
+    leg {
+        departure {
+            airport  : LIS;
+            datetime : 2026-06-02T12:00+01:00;
+        }
+        arrival {
+            airport  : PDL;
+            datetime : 2026-06-02T14:30+01:00;
+        }
+        fuel {
+            quantity : 10000 kg;
+        }
+        segment {
+            from      : (38.7813, -9.1359);
+            to        : (37.7412, -25.6979);
+            altitudes : [11000 m WIDTH 50 m];
+        }
+    }
+}

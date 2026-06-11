@@ -1,0 +1,16 @@
+============================================
+  AISafe Simulation Report
+  Generated: Thu Jun 11 02:43:19 2026
+  Total steps: 6859  (6859 seconds simulated)
+  Flights: 3
+  Total violations detected: 0
+============================================
+
+FLIGHT SUMMARY:
+  TP3000: n_viol=0  ever_in_area=yes  completed=yes
+  TP4000: n_viol=0  ever_in_area=yes  completed=yes
+  TP1000: n_viol=0  ever_in_area=yes  completed=yes
+
+============================================
+  RESULT: PASS
+============================================

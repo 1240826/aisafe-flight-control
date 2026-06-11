@@ -1,18 +1,21 @@
 package eapli.aisafe.ui.jfx.controller.usecases;
 
-import eapli.aisafe.flightplan.application.TestFlightPlanController;
+import eapli.aisafe.flight.application.AddWeatherToFlightController;
+import eapli.aisafe.ui.jfx.controller.MainController;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
-import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ImportFlightPlanController {
@@ -33,29 +36,46 @@ public class ImportFlightPlanController {
     private TextArea validationDetails;
 
     @FXML
-    private Button simulateButton;
-
-    @FXML
-    private VBox simulationResult;
-
-    @FXML
-    private Label simulationTitle;
-
-    @FXML
-    private TextArea simulationReport;
-
-    @FXML
     private ComboBox<String> exampleSelector;
+
+    @FXML
+    private VBox weatherSection;
+
+    @FXML
+    private ComboBox<WeatherDataItem> weatherSelector;
+
+    @FXML
+    private Button assignWeatherBtn;
+
+    @FXML
+    private Button addWeatherNavBtn;
+
+    @FXML
+    private Label weatherStatus;
 
     private final eapli.aisafe.flightplan.application.ImportFlightPlanController ctrl
             = new eapli.aisafe.flightplan.application.ImportFlightPlanController();
 
-    private final TestFlightPlanController testCtrl = new TestFlightPlanController();
+    private final AddWeatherToFlightController weatherCtrl = new AddWeatherToFlightController();
 
     private Path selectedFile;
     private String currentContent;
     private String currentFileName;
     private String lastImportedDesignator;
+    private WeatherDataItem assignedWeather;
+
+    private static final class WeatherDataItem {
+        final Long id;
+        final String display;
+
+        WeatherDataItem(final Long id, final String display) {
+            this.id = id;
+            this.display = display;
+        }
+
+        @Override
+        public String toString() { return display; }
+    }
 
     private static final class ExampleEntry {
         final String label;
@@ -68,17 +88,28 @@ public class ImportFlightPlanController {
     }
 
     private static final List<ExampleEntry> EXAMPLES = List.of(
-            new ExampleEntry("✅ Valid: LIS → OPO (charter)", "/examples/valid_lis_opo.flightplan"),
-            new ExampleEntry("✅ Valid: LIS → LHR (regular)", "/examples/valid_direct_flight.flightplan"),
-            new ExampleEntry("✅ Valid: LIS → MAD (charter)", "/examples/valid_demo_charter_lis_mad.flightplan"),
-            new ExampleEntry("✅ Valid: Short hop", "/examples/valid_short_hop.flightplan"),
-            new ExampleEntry("✅ Valid: Multi-leg", "/examples/valid_multi_leg.flightplan"),
-            new ExampleEntry("✅ Valid: Long haul charter", "/examples/valid_long_haul_charter.flightplan"),
-            new ExampleEntry("✅ Valid: OPO → WAW", "/examples/valid_opo_waw.flightplan"),
-            new ExampleEntry("❌ Invalid: Bad airport", "/examples/invalid_bad_airport.flightplan"),
-            new ExampleEntry("❌ Invalid: Missing fuel", "/examples/invalid_missing_fuel.flightplan"),
-            new ExampleEntry("❌ Invalid: Bad time format", "/examples/invalid_bad_time_format.flightplan"),
-            new ExampleEntry("❌ Invalid: Duplicate ID", "/examples/invalid_sem_duplicate_id.flightplan")
+            new ExampleEntry("Valid: LIS \u2192 OPO (charter)", "/examples/valid_lis_opo.flightplan"),
+            new ExampleEntry("Valid: LIS \u2192 LHR (regular)", "/examples/valid_direct_flight.flightplan"),
+            new ExampleEntry("Valid: LIS \u2192 MAD (charter)", "/examples/valid_demo_charter_lis_mad.flightplan"),
+            new ExampleEntry("Valid: Short hop", "/examples/valid_short_hop.flightplan"),
+            new ExampleEntry("Valid: Multi-leg", "/examples/valid_multi_leg.flightplan"),
+            new ExampleEntry("Valid: Long haul charter", "/examples/valid_long_haul_charter.flightplan"),
+            new ExampleEntry("Valid: OPO \u2192 WAW", "/examples/valid_opo_waw.flightplan"),
+            new ExampleEntry("Conflict: LIS \u2192 OPO (Flight A)", "/examples/valid_demo_conflict_a.flightplan"),
+            new ExampleEntry("Conflict: LIS \u2192 OPO (Flight B)", "/examples/valid_demo_conflict_b.flightplan"),
+            new ExampleEntry("Conflict: 3-way LIS \u2192 OPO", "/examples/valid_conflict_3way.flightplan"),
+            new ExampleEntry("Conflict: Crossing LIS \u2192 MAD", "/examples/valid_conflict_crossing.flightplan"),
+            new ExampleEntry("Conflict: Crossing OPO \u2192 CDG", "/examples/valid_conflict_crossing2.flightplan"),
+            new ExampleEntry("Conflict: Overtake fast LIS \u2192 OPO", "/examples/valid_conflict_overtake.flightplan"),
+            new ExampleEntry("Conflict: Overtake slow LIS \u2192 OPO", "/examples/valid_conflict_overtake2.flightplan"),
+            new ExampleEntry("Conflict: Multi-aircraft LIS \u2192 FNC", "/examples/valid_conflict_multiaircraft.flightplan"),
+            new ExampleEntry("Conflict: Multi-aircraft LIS \u2192 PDL", "/examples/valid_conflict_multiaircraft2.flightplan"),
+            new ExampleEntry("Conflict: Multi-aircraft LIS \u2192 RAI", "/examples/valid_conflict_multiaircraft3.flightplan"),
+            new ExampleEntry("Conflict: Multi-aircraft LIS \u2192 SID", "/examples/valid_conflict_multiaircraft4.flightplan"),
+            new ExampleEntry("Invalid: Bad airport", "/examples/invalid_bad_airport.flightplan"),
+            new ExampleEntry("Invalid: Missing fuel", "/examples/invalid_missing_fuel.flightplan"),
+            new ExampleEntry("Invalid: Bad time format", "/examples/invalid_bad_time_format.flightplan"),
+            new ExampleEntry("Invalid: Duplicate ID", "/examples/invalid_sem_duplicate_id.flightplan")
     );
 
     @FXML
@@ -87,6 +118,22 @@ public class ImportFlightPlanController {
             exampleSelector.getItems().add(ex.label);
         }
         exampleSelector.getSelectionModel().selectFirst();
+
+        weatherSelector.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(final WeatherDataItem item, final boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : item.display);
+                setStyle(empty ? "-fx-background-color: transparent;" : "-fx-text-fill: #e6edf3;");
+            }
+        });
+        weatherSelector.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(final WeatherDataItem item, final boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : item.display);
+            }
+        });
     }
 
     @FXML
@@ -107,8 +154,8 @@ public class ImportFlightPlanController {
             selectedFile = null;
             validationResult.setVisible(false);
             validationResult.setManaged(false);
-            simulationResult.setVisible(false);
-            simulationResult.setManaged(false);
+            weatherSection.setVisible(false);
+            weatherSection.setManaged(false);
         } catch (final IOException e) {
             NotificationManager.error("Error", "Could not load example: " + e.getMessage());
         }
@@ -132,8 +179,8 @@ public class ImportFlightPlanController {
                 dslContent.setText(currentContent);
                 validationResult.setVisible(false);
                 validationResult.setManaged(false);
-                simulationResult.setVisible(false);
-                simulationResult.setManaged(false);
+                weatherSection.setVisible(false);
+                weatherSection.setManaged(false);
             } catch (final IOException e) {
                 NotificationManager.error("File Error", "Could not read file: " + e.getMessage());
             }
@@ -152,91 +199,137 @@ public class ImportFlightPlanController {
             validationResult.setVisible(true);
             validationResult.setManaged(true);
             if (result != null && result.allPassed()) {
-                validationTitle.setText("✅ Validation & Import Passed");
+                validationTitle.setText("\u2713 Validation & Import Passed");
                 validationDetails.setStyle("-fx-text-fill: #3fb950;");
-                validationDetails.setText("All checks passed. Flight plan imported successfully.");
-                // Extract designator for simulation
+                final var sb = new StringBuilder("All checks passed.\n");
+                if (result.summary() != null) sb.append(result.summary());
+                validationDetails.setText(sb.toString());
                 try {
                     lastImportedDesignator = ctrl.extractFlightDesignator(currentContent);
                 } catch (final Exception ignored) {
                     lastImportedDesignator = null;
                 }
-                simulateButton.setVisible(true);
-                simulateButton.setManaged(true);
-                simulationResult.setVisible(false);
-                simulationResult.setManaged(false);
-                NotificationManager.success("Import Successful",
-                        "Flight plan imported. Click ▶ Run Simulation to test it.");
+                loadWeatherForFlight();
+                NotificationManager.success("Import Successful", "Flight plan imported.");
             } else {
-                validationTitle.setText("❌ Validation Failed");
+                validationTitle.setText("\u2715 Validation Failed");
                 validationDetails.setStyle("-fx-text-fill: #f85149;");
-                final var sb = new StringBuilder();
+                final var sb = new StringBuilder("Validation errors:\n");
                 if (result != null) {
-                    result.allErrors().forEach(e -> sb.append("• ").append(e).append("\n"));
+                    result.allErrors().forEach(e -> sb.append("\u2022 ").append(e).append("\n"));
                 } else {
                     sb.append("Unknown validation error.");
                 }
                 validationDetails.setText(sb.toString());
-                simulateButton.setVisible(false);
-                simulateButton.setManaged(false);
-                NotificationManager.error("Import Failed", "Validation errors found. See details below.");
+                NotificationManager.error("Import Failed", "Validation errors found.");
             }
         } catch (final Exception e) {
             NotificationManager.error("Import Failed", e.getMessage());
         }
     }
 
+    private void loadWeatherForFlight() {
+        if (lastImportedDesignator == null) return;
+        try {
+            final var flight = weatherCtrl.flightByDesignator(lastImportedDesignator);
+            if (flight == null) return;
+
+            final var wdList = weatherCtrl.weatherDataForFlight(flight);
+            final var items = FXCollections.<WeatherDataItem>observableArrayList();
+            for (final var wd : wdList) {
+                final var area = wd.areaCode() != null ? wd.areaCode().toString() : "N/A";
+                items.add(new WeatherDataItem(wd.identity(),
+                        area + " | " + wd.recordedDateTime() + " | " + wd.temperatureCelsius() + "\u00b0C | "
+                        + wd.windCondition().speedKnots() + "kt " + wd.windCondition().directionDegrees() + "\u00b0"));
+            }
+
+            final Long existingId = flight.weatherDataId();
+            if (existingId != null) {
+                for (final var item : items) {
+                    if (item.id.equals(existingId)) {
+                        assignedWeather = item;
+                        weatherStatus.setText("Assigned: " + item.display);
+                        weatherStatus.setStyle("-fx-text-fill: #3fb950; -fx-font-size: 12px;");
+                        break;
+                    }
+                }
+            }
+
+            if (!items.isEmpty()) {
+                weatherSelector.setItems(items);
+                weatherSelector.getSelectionModel().select(assignedWeather);
+                weatherSection.setVisible(true);
+                weatherSection.setManaged(true);
+            }
+        } catch (final Exception ignored) {
+        }
+    }
+
     @FXML
-    private void runSimulation() {
+    private void onAssignWeather() {
+        final var selected = weatherSelector.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            NotificationManager.error("No Selection", "Select weather data first.");
+            return;
+        }
         if (lastImportedDesignator == null) {
             NotificationManager.error("No Flight", "Import a flight plan first.");
             return;
         }
-        simulateButton.setText("⏳ Running simulation...");
-        simulateButton.setDisable(true);
-        simulationResult.setVisible(false);
-        simulationResult.setManaged(false);
-
-        Platform.runLater(() -> {
-            try {
-                final var result = testCtrl.testFlightPlan(lastImportedDesignator, "AUTO");
-                simulationResult.setVisible(true);
-                simulationResult.setManaged(true);
-                if (result != null && result.passed()) {
-                    simulationTitle.setText("✅ Simulation PASSED");
-                    simulationTitle.setStyle("-fx-text-fill: #3fb950;");
-                } else {
-                    simulationTitle.setText("❌ Simulation FAILED");
-                    simulationTitle.setStyle("-fx-text-fill: #f85149;");
-                }
-                final var report = result != null ? result.reportContent() : "No report available.";
-                simulationReport.setText(report != null ? report : "No report content.");
-                simulationReport.setStyle("-fx-text-fill: #e6edf3;");
-                final var msg = result != null ? result.message() : "Unknown error";
-                NotificationManager.info("Simulation Complete", msg);
-            } catch (final Exception e) {
-                simulationResult.setVisible(true);
-                simulationResult.setManaged(true);
-                simulationTitle.setText("❌ Simulation Error");
-                simulationTitle.setStyle("-fx-text-fill: #f85149;");
-                simulationReport.setText("Error: " + e.getMessage());
-                NotificationManager.error("Simulation Failed", e.getMessage());
-            } finally {
-                simulateButton.setText("▶ Run Simulation");
-                simulateButton.setDisable(false);
-            }
-        });
+        try {
+            weatherCtrl.assignWeather(lastImportedDesignator, selected.id);
+            assignedWeather = selected;
+            weatherStatus.setText("Assigned: " + selected.display);
+            weatherStatus.setStyle("-fx-text-fill: #3fb950; -fx-font-size: 12px;");
+            NotificationManager.success("Weather Assigned", "Weather data linked to flight " + lastImportedDesignator);
+        } catch (final Exception e) {
+            NotificationManager.error("Assignment Failed", e.getMessage());
+        }
     }
 
     @FXML
-    private void addWeatherData() {
-        final var mainController = (eapli.aisafe.ui.jfx.controller.MainController)
-                dslContent.getScene().getUserData();
-        if (mainController != null) {
-            mainController.navigateFromChild("Weather Data",
-                    "/fxml/usecases/WeatherData.fxml", new WeatherDataController());
-        } else {
-            NotificationManager.info("Navigate", "Go to Weather Data to register observations.");
+    private void onAddNewWeather() {
+        final var scene = dslContent.getScene();
+        if (scene != null) {
+            final var mainController = (MainController) scene.getUserData();
+            if (mainController != null) {
+                mainController.navigateFromChild("Weather Data",
+                        "/fxml/usecases/WeatherData.fxml", new WeatherDataController());
+            }
         }
+    }
+
+    @FXML
+    private void onZoomDsl() {
+        final var text = dslContent.getText();
+        if (text == null || text.isBlank()) return;
+        showZoomWindow("Flight Plan DSL - " + (currentFileName != null ? currentFileName : ""),
+                text, false, 900, 600);
+    }
+
+    @FXML
+    private void onZoomValidation() {
+        final var text = validationDetails.getText();
+        if (text == null || text.isBlank()) return;
+        showZoomWindow("Validation Details", text, true, 700, 500);
+    }
+
+    private void showZoomWindow(final String title, final String content,
+                                 final boolean wrapText, final int w, final int h) {
+        final var stage = new Stage();
+        stage.setTitle(title);
+        final var area = new TextArea(content);
+        area.setEditable(false);
+        area.setStyle("-fx-control-inner-background: #0d1117; -fx-text-fill: #e6edf3;"
+                + "-fx-font-family: 'Consolas', monospace; -fx-font-size: 13px;");
+        area.setWrapText(wrapText);
+        final VBox root = new VBox(area);
+        VBox.setVgrow(area, javafx.scene.layout.Priority.ALWAYS);
+        final var scene = new Scene(root, w, h);
+        final var url = getClass().getResource("/styles/dark-theme.css");
+        if (url != null) scene.getStylesheets().add(url.toExternalForm());
+        stage.setScene(scene);
+        stage.setMaximized(true);
+        stage.show();
     }
 }

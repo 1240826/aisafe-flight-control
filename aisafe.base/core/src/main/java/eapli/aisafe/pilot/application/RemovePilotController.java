@@ -68,4 +68,24 @@ public class RemovePilotController {
         pilot.deactivate();
         return pilotRepo.save(pilot);
     }
+
+    /**
+     * Activates a previously deactivated pilot.
+     *
+     * @param pilotId the pilot's license number
+     * @return the activated pilot
+     */
+    public Pilot activatePilot(final PilotId pilotId) {
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.ATC_COLLABORATOR);
+
+        final var pilot = pilotRepo.findByLicenseNumber(pilotId)
+                .orElseThrow(() -> new IllegalArgumentException("Pilot not found: " + pilotId));
+
+        if (pilot.isActive()) {
+            throw new IllegalStateException("Pilot " + pilotId + " is already active");
+        }
+
+        pilot.activate();
+        return pilotRepo.save(pilot);
+    }
 }

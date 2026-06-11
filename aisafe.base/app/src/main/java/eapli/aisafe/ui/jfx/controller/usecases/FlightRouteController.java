@@ -4,6 +4,7 @@ import eapli.aisafe.airport.application.CreateAirportController;
 import eapli.aisafe.flightroute.application.CreateFlightRouteController;
 import eapli.aisafe.flightroute.application.DeleteFlightRouteController;
 import eapli.aisafe.ui.jfx.util.ConfirmationDialog;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.RouteMapUtil;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
@@ -60,6 +61,18 @@ public class FlightRouteController {
     @FXML
     private ComboBox<String> newCompany;
 
+    @FXML
+    private Label newNameError;
+
+    @FXML
+    private Label newOriginError;
+
+    @FXML
+    private Label newDestinationError;
+
+    @FXML
+    private Label newCompanyError;
+
     private final CreateFlightRouteController ctrl = new CreateFlightRouteController();
     private final DeleteFlightRouteController delCtrl = new DeleteFlightRouteController();
     private final ObservableList<RouteRow> items = FXCollections.observableArrayList();
@@ -71,6 +84,11 @@ public class FlightRouteController {
         colDestination.setCellValueFactory(d -> d.getValue().destination);
         colCompany.setCellValueFactory(d -> d.getValue().company);
         colStatus.setCellValueFactory(d -> d.getValue().status);
+
+        FieldValidator.onRequired(newName, newNameError, "Route name");
+        FieldValidator.onRequiredCombo(newOrigin, newOriginError, "Origin");
+        FieldValidator.onRequiredCombo(newDestination, newDestinationError, "Destination");
+        FieldValidator.onRequiredCombo(newCompany, newCompanyError, "Company");
 
         loadAirports();
         loadCompanies();
@@ -116,6 +134,12 @@ public class FlightRouteController {
         }
         filterCompany.getItems().add(0, "All");
         filterCompany.getSelectionModel().selectFirst();
+
+        filterCompany.valueProperty().addListener((o, a, b) -> refreshTable());
+        filterStatus.valueProperty().addListener((o, a, b) -> refreshTable());
+        searchField.textProperty().addListener((o, a, b) -> refreshTable());
+
+        refreshTable();
     }
 
     @FXML
@@ -146,11 +170,11 @@ public class FlightRouteController {
 
     @FXML
     private void addRoute() {
+        if (!FieldValidator.isFormValid(newNameError, newOriginError, newDestinationError, newCompanyError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
-            if (newName.getText().isBlank()) {
-                NotificationManager.error("Validation Error", "Route name is required.");
-                return;
-            }
             ctrl.createFlightRoute(
                     newName.getText(),
                     newCompany.getValue(),

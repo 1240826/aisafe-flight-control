@@ -33,7 +33,7 @@ public class TestFlightPlanController {
     private final AuthorizationService authz;
     private final FlightRepository flightRepo;
     private final FlightPlanExporter exporter;
-    private final SimulationRunner runner;
+    private SimulationRunner runner;
     private final DslValidator dslValidator;
     private final WeatherDataRepository weatherRepo;
     private final WeatherDataToSimulatorExporter weatherExporter;
@@ -42,7 +42,7 @@ public class TestFlightPlanController {
         this(AuthzRegistry.authorizationService(),
                 PersistenceContext.repositories().flights(),
                 new FlightPlanExporter(),
-                createRunner(),
+                null,
                 new DslValidator(),
                 PersistenceContext.repositories().weatherData());
     }
@@ -62,11 +62,30 @@ public class TestFlightPlanController {
         this.weatherExporter = new WeatherDataToSimulatorExporter();
     }
 
+    private SimulationRunner getRunner() {
+        if (runner != null) {
+            return runner;
+        }
+        return createRunner();
+    }
+
     private static SimulationRunner createRunner() {
-        final var hostProp = System.getProperty("aisafe.simulator.host");
+        String hostProp = System.getProperty("aisafe.simulator.host");
+        int port = Integer.getInteger("aisafe.simulator.port", 9999);
+        if (hostProp == null || hostProp.isEmpty()) {
+            try {
+                final var prefs = java.util.prefs.Preferences.userNodeForPackage(TestFlightPlanController.class);
+                final String savedHost = prefs.get("simulator.host", "");
+                if (!savedHost.isEmpty()) {
+                    hostProp = savedHost;
+                    try { port = Integer.parseInt(prefs.get("simulator.port", "9999")); }
+                    catch (final NumberFormatException ignored) {}
+                }
+            } catch (final Exception ignored) {
+            }
+        }
         final int timeout = Integer.getInteger("aisafe.simulator.timeout", 120);
         if (hostProp != null && !hostProp.isEmpty()) {
-            final int port = Integer.getInteger("aisafe.simulator.port", 9999);
             return new SocketSimulationRunner(hostProp, port, timeout);
         }
         final String executable = System.getProperty("aisafe.simulator.executable", "aisafe-simulator");
@@ -150,9 +169,9 @@ public class TestFlightPlanController {
         final String reportContent;
         try {
             if (weatherFilePath != null) {
-                reportContent = runner.run(json, weatherFilePath);
+                reportContent = getRunner().run(json, weatherFilePath);
             } else {
-                reportContent = runner.run(json);
+                reportContent = getRunner().run(json);
             }
         } catch (final SimulationRunnerException e) {
             for (final var entry : tested) {
@@ -274,14 +293,14 @@ public class TestFlightPlanController {
 		flightRepo.save(flight);
 
 		final var json = exporter.exportForSimulator(flightPlan);
-		final String weatherFilePath = buildWeatherFile(flight);
-		final String reportContent;
-		try {
-			if (weatherFilePath != null) {
-				reportContent = runner.run(json, weatherFilePath);
-			} else {
-				reportContent = runner.run(json);
-			}
+        final String weatherFilePath = buildWeatherFile(flight);
+        final String reportContent;
+        try {
+            if (weatherFilePath != null) {
+                reportContent = getRunner().run(json, weatherFilePath);
+            } else {
+                reportContent = getRunner().run(json);
+            }
 		} catch (final SimulationRunnerException e) {
 			flightPlan.resetToDraft();
 			flightRepo.save(flight);

@@ -4,6 +4,7 @@ import eapli.aisafe.collaborator.application.AddCollaboratorController;
 import eapli.aisafe.collaborator.application.DisableCollaboratorController;
 import eapli.aisafe.collaborator.application.ListCollaboratorsController;
 import eapli.aisafe.collaborator.domain.Collaborator;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
 import javafx.beans.property.SimpleStringProperty;
@@ -56,6 +57,18 @@ public class CollaboratorController {
     @FXML
     private ComboBox<String> newCustomer;
 
+    @FXML
+    private Label newEmailError;
+
+    @FXML
+    private Label newNameError;
+
+    @FXML
+    private Label newPhoneError;
+
+    @FXML
+    private Label newCustomerError;
+
     private final AddCollaboratorController addCtrl = new AddCollaboratorController();
     private final ListCollaboratorsController listCtrl = new ListCollaboratorsController();
     private final DisableCollaboratorController disableCtrl = new DisableCollaboratorController();
@@ -70,9 +83,19 @@ public class CollaboratorController {
         colCustomer.setCellValueFactory(d -> d.getValue().customer);
         colStatus.setCellValueFactory(d -> d.getValue().status);
 
+        FieldValidator.onRequired(newEmail, newEmailError, "Email");
+        FieldValidator.onPattern(newEmail, newEmailError, ".+@.+\\..+", "Email must be valid (e.g. user@domain.com).");
+        FieldValidator.onRequired(newName, newNameError, "Name");
+        FieldValidator.onRequiredCombo(newCustomer, newCustomerError, "Customer");
+
         loadCustomers();
         filterStatus.getItems().addAll("All", "Active", "Inactive");
         filterStatus.getSelectionModel().selectFirst();
+
+        filterCustomer.valueProperty().addListener((o, a, b) -> refreshTable());
+        filterStatus.valueProperty().addListener((o, a, b) -> refreshTable());
+        searchField.textProperty().addListener((o, a, b) -> refreshTable());
+
         refreshTable();
     }
 
@@ -122,11 +145,11 @@ public class CollaboratorController {
 
     @FXML
     private void addCollaborator() {
+        if (!FieldValidator.isFormValid(newEmailError, newNameError, newCustomerError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
-            if (newEmail.getText().isBlank() || newName.getText().isBlank()) {
-                NotificationManager.error("Validation Error", "Email and name are required.");
-                return;
-            }
             addCtrl.addATCCollaborator(
                     newEmail.getText(), "TempPass123", "First", "Last",
                     newEmail.getText(), newName.getText(), "ATC",

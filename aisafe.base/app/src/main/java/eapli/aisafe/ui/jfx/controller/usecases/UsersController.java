@@ -2,6 +2,7 @@ package eapli.aisafe.ui.jfx.controller.usecases;
 
 import eapli.aisafe.ui.jfx.controller.SessionManager;
 import eapli.aisafe.ui.jfx.util.ConfirmationDialog;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
 import eapli.aisafe.usermanagement.application.AddUserController;
@@ -15,6 +16,10 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.StreamSupport;
 
 public class UsersController {
 
@@ -60,12 +65,27 @@ public class UsersController {
     @FXML
     private ComboBox<String> newRole;
 
+    @FXML
+    private Label newUsernameError;
+
+    @FXML
+    private Label newDisplayNameError;
+
+    @FXML
+    private Label newEmailError;
+
+    @FXML
+    private Label newPasswordError;
+
+    @FXML
+    private Label newRoleError;
+
     private final AddUserController addCtrl = new AddUserController();
     private final ListUsersController listCtrl = new ListUsersController();
     private final DeactivateUserController deactCtrl = new DeactivateUserController();
 
     private final ObservableList<UserRow> users = FXCollections.observableArrayList();
-    private final java.util.ArrayList<SystemUser> systemUsers = new java.util.ArrayList<>();
+    private final List<SystemUser> systemUsers = new ArrayList<>();
 
     @FXML
     private void initialize() {
@@ -74,6 +94,13 @@ public class UsersController {
         colEmail.setCellValueFactory(d -> d.getValue().email);
         colRoles.setCellValueFactory(d -> d.getValue().roles);
         colStatus.setCellValueFactory(d -> d.getValue().status);
+
+        FieldValidator.onRequired(newUsername, newUsernameError, "Username");
+        FieldValidator.onRequired(newDisplayName, newDisplayNameError, "Display name");
+        FieldValidator.onRequired(newEmail, newEmailError, "Email");
+        FieldValidator.onPattern(newEmail, newEmailError, ".+@.+\\..+", "Email must be valid (e.g. user@domain.com).");
+        FieldValidator.onRequired(newPassword, newPasswordError, "Password");
+        FieldValidator.onRequiredCombo(newRole, newRoleError, "Role");
 
         newRole.getItems().addAll("ADMIN", "BACKOFFICE_OPERATOR",
                 "ATC_COLLABORATOR", "FLIGHT_CONTROL_OPERATOR",
@@ -87,11 +114,14 @@ public class UsersController {
         filterStatus.getItems().addAll("All", "Active", "Inactive");
         filterStatus.getSelectionModel().selectFirst();
 
-        refreshTable();
+        filterRole.valueProperty().addListener((o, a, b) -> applyFilters());
+        filterStatus.valueProperty().addListener((o, a, b) -> applyFilters());
+        searchField.textProperty().addListener((o, a, b) -> applyFilters());
+
+        loadData();
     }
 
-    @FXML
-    private void refreshTable() {
+    private void loadData() {
         users.clear();
         systemUsers.clear();
         try {
@@ -106,14 +136,54 @@ public class UsersController {
                         u.isActive() ? "Active" : "Inactive"
                 ));
             });
-            usersTable.setItems(users);
+            applyFilters();
         } catch (final Exception e) {
             NotificationManager.error("Error", "Could not load users: " + e.getMessage());
         }
     }
 
     @FXML
+    private void refreshTable() {
+        loadData();
+    }
+
+    private void applyFilters() {
+        final String roleFilter = filterRole.getValue();
+        final String statusFilter = filterStatus.getValue();
+        final String searchText = searchField.getText();
+
+        final ObservableList<UserRow> filtered = FXCollections.observableArrayList();
+        for (int i = 0; i < users.size(); i++) {
+            final var u = systemUsers.get(i);
+            final var row = users.get(i);
+
+            if (roleFilter != null && !"All".equals(roleFilter)
+                    && u.roleTypes().stream().noneMatch(r -> r.toString().equals(roleFilter))) {
+                continue;
+            }
+            if (statusFilter != null && !"All".equals(statusFilter)
+                    && !row.status.get().equalsIgnoreCase(statusFilter)) {
+                continue;
+            }
+            if (searchText != null && !searchText.isBlank()
+                    && !row.username.get().toLowerCase().contains(searchText.toLowerCase())
+                    && !row.displayName.get().toLowerCase().contains(searchText.toLowerCase())
+                    && !row.email.get().toLowerCase().contains(searchText.toLowerCase())
+                    && !row.roles.get().toLowerCase().contains(searchText.toLowerCase())) {
+                continue;
+            }
+            filtered.add(row);
+        }
+        usersTable.setItems(filtered);
+    }
+
+    @FXML
     private void addUser() {
+        if (!FieldValidator.isFormValid(newUsernameError, newDisplayNameError,
+                newEmailError, newPasswordError, newRoleError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
             final var username = newUsername.getText();
             final var displayName = newDisplayName.getText();
@@ -121,18 +191,13 @@ public class UsersController {
             final var password = newPassword.getText();
             final var roleStr = newRole.getValue();
 
-            if (username.isBlank() || displayName.isBlank() || email.isBlank() || password.isBlank()) {
-                NotificationManager.error("Validation Error", "All fields are required.");
-                return;
-            }
-
             addCtrl.addUser(username, password, displayName, "", email,
                     java.util.Set.of(Role.valueOf(roleStr)),
                     java.time.LocalDate.now().plusYears(1));
 
             NotificationManager.success("User Created", "User created successfully!");
             clearForm();
-            refreshTable();
+            loadData();
         } catch (final Exception e) {
             NotificationManager.error("Error", e.getMessage());
         }
@@ -141,18 +206,21 @@ public class UsersController {
     @FXML
     private void disableUser() {
         final var selectedIdx = usersTable.getSelectionModel().getSelectedIndex();
-        if (selectedIdx < 0 || selectedIdx >= systemUsers.size()) {
+        if (selectedIdx < 0) {
             NotificationManager.error("Selection Error", "Select a user to disable.");
             return;
         }
+        final var realUser = findSystemUser(selectedIdx);
+        if (realUser == null) return;
+
         if (!ConfirmationDialog.confirm("Disable User",
-                "Are you sure you want to disable user " + systemUsers.get(selectedIdx).username() + "?")) {
+                "Are you sure you want to disable user " + realUser.username() + "?")) {
             return;
         }
         try {
-            deactCtrl.deactivateUser(systemUsers.get(selectedIdx));
+            deactCtrl.deactivateUser(realUser);
             NotificationManager.success("User Disabled", "User disabled successfully.");
-            refreshTable();
+            loadData();
         } catch (final Exception e) {
             NotificationManager.error("Error", e.getMessage());
         }
@@ -161,21 +229,51 @@ public class UsersController {
     @FXML
     private void enableUser() {
         final var selectedIdx = usersTable.getSelectionModel().getSelectedIndex();
-        if (selectedIdx < 0 || selectedIdx >= systemUsers.size()) {
+        if (selectedIdx < 0) {
             NotificationManager.error("Selection Error", "Select a user to enable.");
             return;
         }
+        final var realUser = findSystemUser(selectedIdx);
+        if (realUser == null) return;
+
         if (!ConfirmationDialog.confirm("Enable User",
-                "Are you sure you want to enable user " + systemUsers.get(selectedIdx).username() + "?")) {
+                "Are you sure you want to enable user " + realUser.username() + "?")) {
             return;
         }
         try {
-            deactCtrl.activateUser(systemUsers.get(selectedIdx));
+            deactCtrl.activateUser(realUser);
             NotificationManager.success("User Enabled", "User enabled successfully.");
-            refreshTable();
+            loadData();
         } catch (final Exception e) {
             NotificationManager.error("Error", e.getMessage());
         }
+    }
+
+    private SystemUser findSystemUser(final int filteredIndex) {
+        final var roleFilter = filterRole.getValue();
+        final var statusFilter = filterStatus.getValue();
+        final var searchText = searchField.getText();
+        int realIdx = -1;
+        int found = 0;
+        for (int i = 0; i < users.size(); i++) {
+            final var u = systemUsers.get(i);
+            final var row = users.get(i);
+
+            if (roleFilter != null && !"All".equals(roleFilter)
+                    && u.roleTypes().stream().noneMatch(r -> r.toString().equals(roleFilter))) continue;
+            if (statusFilter != null && !"All".equals(statusFilter)
+                    && !row.status.get().equalsIgnoreCase(statusFilter)) continue;
+            if (searchText != null && !searchText.isBlank()
+                    && !row.username.get().toLowerCase().contains(searchText.toLowerCase())
+                    && !row.displayName.get().toLowerCase().contains(searchText.toLowerCase())
+                    && !row.email.get().toLowerCase().contains(searchText.toLowerCase())
+                    && !row.roles.get().toLowerCase().contains(searchText.toLowerCase())) continue;
+
+            if (found == filteredIndex) { realIdx = i; break; }
+            found++;
+        }
+        if (realIdx >= 0 && realIdx < systemUsers.size()) return systemUsers.get(realIdx);
+        return null;
     }
 
     private void clearForm() {

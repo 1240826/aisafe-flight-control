@@ -1,0 +1,30 @@
+// Multi-aircraft conflict scenario: 4 flights LIS area same time different destinations
+flight TP8000 : charter {
+
+    route {
+        origin      : LIS;
+        destination : FNC;
+    }
+
+    aircraft : CS-TAC;
+    pilot    : P12345;
+
+    leg {
+        departure {
+            airport  : LIS;
+            datetime : 2026-06-02T12:00+01:00;
+        }
+        arrival {
+            airport  : FNC;
+            datetime : 2026-06-02T14:00+01:00;
+        }
+        fuel {
+            quantity : 12000 kg;
+        }
+        segment {
+            from      : (38.7813, -9.1359);
+            to        : (32.6979, -16.7745);
+            altitudes : [11000 m WIDTH 50 m];
+        }
+    }
+}

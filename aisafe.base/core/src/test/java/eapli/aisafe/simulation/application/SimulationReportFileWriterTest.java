@@ -51,16 +51,18 @@ class SimulationReportFileWriterTest {
     }
 
     @Test
-    void ensureWriteToFileThrowsRuntimeExceptionOnInvalidPath() {
-        // Arrange — path points to a non-existent parent directory
-        final String badPath = tempDir.resolve("nonexistent-dir/report.txt").toString();
+    void ensureWriteToFileCreatesParentDirectories() throws IOException {
+        // Arrange — parent dir does not exist (writer must create it)
+        final String outputPath = tempDir.resolve("new-dir/report.txt").toString();
         final SimulationReport report = new SimulationReport("/path.txt", "content");
         final Simulation simulation = mock(Simulation.class);
         when(simulation.report()).thenReturn(report);
 
-        // Act / Assert
-        assertThrows(RuntimeException.class,
-                () -> writer.writeToFile(simulation, badPath),
-                "Write to an invalid path must throw RuntimeException");
+        // Act
+        writer.writeToFile(simulation, outputPath);
+
+        // Assert
+        assertTrue(Files.exists(Path.of(outputPath)));
+        assertEquals("content", Files.readString(Path.of(outputPath)));
     }
 }

@@ -25,6 +25,7 @@
                 <TableColumn fx:id="colPassengers" text="Max Passengers" prefWidth="120" />
                 <TableColumn fx:id="colEngines" text="Certified Engines" prefWidth="120" />
             </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>
 
         <TabPane>
@@ -34,22 +35,27 @@
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Model Code" styleClass="form-label" />
                             <TextField fx:id="newCode" promptText="e.g. B738" styleClass="form-field" />
+                            <Label fx:id="newCodeError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Model Name" styleClass="form-label" />
                             <TextField fx:id="newName" promptText="e.g. 737-800" styleClass="form-field" />
+                            <Label fx:id="newNameError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Manufacturer" styleClass="form-label" />
                             <ComboBox fx:id="newManufacturer" styleClass="form-field" promptText="Select manufacturer..." HBox.hgrow="ALWAYS" />
+                            <Label fx:id="newManufacturerError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Type" styleClass="form-label" />
                             <ComboBox fx:id="newType" styleClass="form-field" promptText="Select type..." HBox.hgrow="ALWAYS" />
+                            <Label fx:id="newTypeError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Max Passengers" styleClass="form-label" />
                             <TextField fx:id="newMaxPassengers" promptText="e.g. 189" styleClass="form-field" />
+                            <Label fx:id="newMaxPassengersError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                     </HBox>
                 </VBox>
@@ -60,18 +66,22 @@
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Empty Weight (kg)" styleClass="form-label" />
                             <TextField fx:id="newEmptyWeight" promptText="e.g. 41413" styleClass="form-field" />
+                            <Label fx:id="newEmptyWeightError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="MTOW (kg)" styleClass="form-label" />
                             <TextField fx:id="newMtow" promptText="e.g. 79010" styleClass="form-field" />
+                            <Label fx:id="newMtowError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="MZFW (kg)" styleClass="form-label" />
                             <TextField fx:id="newMzfw" promptText="e.g. 62730" styleClass="form-field" />
+                            <Label fx:id="newMzfwError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Max Fuel Capacity (L)" styleClass="form-label" />
                             <TextField fx:id="newFuelCapacity" promptText="e.g. 26020" styleClass="form-field" />
+                            <Label fx:id="newFuelCapacityError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                     </HBox>
                 </VBox>
@@ -82,18 +92,22 @@
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Service Ceiling (m)" styleClass="form-label" />
                             <TextField fx:id="newCeiling" promptText="e.g. 12500" styleClass="form-field" />
+                            <Label fx:id="newCeilingError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Cruise Speed (km/h)" styleClass="form-label" />
                             <TextField fx:id="newCruiseSpeed" promptText="e.g. 842" styleClass="form-field" />
+                            <Label fx:id="newCruiseSpeedError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Max Range (km)" styleClass="form-label" />
                             <TextField fx:id="newMaxRange" promptText="e.g. 5436" styleClass="form-field" />
+                            <Label fx:id="newMaxRangeError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Wing Area (m²)" styleClass="form-label" />
                             <TextField fx:id="newWingArea" promptText="e.g. 125" styleClass="form-field" />
+                            <Label fx:id="newWingAreaError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                     </HBox>
                 </VBox>
@@ -104,10 +118,12 @@
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Drag Coefficient (Cd)" styleClass="form-label" />
                             <TextField fx:id="newCd" promptText="e.g. 0.021" styleClass="form-field" />
+                            <Label fx:id="newCdError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Lift Coefficient (Cl)" styleClass="form-label" />
                             <TextField fx:id="newCl" promptText="e.g. 0.5" styleClass="form-field" />
+                            <Label fx:id="newClError" styleClass="field-error-label" managed="false" visible="false" />
                         </VBox>
                     </HBox>
                 </VBox>

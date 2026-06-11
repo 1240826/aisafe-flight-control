@@ -3,6 +3,7 @@ package eapli.aisafe.ui.jfx.controller.usecases;
 import eapli.aisafe.enginemodel.application.CreateEngineModelController;
 import eapli.aisafe.enginemodel.domain.EngineModel;
 import eapli.aisafe.aircraftmodel.domain.MotorizationType;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
 import javafx.beans.property.SimpleStringProperty;
@@ -46,6 +47,33 @@ public class EngineModelController {
     private ComboBox<MotorizationType> newMotorization;
 
     @FXML
+    private Label newCodeError;
+
+    @FXML
+    private Label newNameError;
+
+    @FXML
+    private Label newManufacturerError;
+
+    @FXML
+    private Label newMotorizationError;
+
+    @FXML
+    private Label newFuelTypeError;
+
+    @FXML
+    private Label newPowerError;
+
+    @FXML
+    private Label newStaticThrustError;
+
+    @FXML
+    private Label newCruiseThrustError;
+
+    @FXML
+    private Label newTsfcError;
+
+    @FXML
     private TextField newStaticThrust;
 
     @FXML
@@ -77,8 +105,19 @@ public class EngineModelController {
         newMotorization.getItems().addAll(MotorizationType.values());
         newMotorization.getSelectionModel().selectFirst();
 
+        FieldValidator.onRequired(newCode, newCodeError, "Engine code");
+        FieldValidator.onRequired(newName, newNameError, "Engine name");
+        FieldValidator.onRequiredCombo(newManufacturer, newManufacturerError, "Manufacturer");
+        FieldValidator.onNumeric(newPower, newPowerError, "Power");
+        FieldValidator.onNumeric(newStaticThrust, newStaticThrustError, "Static thrust");
+        FieldValidator.onNumeric(newCruiseThrust, newCruiseThrustError, "Cruise thrust");
+        FieldValidator.onNumeric(newTsfc, newTsfcError, "TSFC");
+
         loadManufacturers();
         loadFuelTypes();
+
+        searchField.textProperty().addListener((o, a, b) -> refreshTable());
+
         refreshTable();
     }
 
@@ -102,7 +141,14 @@ public class EngineModelController {
     @FXML
     private void refreshTable() {
         items.clear();
+        final String searchText = searchField.getText();
         StreamSupport.stream(ctrl.allEngineModels().spliterator(), false)
+                .filter(e -> searchText == null || searchText.isBlank()
+                        || e.identity().toString().toLowerCase().contains(searchText.toLowerCase())
+                        || e.engineName().toString().toLowerCase().contains(searchText.toLowerCase())
+                        || e.manufacturerName().toLowerCase().contains(searchText.toLowerCase())
+                        || e.motorizationType().toString().toLowerCase().contains(searchText.toLowerCase())
+                        || e.fuelType().toLowerCase().contains(searchText.toLowerCase()))
                 .forEach(e -> items.add(new EngineRow(
                         e.identity().toString(),
                         e.engineName().toString(),
@@ -116,6 +162,12 @@ public class EngineModelController {
 
     @FXML
     private void addEngine() {
+        if (!FieldValidator.isFormValid(newCodeError, newNameError, newManufacturerError,
+                newMotorizationError, newFuelTypeError, newPowerError,
+                newStaticThrustError, newCruiseThrustError, newTsfcError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
             final var name = newName.getText();
             final var manufacturer = newManufacturer.getValue();
@@ -126,11 +178,6 @@ public class EngineModelController {
             final var powerStr = newPower.getText();
             final var cruiseStr = newCruiseThrust.getText();
             final var tsfcStr = newTsfc.getText();
-
-            if (name.isBlank() || manufacturer == null || code.isBlank()) {
-                NotificationManager.error("Validation Error", "Code, name and manufacturer are required.");
-                return;
-            }
 
             ctrl.createEngineModel(
                     code, name, manufacturer,

@@ -1,6 +1,7 @@
 package eapli.aisafe.ui.jfx.controller.usecases;
 
 import eapli.aisafe.airport.application.CreateAirportController;
+import eapli.aisafe.ui.jfx.util.FieldValidator;
 import eapli.aisafe.ui.jfx.util.FormHelper;
 import eapli.aisafe.ui.jfx.util.NotificationManager;
 import eapli.aisafe.ui.jfx.util.TableZoomUtil;
@@ -66,6 +67,33 @@ public class AirportController {
     @FXML
     private ComboBox<String> newArea;
 
+    @FXML
+    private Label newIataError;
+
+    @FXML
+    private Label newIcaoError;
+
+    @FXML
+    private Label newNameError;
+
+    @FXML
+    private Label newCityError;
+
+    @FXML
+    private Label newCountryError;
+
+    @FXML
+    private Label newLatitudeError;
+
+    @FXML
+    private Label newLongitudeError;
+
+    @FXML
+    private Label newElevationError;
+
+    @FXML
+    private Label newAreaError;
+
     private final CreateAirportController ctrl = new CreateAirportController();
     private final ObservableList<AirportRow> items = FXCollections.observableArrayList();
 
@@ -88,6 +116,18 @@ public class AirportController {
         FormHelper.addNumericConstraint(newLatitude);
         FormHelper.addNumericConstraint(newLongitude);
         FormHelper.addNumericConstraint(newElevation);
+
+        FieldValidator.onRequired(newIata, newIataError, "IATA code");
+        FieldValidator.onPattern(newIata, newIataError, "[A-Z0-9]{3}", "IATA must be exactly 3 letters/numbers.");
+        FieldValidator.onRequired(newIcao, newIcaoError, "ICAO code");
+        FieldValidator.onPattern(newIcao, newIcaoError, "[A-Z]{4}", "ICAO must be exactly 4 letters.");
+        FieldValidator.onRequired(newName, newNameError, "Airport name");
+        FieldValidator.onRequired(newCity, newCityError, "City");
+        FieldValidator.onRequired(newCountry, newCountryError, "Country");
+        FieldValidator.onRequiredNumericRange(newLatitude, newLatitudeError, "Latitude", -90.0, 90.0);
+        FieldValidator.onRequiredNumericRange(newLongitude, newLongitudeError, "Longitude", -180.0, 180.0);
+        FieldValidator.onRequiredNumericRange(newElevation, newElevationError, "Elevation", 0.0, 99999.0);
+        FieldValidator.onRequiredCombo(newArea, newAreaError, "Area");
     }
 
     private void loadAreas() {
@@ -132,14 +172,15 @@ public class AirportController {
 
     @FXML
     private void addAirport() {
+        if (!FieldValidator.isFormValid(newIataError, newIcaoError, newNameError,
+                newLatitudeError, newLongitudeError, newElevationError, newAreaError)) {
+            NotificationManager.error("Validation Error", "Fix the highlighted fields before submitting.");
+            return;
+        }
         try {
             final String iata = newIata.getText().trim();
             final String icao = newIcao.getText().trim();
             final String name = newName.getText().trim();
-            if (iata.isBlank() || icao.isBlank() || name.isBlank()) {
-                NotificationManager.error("Validation Error", "IATA, ICAO, and Airport Name are required.");
-                return;
-            }
             ctrl.createAirport(
                     iata, icao, name,
                     newCity.getText().trim(), newCountry.getText().trim(),

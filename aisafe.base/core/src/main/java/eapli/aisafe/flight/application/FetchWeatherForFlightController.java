@@ -19,6 +19,7 @@ import eapli.framework.infrastructure.authz.application.AuthzRegistry;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -127,10 +128,11 @@ public class FetchWeatherForFlightController {
 
 		final Flight flight = flightByDesignator(flightDesignator);
 		final AreaCode ac = AreaCode.valueOf(areaCode);
+		final LocalDateTime depTime = flight.departureTime();
 
         final List<WeatherData> records = new ArrayList<>();
         for (final int altM : ALTITUDE_BANDS_M) {
-            final var wd = apiService.fetchAndSave(ac, routeMidLat, routeMidLon, altM);
+            final var wd = apiService.fetchAndSave(ac, routeMidLat, routeMidLon, altM, depTime);
             records.add(wd);
         }
 
@@ -143,16 +145,18 @@ public class FetchWeatherForFlightController {
     }
 
     public WeatherFetchResult fetchWeatherJson(final String flightDesignator,
-                                                final String areaCode,
-                                                final double routeMidLat,
-                                                final double routeMidLon) {
+                                                 final String areaCode,
+                                                 final double routeMidLat,
+                                                 final double routeMidLon) {
         authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.PILOT);
 
+        final Flight flight = flightByDesignator(flightDesignator);
         final AreaCode ac = AreaCode.valueOf(areaCode);
+        final LocalDateTime depTime = flight.departureTime();
 
         final List<WeatherData> records = new ArrayList<>();
         for (final int altM : ALTITUDE_BANDS_M) {
-            final var wd = apiService.fetchAndSave(ac, routeMidLat, routeMidLon, altM);
+            final var wd = apiService.fetchAndSave(ac, routeMidLat, routeMidLon, altM, depTime);
             records.add(wd);
         }
 

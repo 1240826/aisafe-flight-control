@@ -1,6 +1,7 @@
 package eapli.aisafe.manufacturer.application;
 
 import eapli.aisafe.manufacturer.domain.Manufacturer;
+import eapli.aisafe.manufacturer.domain.ManufacturerName;
 import eapli.aisafe.manufacturer.repositories.ManufacturerRepository;
 import eapli.aisafe.usermanagement.domain.AISafeRoles;
 import eapli.aisafe.infrastructure.persistence.PersistenceContext;
@@ -38,5 +39,10 @@ public class RegisterManufacturerController {
     public Iterable<Manufacturer> allManufacturers() {
         authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.BACKOFFICE_OPERATOR);
         return repo.findAll();
+    }
+
+    public void removeManufacturer(final String name) {
+        authz.ensureAuthenticatedUserHasAnyOf(AISafeRoles.BACKOFFICE_OPERATOR);
+        repo.deleteOfIdentity(new ManufacturerName(name));
     }
 }

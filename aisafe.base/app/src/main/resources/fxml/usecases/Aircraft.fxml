@@ -22,6 +22,8 @@
         </HBox>
 
         <HBox alignment="CENTER_RIGHT">
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="📥 Export CSV" onAction="#onExport" styleClass="btn-zoom" />
             <Button text="⛶ Expand" onAction="#onZoom" styleClass="btn-zoom" />
         </HBox>
         <TableView fx:id="aircraftTable" VBox.vgrow="ALWAYS" prefHeight="240">
@@ -33,6 +35,7 @@
                 <TableColumn fx:id="colCapacity" text="Capacity" prefWidth="80" />
                 <TableColumn fx:id="colStatus" text="Status" prefWidth="100" />
             </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>
 
         <VBox styleClass="content-card" spacing="16">
@@ -41,28 +44,34 @@
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Registration Number" styleClass="form-label" />
                     <TextField fx:id="newReg" promptText="e.g. CS-TUI" styleClass="form-field" />
+                    <Label fx:id="newRegError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Registration Country" styleClass="form-label" />
                     <TextField fx:id="newRegCountry" promptText="e.g. Portugal" styleClass="form-field" />
+                    <Label fx:id="newRegCountryError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Aircraft Model" styleClass="form-label" />
                     <ComboBox fx:id="newModel" styleClass="form-field" promptText="Select model..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newModelError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Air Transport Company" styleClass="form-label" />
                     <ComboBox fx:id="newCompany" styleClass="form-field" promptText="Select company..." HBox.hgrow="ALWAYS" />
+                    <Label fx:id="newCompanyError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <HBox spacing="16">
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Flight Crew" styleClass="form-label" />
                     <TextField fx:id="newCrew" promptText="e.g. 3" styleClass="form-field" />
+                    <Label fx:id="newCrewError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
                 <VBox spacing="4" HBox.hgrow="ALWAYS">
                     <Label text="Seats (Economy)" styleClass="form-label" />
                     <TextField fx:id="newSeats" promptText="e.g. 180" styleClass="form-field" />
+                    <Label fx:id="newSeatsError" styleClass="field-error-label" managed="false" visible="false" />
                 </VBox>
             </HBox>
             <Button text="Register Aircraft" onAction="#addAircraft" styleClass="btn-primary" maxWidth="Infinity" />

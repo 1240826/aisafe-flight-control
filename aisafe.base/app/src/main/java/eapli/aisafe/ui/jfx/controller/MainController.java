@@ -58,7 +58,7 @@ public class MainController {
         showSectionIfAuthorized(backofficeSection, AISafeRoles.BACKOFFICE_OPERATOR);
         showSectionIfAuthorized(fleetSection, AISafeRoles.ATC_COLLABORATOR);
         showSectionIfAuthorized(operationsSection, AISafeRoles.FLIGHT_CONTROL_OPERATOR);
-        showSectionIfAuthorized(weatherSection, AISafeRoles.WEATHER_PERSON);
+        showSectionIfAnyOf(weatherSection, AISafeRoles.WEATHER_PERSON, AISafeRoles.PILOT, AISafeRoles.FLIGHT_CONTROL_OPERATOR);
         showSectionIfAuthorized(pilotSection, AISafeRoles.PILOT);
         showSectionIfAuthorized(reportsSection, AISafeRoles.FLIGHT_CONTROL_OPERATOR);
 
@@ -71,6 +71,15 @@ public class MainController {
 
     private void showSectionIfAuthorized(final VBox section, final eapli.framework.infrastructure.authz.domain.model.Role role) {
         final boolean visible = SessionManager.hasRole(role);
+        section.setVisible(visible);
+        section.setManaged(visible);
+    }
+
+    private void showSectionIfAnyOf(final VBox section, final eapli.framework.infrastructure.authz.domain.model.Role... roles) {
+        boolean visible = false;
+        for (final var role : roles) {
+            if (SessionManager.hasRole(role)) { visible = true; break; }
+        }
         section.setVisible(visible);
         section.setManaged(visible);
     }
@@ -148,6 +157,11 @@ public class MainController {
     @FXML
     private void showImportFlightPlan() {
         navigate("Import Flight Plan", "/fxml/usecases/ImportFlightPlan.fxml", new ImportFlightPlanController());
+    }
+
+    @FXML
+    private void showTestFlightPlans() {
+        navigate("Test Flight Plans", "/fxml/usecases/TestFlightPlans.fxml", new TestFlightPlansController());
     }
 
     @FXML

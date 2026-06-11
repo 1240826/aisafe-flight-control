@@ -8,39 +8,51 @@
     <VBox spacing="20" style="-fx-background-color: #0d1117; -fx-padding: 24;">
         <VBox spacing="4">
             <Label text="Import Flight Plan" style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
-            <Label text="Import, validate and test flight plans from DSL files" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
+            <Label text="Import and validate flight plan DSL files" style="-fx-font-size: 13px; -fx-text-fill: #8b949e;" />
         </VBox>
 
-        <HBox spacing="12" alignment="CENTER_LEFT">
-            <ComboBox fx:id="exampleSelector" promptText="Load an example..." styleClass="form-field" prefWidth="300" HBox.hgrow="ALWAYS" />
-            <Button text="Load Example" onAction="#loadExample" styleClass="btn-secondary" />
-            <Region HBox.hgrow="ALWAYS" />
-            <Button text="Browse File..." onAction="#chooseFile" styleClass="btn-outline" />
-        </HBox>
-
-        <HBox spacing="12">
-            <TextField fx:id="filePathField" promptText="No file selected..." styleClass="form-field" editable="false" HBox.hgrow="ALWAYS" />
-        </HBox>
-
+        <!-- Import DSL Section -->
         <VBox styleClass="content-card" spacing="12">
             <Label text="Flight Plan DSL" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
-            <TextArea fx:id="dslContent" editable="false" prefHeight="200" styleClass="form-field"
-                      promptText="Flight plan DSL content..." />
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <ComboBox fx:id="exampleSelector" promptText="Load an example..." styleClass="form-field" prefWidth="300" HBox.hgrow="ALWAYS" />
+                <Button text="Load Example" onAction="#loadExample" styleClass="btn-secondary" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button text="Browse File..." onAction="#chooseFile" styleClass="btn-outline" />
+            </HBox>
+            <HBox spacing="12">
+                <TextField fx:id="filePathField" promptText="No file selected..." styleClass="form-field" editable="false" HBox.hgrow="ALWAYS" />
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <TextArea fx:id="dslContent" editable="false" prefHeight="150" styleClass="form-field"
+                          promptText="Flight plan DSL content..." HBox.hgrow="ALWAYS" />
+                <VBox spacing="8">
+                    <Button text="⛶ Expand" onAction="#onZoomDsl" styleClass="btn-zoom" />
+                </VBox>
+            </HBox>
             <HBox spacing="12">
                 <Button text="🔍 Validate &amp; Import" onAction="#importPlan" styleClass="btn-primary" HBox.hgrow="ALWAYS" />
-                <Button text="🌤 Add Weather" onAction="#addWeatherData" styleClass="btn-outline" HBox.hgrow="ALWAYS" />
             </HBox>
         </VBox>
 
+        <!-- Validation Result -->
         <VBox fx:id="validationResult" managed="false" visible="false" styleClass="content-card" spacing="8">
-            <Label fx:id="validationTitle" text="Validation Result" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label fx:id="validationTitle" text="Validation" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" HBox.hgrow="ALWAYS" />
+                <Button text="⛶ Expand" onAction="#onZoomValidation" styleClass="btn-zoom" />
+            </HBox>
             <TextArea fx:id="validationDetails" editable="false" prefHeight="80" styleClass="form-field" />
-            <Button fx:id="simulateButton" text="▶ Run Simulation" onAction="#runSimulation" styleClass="btn-primary" maxWidth="Infinity" managed="false" visible="false" />
         </VBox>
 
-        <VBox fx:id="simulationResult" managed="false" visible="false" styleClass="content-card" spacing="8">
-            <Label fx:id="simulationTitle" text="Simulation Result" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
-            <TextArea fx:id="simulationReport" editable="false" prefHeight="150" styleClass="form-field" />
+        <!-- Weather Section -->
+        <VBox fx:id="weatherSection" managed="false" visible="false" styleClass="content-card" spacing="12">
+            <Label text="Route Weather Data" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #f0f6fc;" />
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <ComboBox fx:id="weatherSelector" promptText="Select weather data..." styleClass="form-field" prefWidth="400" HBox.hgrow="ALWAYS" />
+                <Button fx:id="assignWeatherBtn" text="Assign Weather" onAction="#onAssignWeather" styleClass="btn-primary" />
+                <Button fx:id="addWeatherNavBtn" text="+ New Weather" onAction="#onAddNewWeather" styleClass="btn-outline" />
+            </HBox>
+            <Label fx:id="weatherStatus" style="-fx-font-size: 12px; -fx-text-fill: #8b949e;" />
         </VBox>
     </VBox>
 </ScrollPane>
