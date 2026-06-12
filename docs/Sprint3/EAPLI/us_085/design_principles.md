@@ -652,3 +652,181 @@ Repository implementation (infrastructure) → Repository interface
 
 No domain class imports any application or infrastructure class.
 No service class imports any infrastructure class (except through interfaces).
+
+---
+
+## GoF Design Patterns
+
+---
+
+### Strategy (Behavioural)
+
+> *"Define a family of algorithms, encapsulate each one, and make them interchangeable."*
+
+**Applied by:** `SimulationRunner` — the most prominent GoF pattern in US085.
+
+```java
+// Strategy interface:
+public interface SimulationRunner {
+    String run(String jsonInput);
+    default String run(String jsonInput, String weatherPath) { return run(jsonInput); }
+}
+
+// Concrete Strategy A — local subprocess (default):
+public class ProcessBuilderSimulationRunner implements SimulationRunner {
+    @Override
+    public String run(final String jsonInput) {
+        // invokes C simulator via ProcessBuilder + temp files
+    }
+}
+
+// Concrete Strategy B — remote TCP connection:
+public class SocketSimulationRunner implements SimulationRunner {
+    @Override
+    public String run(final String jsonInput) {
+        // sends JSON to sim_server over TCP, reads report
+    }
+}
+
+// Context (controller) — completely unaware of which runner is in use:
+public TestResult testFlightPlan(...) {
+    final var json   = exporter.exportForSimulator(flightPlan);
+    final var report = runner.run(json);   // ← same call for both strategies
+    final var parsed = ReportParser.parse(report);
+    ...
+}
+```
+
+**Why Strategy?** The simulation algorithm (local subprocess vs. remote TCP) is selected at construction time and swapped without any change to `TestFlightPlanController`. The production default (`createRunner()`) chooses based on configuration; tests can inject a mock or stub `SimulationRunner`. Neither strategy knows about the other, and the controller never knows which one is active.
+
+---
+
+### Factory Method (Creational)
+
+> *"Define an interface for creating an object, but let subclasses or factory methods decide which class to instantiate."*
+
+**Applied by:** `ValidationResult`, `FlightPlanId`, `FlightDesignator`
+
+```java
+// ValidationResult — static factory methods hide constructor and set correct initial state:
+public static ValidationResult passed() {
+    return new ValidationResult(true, List.of());       // ← Factory Method
+}
+
+public static ValidationResult failed(final String reason) {
+    return new ValidationResult(false, List.of(reason)); // ← Factory Method
+}
+
+// Callers use intention-revealing names, not `new ValidationResult(true, ...)`:
+var ok  = ValidationResult.passed();
+var nok = ValidationResult.failed("DSL is empty");
+
+// FlightPlanId and FlightDesignator follow the same idiom:
+final var flightPlanId     = FlightPlanId.valueOf(flightPlanIdStr);      // ← Factory Method
+final var flightDesignator = FlightDesignator.valueOf(designatorStr);    // ← Factory Method
+```
+
+The `TestFlightPlanController` default constructor also uses factory methods:
+
+```java
+public TestFlightPlanController() {
+    this(AuthzRegistry.authorizationService(),
+            PersistenceContext.repositories().flights(),  // ← Factory Method
+            new FlightPlanExporter(),
+            createRunner(),                               // ← Factory Method (chooses strategy)
+            new DslValidator());
+}
+```
+
+**Why Factory Method?** Callers are decoupled from the concrete construction details of VOs and services. `createRunner()` centralises the decision of which `SimulationRunner` to instantiate, keeping that variation in one place.
+
+---
+
+### Adapter (Structural)
+
+> *"Convert the interface of a class into another interface expected by the client."*
+
+**Applied by:** `JpaFlightRepository` adapts the EAPLI JPA framework to `FlightRepository`.
+
+```java
+// Target — our domain interface:
+public interface FlightRepository extends DomainRepository<FlightDesignator, Flight> {
+    Optional<Flight> findByFlightPlanId(FlightPlanId flightPlanId);
+    boolean existsByPilotLicense(PilotId pilotId);
+}
+
+// Adapter — translates domain method calls into EAPLI JPA framework calls:
+public class JpaFlightRepository
+        extends JpaAutoTxRepository<Flight, FlightDesignator, FlightDesignator>  // ← Adaptee
+        implements FlightRepository {                                              // ← Target
+
+    @Override
+    public Optional<Flight> findByFlightPlanId(final FlightPlanId id) {
+        return matchOne(
+            "SELECT f FROM Flight f JOIN f.flightPlans fp WHERE fp.flightPlanId.id = :id",
+            Map.of("id", id.toString()));  // ← adapts domain method to framework matchOne()
+    }
+}
+```
+
+`TestFlightPlanController` depends only on `FlightRepository` (target). The JPA framework API (`matchOne`, `match`) is hidden inside the adapter.
+
+---
+
+### Iterator (Behavioural)
+
+> *"Provide a way to access the elements of an aggregate object sequentially without exposing its underlying representation."*
+
+**Applied by:** `flight.flightPlans()` — iterating the `FlightPlan` collection inside `Flight`.
+
+```java
+// Flight returns an unmodifiable view of its FlightPlan children:
+public List<FlightPlan> flightPlans() {
+    return Collections.unmodifiableList(flightPlans);  // ← Iterator-backed List
+}
+
+// TestFlightPlanController traverses a flight's plans without knowing the storage structure:
+for (final var fp : flight.flightPlans()) {    // ← Iterator pattern
+    switch (fp.status()) {
+        case DRAFT      -> draft++;
+        case TEST_PASSED -> passed++;
+        // ...
+    }
+}
+```
+
+**Why Iterator?** `TestFlightPlanController` never depends on whether `flightPlans` is an `ArrayList`, a `LinkedList`, or a JPA-managed `PersistentBag`. The `List<FlightPlan>` interface (which extends `Iterable`) provides the Iterator abstraction.
+
+---
+
+### Facade (Structural)
+
+> *"Provide a unified interface to a set of interfaces in a subsystem."*
+
+**Applied by:** `TestFlightPlanController`
+
+```java
+// Subsystem classes hidden behind the controller (Facade):
+//   FlightRepository, DslValidator, FlightPlanExporter,
+//   SimulationRunner (2 implementations), ReportParser, FlightPlan status machine
+
+// The UI calls ONE method and gets a self-contained result:
+TestFlightPlanController controller = new TestFlightPlanController();
+TestResult result = controller.testFlightPlan(designatorStr, flightPlanIdStr);
+
+// Behind the scenes (12 steps, 6 collaborators):
+// 1. authz.ensureAuthenticatedUserHasAnyOf(...)
+// 2. FlightDesignator.valueOf(designatorStr)
+// 3. flightRepo.ofIdentity(flightDesignator).orElseThrow(...)
+// 4. FlightPlanId.valueOf(flightPlanIdStr)
+// 5. flight.flightPlan(flightPlanId).orElseThrow(...)
+// 6. if status != DRAFT → return failure(...)
+// 7. dslValidator.validate(flightPlan.dslContent())
+// 8. flightPlan.markAsInTest(); flightRepo.save(flight)
+// 9. exporter.exportForSimulator(flightPlan) → JSON string
+// 10. runner.run(json)               → C simulator report
+// 11. ReportParser.parse(report)
+// 12. flightPlan.recordTestResult(...); flightRepo.save(flight)
+```
+
+**Why Facade?** Without the controller, the UI would need to import and orchestrate `FlightRepository`, `DslValidator`, `FlightPlanExporter`, `SimulationRunner`, and `ReportParser` — five subsystem classes across three packages. The controller Facade reduces this to a single method call with a single return type.
