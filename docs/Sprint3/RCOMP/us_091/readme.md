@@ -163,14 +163,12 @@ No external JavaScript libraries are required — native `fetch` API and vanilla
 
 ### 3.5 Key Classes
 
-| Class | Responsibility |
-|-------|---------------|
-| `HttpVisualizationServer` | Registers all endpoint handlers and starts the HTTP server thread |
-| `EventsPageHandler` | Serves the Last Events HTML page |
-| `ActiveUsersPageHandler` | Serves the Active Users HTML page |
-| `EventsApiHandler` | Serializes the event log to JSON |
-| `ActiveUsersApiHandler` | Derives active users from the event log and returns JSON |
-| `RemoteAccessEventStore` | Thread-safe in-memory store shared between UDP receiver and HTTP handlers |
+| Class | Location | Responsibility |
+|-------|----------|---------------|
+| `HttpLogServer` | `rcomp/us091/src/` | Registers all endpoint handlers and starts the HTTP server thread |
+| `PageHandler` | `rcomp/us091/src/` | Serves both `/events` and `/active` HTML pages (param: page name) |
+| `ApiHandler` | `rcomp/us091/src/` | Serves both `/api/events` and `/api/active` JSON endpoints (param: activeOnly bool) |
+| `LogStore` | `rcomp/us090/src/` | Thread-safe in-memory store shared between UDP receiver and HTTP handlers |
 
 ---
 
@@ -210,11 +208,21 @@ Then within 5 seconds the user is removed from the active users table without a 
 Two sequence diagrams are provided:
 
 - **SD1** — Last Events page: initial load and AJAX polling cycle.
-- **SD2** — Active Users page: initial load and AJAX polling cycle, including active user
-  derivation from the event log.
+**SD2** — Active Users page: initial load and AJAX polling cycle.
 
-![SD1 — Last Events Page](sd_us91_events_page.svg)
-![SD2 — Active Users Page](sd_us91_active_users_page.svg)
+![SD1 — Last Events Page](sds/images/sd_us91_events_page.svg)
+
+*PlantUML source: `sds/uml/sd_us91_events_page.puml`*
+
+![SD2 — Active Users Page](sds/images/sd_us91_active_users_page.svg)
+
+*PlantUML source: `sds/uml/sd_us91_active_users_page.puml`*
+
+**Component Diagram — Client-Server-Architecture:**
+
+![Component Diagram](sds/images/component_us091_client_server.svg)
+
+*PlantUML source: `sds/uml/component_us091_client_server.puml`*
 
 ---
 
@@ -222,12 +230,10 @@ Two sequence diagrams are provided:
 
 | File | Responsibility |
 |------|---------------|
-| `HttpVisualizationServer.java` | Starts HTTP server; registers all handlers |
-| `EventsPageHandler.java` | Serves `/events` HTML page |
-| `ActiveUsersPageHandler.java` | Serves `/active` HTML page |
-| `EventsApiHandler.java` | Serves `/api/events` JSON |
-| `ActiveUsersApiHandler.java` | Serves `/api/active` JSON |
-| `RemoteAccessEventStore.java` | Thread-safe in-memory event store (shared with US90) |
+| `HttpLogServer.java` | Starts HTTP server; registers all handlers |
+| `PageHandler.java` | Serves `/events` and `/active` HTML pages |
+| `ApiHandler.java` | Serves `/api/events` and `/api/active` JSON |
+| `LogStore.java` (us090) | Thread-safe in-memory event store (shared with US90) |
 
 ---
 

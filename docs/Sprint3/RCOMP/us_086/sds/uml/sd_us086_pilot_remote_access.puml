@@ -1,0 +1,99 @@
+@startuml
+title sd_us086_pilot_remote_access
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 30
+
+participant "PilotClientApp" as client
+participant "TcpClient" as tcp
+participant "PilotServerDaemon" as daemon
+participant "PilotClientHandler" as handler
+participant "RemotePilotService" as service
+participant "UdpLogReceiver" as logger
+
+autonumber
+
+client -> tcp : new TcpClient(host, 1086)
+activate client
+activate tcp
+tcp -> daemon : TCP connect
+activate daemon
+daemon -> handler : new PilotClientHandler(socket)
+deactivate daemon
+activate handler
+tcp --> client : connected
+deactivate tcp
+
+client -> handler : AUTH|fco1|Password1
+activate handler
+handler -> service : authenticate(fco1, Password1)
+activate service
+service --> handler : auth result
+deactivate service
+handler -> logger : UDP LOGIN_OK
+activate logger
+handler --> client : AUTH_OK
+
+client -> handler : LIST_FLEET
+handler -> service : listFleet()
+activate service
+service --> handler : OK|CS-TRA,...
+deactivate service
+handler --> client : OK|CS-TRA,...
+
+client -> handler : CREATE_FLIGHT_PLAN|FP001|...
+handler -> service : createFlightPlan("FP001", dsl)
+activate service
+service --> handler : "Flight plan FP001 created"
+deactivate service
+handler --> client : OK|Flight plan FP001 created
+
+client -> handler : VALIDATE_FLIGHT_PLAN|FP001
+handler -> service : validateFlightPlan("FP001")
+activate service
+service --> handler : "PASSED"
+deactivate service
+handler --> client : OK|PASSED
+
+client -> handler : GENERATE_REPORT|LIS
+handler -> service : generateReport("LIS")
+activate service
+service --> handler : "report file path"
+deactivate service
+handler --> client : OK|Report saved
+
+client -> handler : MONTHLY_REPORT|2026|06
+handler -> service : monthlyReport("2026", "06")
+activate service
+service --> handler : report data
+deactivate service
+handler --> client : OK|report data...
+
+client -> handler : LIST_FLIGHTS
+handler -> service : listFlights()
+activate service
+service --> handler : List<FlightDTO>
+deactivate service
+handler --> client : OK|FP001,...
+
+client -> handler : LIST_ROUTES
+handler -> service : listRoutes()
+activate service
+service --> handler : List<FlightRouteDTO>
+deactivate service
+handler --> client : OK|LIS-OPO,...
+
+client -> handler : QUIT
+handler -> logger : UDP LOGOUT
+deactivate logger
+handler --> client : BYE
+deactivate handler
+
+client -> tcp : close()
+activate tcp
+tcp -> tcp : socket.close()
+deactivate tcp
+deactivate client
+@enduml

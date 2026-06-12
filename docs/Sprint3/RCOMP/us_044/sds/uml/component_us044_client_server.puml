@@ -1,0 +1,68 @@
+@startuml
+title US044 — Component Diagram (Deployment View)
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam componentStyle rectangle
+skinparam nodeStyle rectangle
+
+node "Workstation\n(TCP Client)" as ws1 {
+  [AISafeClientApp]
+  [TcpClient]
+  AISafeClientApp --> TcpClient
+}
+
+node "Cloud Node\nMain Application" as cloud1 {
+  package "TCP Server" as tcpSrv {
+    [WeatherServerDaemon]
+    [WeatherClientHandler]
+  }
+  package "Service" as srvPkg {
+    [RemoteWeatherService]
+  }
+  package "Controller" as ctrlPkg {
+    [RegisterWeatherDataController]
+    [ConsultWeatherDataController]
+  }
+  package "Domain" as domPkg {
+    [WeatherData]
+    [AirControlArea]
+  }
+  package "UDP Client" as udpPkg {
+    [UdpLoggerClient]
+  }
+  WeatherServerDaemon --> WeatherClientHandler
+  WeatherClientHandler --> RemoteWeatherService
+  RemoteWeatherService --> RegisterWeatherDataController
+  RemoteWeatherService --> ConsultWeatherDataController
+  RegisterWeatherDataController --> [WeatherData]
+  RegisterWeatherDataController --> [AirControlArea]
+  ConsultWeatherDataController --> [WeatherData]
+}
+
+node "Cloud Node\nDatabase Server" as dbNode {
+  [Relational Database]
+}
+
+node "Cloud Node\nRemote Access\nLogging Server" as logNode {
+  package "UDP Server" as udpSrv {
+    [UdpLogReceiver]
+  }
+  package "HTTP Server" as httpSrv {
+    [HttpLogServer]
+  }
+  [LogStore]
+  UdpLogReceiver --> LogStore
+  LogStore --> HttpLogServer
+}
+
+node "Workstation\n(Web Browser)" as ws2 {
+  [Browser]
+}
+
+TcpClient --> WeatherServerDaemon : TCP (1044)
+WeatherClientHandler --> UdpLoggerClient : UDP events
+UdpLoggerClient --> UdpLogReceiver : UDP (US90)
+RemoteWeatherService --> [Relational Database] : SQL (JPA)
+Browser --> HttpLogServer : HTTP (US91)
+@enduml

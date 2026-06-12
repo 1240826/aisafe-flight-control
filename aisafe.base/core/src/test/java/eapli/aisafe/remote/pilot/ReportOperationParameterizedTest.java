@@ -3,6 +3,7 @@ package eapli.aisafe.remote.pilot;
 import eapli.aisafe.aircraft.application.ListCompanyFleetController;
 import eapli.aisafe.flightplan.application.ImportFlightPlanController;
 import eapli.aisafe.flightplan.application.TestFlightPlanController;
+import eapli.aisafe.flightroute.application.ListFlightRoutesController;
 import eapli.aisafe.report.application.GenerateMonthlyReportController;
 import eapli.aisafe.report.domain.MonthlyReport;
 import eapli.aisafe.simulation.application.GenerateSimulationReportController;
@@ -37,7 +38,8 @@ class ReportOperationParameterizedTest {
                 mock(ImportFlightPlanController.class),
                 mock(TestFlightPlanController.class),
                 reportCtrl,
-                monthlyCtrl);
+                monthlyCtrl,
+                mock(ListFlightRoutesController.class));
     }
 
     @ParameterizedTest(name = "{0}: {4}")

@@ -1,0 +1,89 @@
+@startuml sd_us90_login_event
+title US90 — Remote Access Logging (Login Event)
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Remote User\n(US44 / US78 / US86)" as client
+participant "AbstractClientHandler" as handler
+participant "UdpAccessLogger" as logger
+participant "UdpLogReceiver" as receiver
+participant "LogStore" as store
+
+client -> handler : connect + send credentials
+activate handler
+
+handler -> handler : authenticateUser(username, password)
+handler -> logger : loginOk(username, ip, port, service)
+activate logger
+note right of logger
+  payload: EVENT|epochMs|user|ip|port|service|LOGIN_OK
+end note
+
+logger -> receiver : UDP datagram
+activate receiver
+receiver -> store : add(entry)
+deactivate receiver
+logger --> handler
+deactivate logger
+
+alt success
+    handler --> client : AUTH_OK
+else failure
+    handler -> logger : loginFail(username, ip, port, service)
+    activate logger
+    logger -> receiver : UDP datagram
+    activate receiver
+    receiver -> store : add(entry)
+    deactivate receiver
+    deactivate logger
+    handler --> client : AUTH_FAIL
+end
+
+deactivate handler
+@enduml
+
+
+@startuml sd_us90_logout_disconnect_event
+title US90 — Remote Access Logging (Logout / Disconnect Event)
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Remote User\n(US44 / US78 / US86)" as client
+participant "AbstractClientHandler" as handler
+participant "UdpAccessLogger" as logger
+participant "UdpLogReceiver" as receiver
+participant "LogStore" as store
+
+alt Logout
+    client -> handler : QUIT
+else Disconnect
+    client ->> handler : IOException on read
+end
+
+activate handler
+handler -> logger : logout(username, ip, port, service)
+activate logger
+note right of logger
+  payload: EVENT|epochMs|user|ip|port|service|LOGOUT
+end note
+
+logger -> receiver : UDP datagram
+activate receiver
+receiver -> store : add(entry)
+deactivate receiver
+logger --> handler
+deactivate logger
+
+handler --> client : BYE
+deactivate handler
+@enduml

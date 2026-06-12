@@ -7,20 +7,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Scanner;
 
-/**
- * US086 — Pilot (Flight Control Operator) remote client application.
- *
- * <p>Connects to the AISafe Main Application via TCP and exposes all
- * FCO operations (US072, US080, US085, US111, US112, US121) through
- * a console menu.
- *
- * <p>Usage:
- * <pre>
- *   javac -d out -sourcepath src src/rcomp/client/PilotClientApp.java
- *   java  -cp out rcomp.client.PilotClientApp [host] [port]
- * </pre>
- * Default: host=localhost, port=1086
- */
 public final class PilotClientApp {
 
     private static final int DEFAULT_PORT = 1086;
@@ -54,17 +40,25 @@ public final class PilotClientApp {
         }
     }
 
-    // ── Auth ─────────────────────────────────────────────────────────────────
-
     private static boolean login(final TcpClient c, final Scanner sc) throws IOException {
         System.out.print("Username: "); final String user = sc.nextLine().trim();
         System.out.print("Password: "); final String pass = sc.nextLine().trim();
         final String resp = c.send("AUTH|" + user + "|" + pass);
         System.out.println("Server: " + resp);
-        return resp != null && resp.startsWith("AUTH_OK");
+        if (resp == null) {
+            System.out.println("Connection closed by server during authentication.");
+            return false;
+        }
+        if (resp.startsWith("AUTH_OK")) {
+            return true;
+        }
+        if (resp.startsWith("AUTH_FAIL")) {
+            System.out.println("Authentication failed: " + resp.substring(9));
+            return false;
+        }
+        System.out.println("Unexpected server response: " + resp);
+        return false;
     }
-
-    // ── Menu ─────────────────────────────────────────────────────────────────
 
     private static void mainLoop(final TcpClient c, final Scanner sc) throws IOException {
         while (true) {
@@ -72,7 +66,7 @@ public final class PilotClientApp {
             System.out.println("──── Pilot Menu ────────────────────────────");
             System.out.println(" 1. List company fleet (US072)");
             System.out.println(" 2. Create flight plan (US080)");
-            System.out.println(" 3. Import flight plan from DSL (US121)");
+            System.out.println(" 3. Import flight plan from file (US121)");
             System.out.println(" 4. Validate flight plan (US085)");
             System.out.println(" 5. Generate simulation report (US111)");
             System.out.println(" 6. Monthly report (US112)");
@@ -81,7 +75,8 @@ public final class PilotClientApp {
             System.out.println(" 0. Logout & Exit");
             System.out.print("Option: ");
 
-            switch (sc.nextLine().trim()) {
+            final String opt = sc.nextLine().trim();
+            switch (opt) {
                 case "1" -> printResp(c.send("LIST_FLEET"));
                 case "2" -> doCreateFlightPlan(c, sc);
                 case "3" -> doImportFlightPlan(c, sc);
@@ -91,98 +86,121 @@ public final class PilotClientApp {
                 case "7" -> printResp(c.send("LIST_FLIGHTS"));
                 case "8" -> printResp(c.send("LIST_ROUTES"));
                 case "0" -> { System.out.println("Goodbye."); return; }
-                default  -> System.out.println("Invalid option.");
+                default  -> System.out.println("Invalid option '" + opt + "'. Choose 0-8.");
             }
         }
     }
 
-    // ── Operations ────────────────────────────────────────────────────────────
+    private static String readNonEmpty(final Scanner sc, final String label) {
+        while (true) {
+            System.out.print(label);
+            final String input = sc.nextLine().trim();
+            if (!input.isEmpty()) return input;
+            System.out.println(label.replace(":", "").trim() + " cannot be empty. Please try again.");
+        }
+    }
+
+    private static String readInt(final Scanner sc, final String label, final int min, final int max) {
+        while (true) {
+            System.out.print(label);
+            final String input = sc.nextLine().trim();
+            try {
+                final int val = Integer.parseInt(input);
+                if (val >= min && val <= max) return input;
+                System.out.println("Value must be between " + min + " and " + max + ". Got: " + val);
+            } catch (final NumberFormatException e) {
+                System.out.println("Invalid number '" + input + "'. Expected a whole number between " + min + " and " + max + ".");
+            }
+        }
+    }
 
     private static void doCreateFlightPlan(final TcpClient c, final Scanner sc) throws IOException {
-        System.out.print("Flight ID: ");
-        final String flightId = sc.nextLine().trim();
-        System.out.println("DSL content (blank line to finish):");
+        final String flightId = readNonEmpty(sc, "Flight ID: ");
+        System.out.println("DSL content (end with a line containing only '--'):");
         final String dsl = readMultiline(sc);
         if (dsl.isEmpty()) {
-            System.out.println("Canceled.");
+            System.out.println("No DSL content provided. Operation cancelled.");
             return;
         }
         printResp(c.send("CREATE_FLIGHT_PLAN|" + flightId + "|" + dsl));
     }
 
     private static void doImportFlightPlan(final TcpClient c, final Scanner sc) throws IOException {
-        System.out.print("Flight ID: ");
-        final String flightId = sc.nextLine().trim();
-        if (flightId.isEmpty()) { System.out.println("Flight ID required."); return; }
-        System.out.print("DSL file path: ");
-        final String path = sc.nextLine().trim();
-        if (!Files.exists(Paths.get(path))) {
-            System.out.println("File not found: " + path);
-            return;
-        }
-        try {
-            final String dsl = Files.readString(Paths.get(path));
-            printResp(c.send("IMPORT_FLIGHT_PLAN|" + flightId + "|" + dsl));
-        } catch (final IOException e) {
-            System.out.println("Error reading file: " + e.getMessage());
+        final String flightId = readNonEmpty(sc, "Flight ID: ");
+        while (true) {
+            final java.nio.file.Path curDir = Paths.get(".").toAbsolutePath().normalize();
+            System.out.println("DSL files in " + curDir + ":");
+            final java.util.List<java.nio.file.Path> dslFiles;
+            try (final var stream = java.nio.file.Files.list(curDir)) {
+                dslFiles = stream
+                        .filter(f -> f.toString().toLowerCase().endsWith(".dsl"))
+                        .sorted()
+                        .collect(java.util.stream.Collectors.toList());
+            }
+            if (dslFiles.isEmpty()) {
+                System.out.println("  (no .dsl files found)");
+            } else {
+                for (int i = 0; i < dslFiles.size(); i++) {
+                    System.out.printf("  %d. %s%n", i + 1, dslFiles.get(i).getFileName());
+                }
+            }
+            System.out.println("  (or type a path manually, or 0 to cancel)");
+            System.out.print("Choose file: ");
+            final String input = sc.nextLine().trim();
+            if (input.equals("0")) {
+                System.out.println("Operation cancelled.");
+                return;
+            }
+            final java.nio.file.Path chosen;
+            if (input.matches("\\d+")) {
+                final int idx = Integer.parseInt(input) - 1;
+                if (idx >= 0 && idx < dslFiles.size()) {
+                    chosen = dslFiles.get(idx);
+                } else {
+                    System.out.println("Invalid selection. Try again.");
+                    continue;
+                }
+            } else {
+                chosen = Paths.get(input);
+            }
+            if (!Files.exists(chosen)) {
+                System.out.println("File not found: " + chosen + ". Try again.");
+                continue;
+            }
+            try {
+                final String dsl = Files.readString(chosen);
+                printResp(c.send("IMPORT_FLIGHT_PLAN|" + flightId + "|" + dsl));
+                return;
+            } catch (final IOException e) {
+                System.out.println("Error reading file: " + e.getMessage() + ". Try again.");
+            }
         }
     }
 
     private static void doValidateFlightPlan(final TcpClient c, final Scanner sc) throws IOException {
-        System.out.print("Flight Plan ID: ");
-        final String id = sc.nextLine().trim();
-        if (id.isEmpty()) { System.out.println("Flight Plan ID required."); return; }
+        final String id = readNonEmpty(sc, "Flight Plan ID: ");
         printResp(c.send("VALIDATE_FLIGHT_PLAN|" + id));
     }
 
     private static void doGenerateReport(final TcpClient c, final Scanner sc) throws IOException {
-        System.out.print("Area code: ");
-        final String area = sc.nextLine().trim();
-        if (area.isEmpty()) { System.out.println("Area code required."); return; }
+        final String area = readNonEmpty(sc, "Area code: ");
         printResp(c.send("GENERATE_REPORT|" + area));
     }
 
     private static void doMonthlyReport(final TcpClient c, final Scanner sc) throws IOException {
-        System.out.print("Year (e.g. 2026): ");
-        final String year  = sc.nextLine().trim();
-        if (!isInt(year, "Year") || year.length() != 4) {
-            System.out.println("Invalid year. Use a 4-digit year (e.g. 2026).");
-            return;
-        }
-        System.out.print("Month (1-12): ");
-        final String month = sc.nextLine().trim();
-        if (!isInt(month, "Month")) return;
-        int m = Integer.parseInt(month);
-        if (m < 1 || m > 12) {
-            System.out.println("Invalid month. Must be between 1 and 12.");
-            return;
-        }
+        final String year = readInt(sc, "Year (e.g. 2026): ", 2000, 2100);
+        final String month = readInt(sc, "Month (1-12): ", 1, 12);
         final String resp = c.send("MONTHLY_REPORT|" + year + "|" + month);
-        if (resp == null)                  { System.out.println("Connection closed by server."); return; }
-        if (resp.startsWith("OK|"))        { System.out.println(resp.substring(3).replace("\\n", "\n")); }
-        else if (resp.startsWith("ERR|"))  { System.out.println("ERR  " + resp.substring(4)); }
-        else                               { System.out.println(resp.replace("\\n", "\n")); }
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private static boolean isInt(final String s, final String field) {
-        try {
-            Integer.parseInt(s);
-            return true;
-        } catch (final NumberFormatException e) {
-            System.out.println("Invalid " + field + ": must be a whole number.");
-            return false;
+        if (resp == null) {
+            System.out.println("Connection closed by server.");
+            return;
         }
-    }
-
-    private static boolean isDate(final String s) {
-        try {
-            LocalDate.parse(s);
-            return true;
-        } catch (final DateTimeParseException e) {
-            System.out.println("Invalid date. Use yyyy-MM-dd (e.g. 2026-06-01).");
-            return false;
+        if (resp.startsWith("OK|")) {
+            System.out.println(resp.substring(3).replace("\\n", "\n"));
+        } else if (resp.startsWith("ERR|")) {
+            System.out.println("ERR  " + resp.substring(4));
+        } else {
+            System.out.println(resp.replace("\\n", "\n"));
         }
     }
 
@@ -205,6 +223,8 @@ public final class PilotClientApp {
             System.out.println("OK  " + resp.substring(3));
         } else if (resp.startsWith("ERR|")) {
             System.out.println("ERR  " + resp.substring(4));
+        } else if (resp.startsWith("AUTH_FAIL")) {
+            System.out.println("AUTH FAIL  " + resp.substring(9));
         } else {
             System.out.println("   " + resp);
         }

@@ -4,6 +4,8 @@ import eapli.aisafe.flightplan.application.ImportFlightPlanController;
 import eapli.aisafe.flightplan.application.TestFlightPlanController;
 import eapli.aisafe.remote.RemoteProtocol;
 import eapli.aisafe.remote.pilot.AircraftDTO;
+import eapli.aisafe.remote.pilot.FlightDTO;
+import eapli.aisafe.remote.pilot.FlightRouteDTO;
 import eapli.aisafe.remote.pilot.RemotePilotService;
 import eapli.aisafe.report.domain.MonthlyReport;
 import eapli.aisafe.usermanagement.domain.AISafeRoles;
@@ -142,7 +144,7 @@ class PilotClientHandler extends AbstractClientHandler {
             final int year  = Integer.parseInt(f[1]);
             final int month = Integer.parseInt(f[2]);
             final MonthlyReport report = pilotService.monthlyReport(year, month);
-            return RemoteProtocol.ok(report.toString().replace("\r\n", "\n").replace("\n", "\\n"));
+            return RemoteProtocol.ok(report.toString().replace("\\r\\n", "\\n").replace("\\n", "\\\\n"));
         } catch (final DateTimeParseException e) {
             return RemoteProtocol.err("Invalid date: " + e.getMessage());
         } catch (final Exception e) {
@@ -160,12 +162,11 @@ class PilotClientHandler extends AbstractClientHandler {
             }
             final StringBuilder sb = new StringBuilder();
             int count = 0;
-            for (final Object obj : flights) {
+            for (final FlightDTO f : flights) {
                 if (count > 0) sb.append(";");
-                final var flight = (eapli.aisafe.flight.domain.Flight) obj;
-                sb.append(flight.identity()).append(",")
-                        .append(flight.departureTime()).append(",")
-                        .append(flight.routeName());
+                sb.append(f.flightDesignator()).append(",")
+                        .append(f.departureTime()).append(",")
+                        .append(f.routeName());
                 count++;
             }
             return RemoteProtocol.ok(count + " flights: " + sb);
@@ -184,12 +185,11 @@ class PilotClientHandler extends AbstractClientHandler {
             }
             final StringBuilder sb = new StringBuilder();
             int count = 0;
-            for (final Object obj : routes) {
+            for (final FlightRouteDTO r : routes) {
                 if (count > 0) sb.append(";");
-                final var route = (eapli.aisafe.flightroute.domain.FlightRoute) obj;
-                sb.append(route.identity()).append(",")
-                        .append(route.origin()).append(",->,")
-                        .append(route.destination());
+                sb.append(r.routeName()).append(",")
+                        .append(r.origin()).append(",->,")
+                        .append(r.destination());
                 count++;
             }
             return RemoteProtocol.ok(count + " routes: " + sb);

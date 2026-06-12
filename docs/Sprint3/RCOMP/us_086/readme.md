@@ -75,6 +75,7 @@ The system follows a two-tier remote access model:
 - All business logic (US072, US080, US085, US111, US112, US121) executes on the server side through existing application services
 - The client sends text requests and receives text responses — it never touches the database
 - The server enforces that the authenticated user holds the `FLIGHT_CONTROL_OPERATOR` role before any operation is dispatched
+- All data is transferred using **DTOs** (Data Transfer Objects) between the service layer and the TCP handler
 
 ---
 
@@ -87,29 +88,32 @@ Each message is terminated with `\n`. Fields are separated by `|`.
 
 | Code | Format | Description |
 |------|--------|-------------|
-| AUTH | `AUTH\|<username>\|<password>` | Authenticate the session |
+| AUTH | `AUTH|<username>|<password>` | Authenticate the session |
 | LIST_FLEET | `LIST_FLEET` | List company fleet (US072) |
-| CREATE_FLIGHT_PLAN | `CREATE_FLIGHT_PLAN\|<flight_id>\|<dsl_content>` | Create a flight plan in draft (US080) |
-| IMPORT_FLIGHT_PLAN | `IMPORT_FLIGHT_PLAN\|<file_path>` | Import flight plan from file (US121) |
-| VALIDATE_FLIGHT_PLAN | `VALIDATE_FLIGHT_PLAN\|<flight_plan_id>` | Test/validate a flight plan (US085) |
-| GENERATE_REPORT | `GENERATE_REPORT\|<flight_id>` | Generate simulation report (US111) |
-| MONTHLY_REPORT | `MONTHLY_REPORT\|<year>\|<month>` | Generate monthly report (US112) |
+| CREATE_FLIGHT_PLAN | `CREATE_FLIGHT_PLAN|<flight_id>|<dsl_content>` | Create a flight plan in draft (US080) |
+| IMPORT_FLIGHT_PLAN | `IMPORT_FLIGHT_PLAN|<flight_id>|<dsl_content>` | Import flight plan (US121) |
+| VALIDATE_FLIGHT_PLAN | `VALIDATE_FLIGHT_PLAN|<flight_plan_id>` | Test/validate a flight plan (US085) |
+| GENERATE_REPORT | `GENERATE_REPORT|<area_code>` | Generate simulation report (US111) |
+| MONTHLY_REPORT | `MONTHLY_REPORT|<year>|<month>` | Generate monthly report (US112) |
+| LIST_FLIGHTS | `LIST_FLIGHTS` | List all flights |
+| LIST_ROUTES | `LIST_ROUTES` | List all routes |
 | QUIT | `QUIT` | Gracefully close the session |
 
 **Server to Client messages:**
 
 | Code | Meaning |
 |------|---------|
-| `OK\|<optional_data>` | Operation succeeded |
-| `ERR\|<reason>` | Operation failed — reason included |
+| `OK|<optional_data>` | Operation succeeded |
+| `ERR|<reason>` | Operation failed — reason included |
 | `AUTH_OK` | Authentication successful |
-| `AUTH_FAIL\|<reason>` | Authentication failed (wrong credentials, expired clearance, or wrong role) |
+| `AUTH_FAIL|<reason>` | Authentication failed (wrong credentials, expired clearance, or wrong role) |
+| `BYE` | Server acknowledges QUIT |
 
 ---
 
 ### 3.3 Session Flow
 
-1. Client establishes TCP connection to the server on the Pilot-dedicated port
+1. Client establishes TCP connection to the server on the Pilot-dedicated port (1086)
 2. Server accepts and spawns a handler thread for that connection
 3. Client sends `AUTH|<username>|<password>`
 4. Server validates credentials via EAPLI `AuthzRegistry`
@@ -123,27 +127,78 @@ Each message is terminated with `\n`. Fields are separated by `|`.
 
 ---
 
-### 3.4 Identified Domain Concepts
+### 3.4 Architecture with DTOs
 
-| Concept | Responsibility |
-|---------|---------------|
-| `PilotServerDaemon` (extends `AbstractTcpServer`) | Listens on the Pilot-dedicated TCP port; accepts connections and spawns one `PilotClientHandler` per client |
-| `PilotClientHandler` | Manages one client session: reads requests, dispatches to services, writes responses |
-| `PilotRemoteSessionState` | Tracks authentication state and the authenticated Pilot |
-| `ProtocolParser` | Parses raw text messages into structured request objects |
-| `RemotePilotService` | Delegates to existing US072, US080, US085, US111, US112, US121 application services; no direct DB access |
+The system follows the **DTO pattern** as described by Martin Fowler (PoEAA):
+"An object that carries data between processes in order to reduce the number of method calls."
+
+**DTOs in the Pilot remote subdomain:**
+
+| DTO | Fields | Factory |
+|-----|--------|---------|
+| `AircraftDTO` | registrationNumber, aircraftModelCode, operationalStatus, totalCapacity | `AircraftDTO.from(Aircraft)` |
+| `FlightDTO` | flightDesignator, departureTime, routeName, aircraftRegistration, pilotLicense, flightType | `FlightDTO.from(Flight)` |
+| `FlightRouteDTO` | routeName, origin, destination, active | `FlightRouteDTO.from(FlightRoute)` |
+
+**DTOs in the Weather remote subdomain:**
+
+| DTO | Fields | Factory |
+|-----|--------|---------|
+| `AirControlAreaDTO` | areaCode, name, minLat, maxLat, minLon, maxLon, maxAltitudeMetres | `AirControlAreaDTO.from(AirControlArea)` |
+| `WeatherDataDTO` | areaCode, latitude, longitude, altitudeMetres, windSpeedKnots, windDirectionDegrees, temperatureCelsius, sourceProvider, recordedDateTime | `WeatherDataDTO.from(WeatherData)` |
+
+**DTOs in the ATC remote subdomain:**
+
+| DTO | Fields | Factory |
+|-----|--------|---------|
+| `AircraftDTO` | registrationNumber, registrationCountry, aircraftModelCode, companyIata, crewMembers, totalCapacity, operationalStatus, registrationDate, ageInYears | `AircraftDTO.from(Aircraft)` |
+| `FlightRouteDTO` | routeName, companyIata, originIata, destinationIata, active, deactivationDate | `FlightRouteDTO.from(FlightRoute)` |
+| `PilotDTO` | licenseNumber, companyIata, certifiedModels, certificationDate, active | `PilotDTO.from(Pilot)` |
+
+**DTO Flow:**
+```
+Domain Entity → DTO.from(entity) → DTO record → TCP Handler → format → Client
+```
+
+DTOs ensure:
+- Low coupling between domain and presentation layers
+- No direct exposure of domain entities to the client
+- Optimized data transfer (only necessary fields)
+- Isolation of domain logic from network protocol
 
 ---
 
 ### 3.5 Diagrams
 
-**Sequence Diagram — TCP message flow between client and server:**
+**Sequence Diagram — TCP message flow between client, server and logging server:**
 
-![Sequence Diagram — Pilot Remote Access](sd_us086_pilot_remote_access.svg)
+**(See file: `sds/sd_us086_pilot_remote_access.puml`)**
+
+This simplified SD shows the communication between the three components:
+- **PilotClientApp** — the RCOMP client
+- **AISafeBackoffice** — the main application with TCP server
+- **LoggingServerApp** — the US90 UDP logging server
+
+The diagram illustrates the full lifecycle:
+1. Connection → Authentication (with UDP LOGIN_OK event)
+2. Fleet listing (DTO transformation)
+3. Flight plan creation
+4. Flight plan validation
+5. Monthly report generation
+6. Route listing
+7. Logout (with UDP LOGOUT event)
+
+**Detailed Sequence Diagram — Pilot Remote Access:**
+
+![Sequence Diagram](sds/images/sd_us086_pilot_remote_access.svg)
+
+*PlantUML source: `sds/uml/sd_us086_pilot_remote_access.puml`*
 
 **Component Diagram — Client-server architecture:**
 
-![Component Diagram — Client-Server Architecture](component_us086_client_server.svg)
+![Component Diagram](sds/images/component_us086_client_server.svg)
+
+*PlantUML source: `sds/uml/component_us086_client_server.puml`*
 
 ---
 
@@ -179,43 +234,78 @@ Given a running authenticated client session,
 When any operation is performed,
 Then all data access occurs exclusively on the server side through the application services; the client sends and receives only text protocol messages over the TCP connection.
 
-**## 4. Design
+**AT6 — Create flight plan succeeds with valid DSL (US080)**
+
+Given an authenticated Pilot,
+When the client sends a CREATE_FLIGHT_PLAN request with valid DSL content and an existing flight ID,
+Then the server responds with `OK` and the flight plan is persisted in draft status.
+
+**AT7 — Import flight plan from file succeeds (US121)**
+
+Given an authenticated Pilot,
+When the client sends an IMPORT_FLIGHT_PLAN request with valid DSL flight plan content,
+Then the server responds with `OK` and the flight plan is imported.
+
+**AT8 — Validate flight plan reports status (US085)**
+
+Given an authenticated Pilot and an existing flight plan in draft status with weather data assigned,
+When the client sends a VALIDATE_FLIGHT_PLAN request,
+Then the server responds with `OK|<status>` indicating whether the plan passed or failed validation.
+
+---
+
+## 4. Design
 
 ### 4.1 Realization
 
 The SD shows the TCP message flow: connect → authenticate (`AUTH`) → create flight plan (`CREATE_FLIGHT_PLAN`) → validate (`VALIDATE_FLIGHT_PLAN`) → disconnect (`QUIT`). The component diagram shows the architecture: Client App → TCP Server → Handler → `RemotePilotService` → FCO Controllers → DB, with UDP logging to US90.
 
-**Key classes to create (RCOMP side):**
+All domain data transferred across the network uses DTOs (see [3.4](#34-architecture-with-dtos) above).
 
-| Class | Responsibility |
-|-------|---------------|
-| `TcpPilotServer` | Listens on the Pilot-dedicated TCP port; accepts connections and spawns one handler per client |
-| `PilotClientHandler` | Manages one client session: reads requests, dispatches to `RemotePilotService`, writes responses |
-| `PilotRemoteSessionState` | Tracks authentication state and the authenticated Pilot user |
+**Key classes (RCOMP side):**
 
-**Key classes to reuse (EAPLI side):**
+| Class | Location | Responsibility |
+|-------|----------|---------------|
+| `PilotClientApp` | `rcomp/us086/src/rcomp/client/` | Standalone console client: menu, TCP send/receive, response display |
+| `TcpClient` | `rcomp/us086/src/rcomp/client/` | Reusable TCP client for AISafe remote services |
 
-| Class | Responsibility |
-|-------|---------------|
-| `RemotePilotService` | Facade that wraps existing FCO controllers (see `docs/Sprint3/EAPLI/us_086/readme.md`) |
-| Existing US controllers | US072, US080, US085, US111, US112, US121 — unmodified |
+**Key classes (EAPLI side):**
+
+| Class | Location | Responsibility |
+|-------|----------|---------------|
+| `PilotServerDaemon` | `aisafe.base/app/src/.../server/` | Listens on port 1086; accepts connections |
+| `PilotClientHandler` | `aisafe.base/app/src/.../server/` | Per-connection handler: protocol parsing, dispatch, response |
+| `RemotePilotService` | `aisafe.base/core/src/.../remote/pilot/` | Facade wrapping all FCO controllers |
+| `RemoteProtocol` | `aisafe.base/core/src/.../remote/` | Protocol constants and helpers |
+| `UdpAccessLogger` | `aisafe.base/core/src/.../remote/` | UDP logging client for US90 |
 
 ---
 
 ## 5. Implementation
 
+### 5.1 Files (RCOMP)
+
 | File | Responsibility |
 |------|---------------|
-| `TcpPilotServer.java` | Server daemon listening on the Pilot-dedicated port |
-| `PilotClientHandler.java` | Per-connection handler: protocol parsing, dispatch, response |
-| `PilotRemoteSessionState.java` | Mutable session state (authenticated user, connected timestamp) |
-| `PilotClientApp.java` | Standalone console client: menu, TCP send/receive, response display |
+| `rcomp/us086/src/rcomp/client/PilotClientApp.java` | Console client with loop-based validation and intuitive prompts |
+| `rcomp/us086/src/rcomp/client/TcpClient.java` | TCP transport layer |
+| `sds/sd_us086_pilot_remote_access.puml` | Sequence diagram (client ↔ server ↔ logging) |
+
+### 5.2 UI Improvements
+
+All three client applications (US044, US078, US086) implement the following UI improvements:
+
+- **Loop-based validation**: Each input field is validated immediately with a retry loop — invalid input does not abort the operation, but re-prompts the user in the specific field
+- **Explicit format hints**: Each field shows the expected format (e.g. `Date (yyyy-mm-dd): `)
+- **Error messages are field-specific**: Instead of generic errors, each validation failure tells the user exactly what was wrong with their input
+- **Null-safe server responses**: All client code handles null responses (connection closed) gracefully without crashing
+- **AUTH_FAIL display**: Authentication failure reasons are displayed to the user (wrong credentials, insufficient role, expired clearance)
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start the main application — TCP server binds to the Pilot-dedicated port.
+1. Start the main application — TCP server binds to the Pilot-dedicated port (1086).
 2. Start the Remote Accesses Logging Server (US90) to receive UDP event logs.
 3. Launch the Pilot Client App on a different network node.
 4. Connect to the main application IP and Pilot port.
@@ -232,23 +322,5 @@ The SD shows the TCP message flow: connect → authenticate (`AUTH`) → create 
 - US90 (UDP logging) must be operational for login/logout events to be recorded.
 - The text protocol is identical in structure to US44 and US78 — only the command codes and port differ.
 - Security clearance check (US030.4) applies equally to remote logins.
-
----
-
-AT6 — Create flight plan succeeds with valid DSL (US080)**
-
-Given an authenticated Pilot,
-When the client sends a CREATE_FLIGHT_PLAN request with valid DSL content and an existing flight ID,
-Then the server responds with `OK` and the flight plan is persisted in draft status.
-
-**AT7 — Import flight plan from file succeeds (US121)**
-
-Given an authenticated Pilot,
-When the client sends an IMPORT_FLIGHT_PLAN request with a valid file path containing a valid DSL flight plan,
-Then the server responds with `OK` and the flight plan is imported.
-
-**AT8 — Validate flight plan reports status (US085)**
-
-Given an authenticated Pilot and an existing flight plan in draft status with weather data assigned,
-When the client sends a VALIDATE_FLIGHT_PLAN request,
-Then the server responds with `OK|<status>` indicating whether the plan passed or failed validation.
+- DTOs are implemented as Java records with static `from()` factory methods, isolating the domain model from the TCP protocol layer.
+- The SD in `sds/sd_us086_pilot_remote_access.puml` provides a simplified view of the client-server-logging communication flow.

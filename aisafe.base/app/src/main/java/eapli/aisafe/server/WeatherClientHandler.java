@@ -1,10 +1,10 @@
 package eapli.aisafe.server;
 
-import eapli.aisafe.aircontrolarea.domain.AirControlArea;
 import eapli.aisafe.remote.RemoteProtocol;
+import eapli.aisafe.remote.weather.AirControlAreaDTO;
 import eapli.aisafe.remote.weather.RemoteWeatherService;
+import eapli.aisafe.remote.weather.WeatherDataDTO;
 import eapli.aisafe.usermanagement.domain.AISafeRoles;
-import eapli.aisafe.weatherdata.domain.WeatherData;
 
 import java.net.Socket;
 import java.time.LocalDate;
@@ -129,19 +129,19 @@ class WeatherClientHandler extends AbstractClientHandler {
         try {
             final String areaCode  = f[1];
             final LocalDate filter = LocalDate.parse(f[2], DateTimeFormatter.ISO_LOCAL_DATE);
-            final Iterable<WeatherData> records = weatherService.weatherDataForArea(areaCode);
+            final var records = weatherService.weatherDataForArea(areaCode);
 
             final StringBuilder sb = new StringBuilder();
             int count = 0;
-            for (final WeatherData wd : records) {
+            for (final WeatherDataDTO wd : records) {
                 if (!wd.recordedDateTime().toLocalDate().equals(filter)) continue;
                 if (count > 0) sb.append(";");
                 sb.append(wd.areaCode()).append(",")
-                        .append(wd.windCondition().latitude()).append(",")
-                        .append(wd.windCondition().longitude()).append(",")
-                        .append(wd.windCondition().altitudeMetres()).append(",")
-                        .append(wd.windCondition().speedKnots()).append(",")
-                        .append(wd.windCondition().directionDegrees()).append(",")
+                        .append(wd.latitude()).append(",")
+                        .append(wd.longitude()).append(",")
+                        .append(wd.altitudeMetres()).append(",")
+                        .append(wd.windSpeedKnots()).append(",")
+                        .append(wd.windDirectionDegrees()).append(",")
                         .append(wd.temperatureCelsius()).append(",")
                         .append(wd.sourceProvider()).append(",")
                         .append(wd.recordedDateTime().format(DT_FMT));
@@ -163,11 +163,11 @@ class WeatherClientHandler extends AbstractClientHandler {
 
     private String doListAreas() {
         try {
-            final Iterable<AirControlArea> areas = weatherService.listAreas();
+            final var areas = weatherService.listAreas();
             final StringBuilder sb = new StringBuilder();
-            for (final AirControlArea a : areas) {
+            for (final AirControlAreaDTO a : areas) {
                 if (sb.length() > 0) sb.append(";");
-                sb.append(a.identity()).append(":").append(a.name());
+                sb.append(a.areaCode()).append(":").append(a.name());
             }
             return RemoteProtocol.ok(sb.length() > 0 ? sb.toString() : "No areas");
         } catch (final Exception e) {

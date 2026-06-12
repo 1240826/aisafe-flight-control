@@ -606,58 +606,8 @@ public class TestFlightPlanController {
 
 ---
 
-## Package & Layer Architecture
-
-```
-core/src/main/java/eapli/aisafe/
-├── flight/
-│   ├── domain/
-│   │   ├── Flight.java              (Entity, AggregateRoot)
-│   │   └── FlightDesignator.java    (ValueObject, @Embeddable)
-│   └── repositories/
-│       └── FlightRepository.java    (Interface)
-├── flightplan/
-│   ├── domain/
-│   │   ├── FlightPlan.java          (Entity, inside Flight aggregate)
-│   │   ├── FlightPlanId.java        (ValueObject, @Embeddable)
-│   │   ├── FlightPlanStatus.java    (Enum)
-│   │   └── ValidationResult.java    (ValueObject)
-│   └── application/
-│       ├── ImportFlightPlanController.java     (@UseCaseController)
-│       ├── TestFlightPlanController.java       (@UseCaseController)
-│       ├── FlightPlanExporter.java             (Service)
-│       ├── FlightPlanToScenarioConverter.java  (Service)
-│       ├── SimulationRunner.java                    (Interface)
-│       ├── SocketSimulationRunner.java             (Service)
-│       ├── ProcessBuilderSimulationRunner.java      (Service)
-│       ├── ReportParser.java                   (Service)
-│       └── DslValidator.java                   (Service)
-```
-
-### Layer Responsibilities
-
-| Layer | Contains | Dependencies |
-|-------|----------|-------------|
-| **Domain** | Entities, VOs, Enums | eapli framework only |
-| **Application** | Controllers, Services | Domain + infrastructure abstractions |
-| **Infrastructure** | Persistence (JPA, InMemory) | All of the above |
-
-### Layer Dependency Rules
-
-```
-Controller → Service (application) → Domain (domain)
-Controller → Repository (interface, application layer boundary)
-Repository implementation (infrastructure) → Repository interface
-```
-
-No domain class imports any application or infrastructure class.
-No service class imports any infrastructure class (except through interfaces).
-
----
-
 ## GoF Design Patterns
 
----
 
 ### Strategy (Behavioural)
 
@@ -828,5 +778,53 @@ TestResult result = controller.testFlightPlan(designatorStr, flightPlanIdStr);
 // 11. ReportParser.parse(report)
 // 12. flightPlan.recordTestResult(...); flightRepo.save(flight)
 ```
-
+---
 **Why Facade?** Without the controller, the UI would need to import and orchestrate `FlightRepository`, `DslValidator`, `FlightPlanExporter`, `SimulationRunner`, and `ReportParser` — five subsystem classes across three packages. The controller Facade reduces this to a single method call with a single return type.
+
+---
+## Package & Layer Architecture
+
+```
+core/src/main/java/eapli/aisafe/
+├── flight/
+│   ├── domain/
+│   │   ├── Flight.java              (Entity, AggregateRoot)
+│   │   └── FlightDesignator.java    (ValueObject, @Embeddable)
+│   └── repositories/
+│       └── FlightRepository.java    (Interface)
+├── flightplan/
+│   ├── domain/
+│   │   ├── FlightPlan.java          (Entity, inside Flight aggregate)
+│   │   ├── FlightPlanId.java        (ValueObject, @Embeddable)
+│   │   ├── FlightPlanStatus.java    (Enum)
+│   │   └── ValidationResult.java    (ValueObject)
+│   └── application/
+│       ├── ImportFlightPlanController.java     (@UseCaseController)
+│       ├── TestFlightPlanController.java       (@UseCaseController)
+│       ├── FlightPlanExporter.java             (Service)
+│       ├── FlightPlanToScenarioConverter.java  (Service)
+│       ├── SimulationRunner.java                    (Interface)
+│       ├── SocketSimulationRunner.java             (Service)
+│       ├── ProcessBuilderSimulationRunner.java      (Service)
+│       ├── ReportParser.java                   (Service)
+│       └── DslValidator.java                   (Service)
+```
+
+### Layer Responsibilities
+
+| Layer | Contains | Dependencies |
+|-------|----------|-------------|
+| **Domain** | Entities, VOs, Enums | eapli framework only |
+| **Application** | Controllers, Services | Domain + infrastructure abstractions |
+| **Infrastructure** | Persistence (JPA, InMemory) | All of the above |
+
+### Layer Dependency Rules
+
+```
+Controller → Service (application) → Domain (domain)
+Controller → Repository (interface, application layer boundary)
+Repository implementation (infrastructure) → Repository interface
+```
+
+No domain class imports any application or infrastructure class.
+No service class imports any infrastructure class (except through interfaces).

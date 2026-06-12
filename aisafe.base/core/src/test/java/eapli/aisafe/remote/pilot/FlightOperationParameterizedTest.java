@@ -3,6 +3,7 @@ package eapli.aisafe.remote.pilot;
 import eapli.aisafe.aircraft.application.ListCompanyFleetController;
 import eapli.aisafe.flightplan.application.ImportFlightPlanController;
 import eapli.aisafe.flightplan.application.TestFlightPlanController;
+import eapli.aisafe.flightroute.application.ListFlightRoutesController;
 import eapli.aisafe.report.application.GenerateMonthlyReportController;
 import eapli.aisafe.simulation.application.GenerateSimulationReportController;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +37,8 @@ class FlightOperationParameterizedTest {
                 importCtrl,
                 testCtrl,
                 mock(GenerateSimulationReportController.class),
-                mock(GenerateMonthlyReportController.class));
+                mock(GenerateMonthlyReportController.class),
+                mock(ListFlightRoutesController.class));
     }
 
     @ParameterizedTest(name = "{0}: {4}")

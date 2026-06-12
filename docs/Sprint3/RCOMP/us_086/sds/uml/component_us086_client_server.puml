@@ -1,0 +1,78 @@
+@startuml
+title US086
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+node "Workstation\n(TCP Client)" as ws1 {
+  [PilotClientApp]
+  [TcpClient]
+  PilotClientApp --> TcpClient
+}
+
+node "Cloud Node\nMain Application" as cloud1 {
+  package "TCP Server" as tcpSrv {
+    [PilotServerDaemon]
+    [PilotClientHandler]
+  }
+  package "Service" as srvPkg {
+    [RemotePilotService]
+  }
+  package "Controller" as ctrlPkg {
+    [ImportFlightPlanController]
+    [TestFlightPlanController]
+    [ListCompanyFleetController]
+    [GenerateSimulationReportController]
+    [GenerateMonthlyReportController]
+    [ListFlightRoutesController]
+  }
+  package "Domain" as domPkg {
+    [Flight / FlightPlan]
+    [Aircraft]
+    [FlightRoute]
+  }
+  package "UDP Client" as udpPkg {
+    [UdpLoggerClient]
+  }
+  PilotServerDaemon --> PilotClientHandler
+  PilotClientHandler ---> RemotePilotService
+  RemotePilotService ---> ImportFlightPlanController
+  RemotePilotService --> TestFlightPlanController
+  RemotePilotService --> ListCompanyFleetController
+  RemotePilotService --> GenerateSimulationReportController
+  RemotePilotService --> GenerateMonthlyReportController
+  RemotePilotService --> ListFlightRoutesController
+  ImportFlightPlanController ---> [Flight / FlightPlan]
+  ImportFlightPlanController --> [Aircraft]
+  TestFlightPlanController --> [Flight / FlightPlan]
+  TestFlightPlanController --> [FlightPlan]
+  ListCompanyFleetController --> [Aircraft]
+  ListFlightRoutesController --> [FlightRoute]
+}
+
+node "Cloud Node\nDatabase Server" as dbNode {
+  [Relational Database]
+}
+
+node "Cloud Node\nRemote Access\nLogging Server" as logNode {
+  package "UDP Server" as udpSrv {
+    [UdpLogReceiver]
+  }
+  package "HTTP Server" as httpSrv {
+    [HttpLogServer]
+  }
+  [LogStore]
+  UdpLogReceiver --> LogStore
+  LogStore --> HttpLogServer
+}
+
+node "Workstation\n(Web Browser)" as ws2 {
+  [Browser]
+}
+
+TcpClient --> PilotServerDaemon : TCP (1086)
+PilotClientHandler ---> UdpLoggerClient : UDP events
+UdpLoggerClient --> UdpLogReceiver : UDP (US90)
+RemotePilotService -> [Relational Database] : SQL (JPA)
+Browser --> HttpLogServer : HTTP (US91)
+@enduml

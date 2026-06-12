@@ -1,0 +1,71 @@
+@startuml
+title sd_us044_weather_remote_access
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 30
+
+participant "AISafeClientApp" as client
+participant "TcpClient" as tcp
+participant "WeatherServerDaemon" as daemon
+participant "WeatherClientHandler" as handler
+participant "RemoteWeatherService" as service
+participant "UdpLogReceiver" as logger
+
+autonumber
+
+client -> tcp : new TcpClient(host, 1044)
+activate client
+activate tcp
+tcp -> daemon : TCP connect
+activate daemon
+daemon -> handler : new WeatherClientHandler(socket)
+deactivate daemon
+activate handler
+tcp --> client : connected
+deactivate tcp
+
+client -> handler : AUTH|weather1|Password1
+activate handler
+handler -> service : authenticate(weather1, Password1)
+activate service
+service --> handler : auth result
+deactivate service
+handler -> logger : UDP LOGIN_OK
+activate logger
+handler --> client : AUTH_OK
+
+client -> handler : LIST_AREAS
+handler -> service : listAreas()
+activate service
+service --> handler : List<AirControlAreaDTO>
+deactivate service
+handler --> client : OK|LIS:Lisbon;...
+
+client -> handler : REGISTER_WEATHER|LIS|38.7|-9.1|100|12|180|22|INMG|...
+handler -> service : registerWeatherData(LIS, ...)
+activate service
+service --> handler : success
+deactivate service
+handler --> client : OK|Weather data registered
+
+client -> handler : CONSULT_WEATHER|LIS|2026-06-01
+handler -> service : weatherDataForArea("LIS")
+activate service
+service --> handler : List<WeatherDataDTO>
+deactivate service
+handler --> client : OK|record data...
+
+client -> handler : QUIT
+handler -> logger : UDP LOGOUT
+deactivate logger
+handler --> client : BYE
+deactivate handler
+
+client -> tcp : close()
+activate tcp
+tcp -> tcp : socket.close()
+deactivate tcp
+deactivate client
+@enduml

@@ -1,4 +1,4 @@
-﻿# US044 — Weather Person Remote Access
+﻿# US044 — Weather Person Remote Access (RCOMP)
 
 ## 1. Context
 
@@ -40,43 +40,85 @@ This task was assigned in Sprint 3 within the Computer Networks (RCOMP) scope. T
 
 ## 3. Analysis
 
-### 3.0 LLM Assistance
+### 3.1 Network Architecture
 
-Generative AI was used to support the analysis and design of this user story.
+The system follows a two-tier remote access model:
 
-**Prompt 1:** "[Insert LLM Prompt used for defining the custom TCP application protocol or handling concurrent client connections]"
+- A standalone **Weather Person Client App** (Java console) connects via TCP to a dedicated port exposed by the main system
+- The **TCP Server** is embedded in the main system and spawns one handler thread per accepted connection
+- All business logic (US041, US042, US043) executes on the server side through existing application services
+- The client sends text requests and receives text responses — it never touches the database
+- The server enforces that the authenticated user holds the `WEATHER_PERSON` role before any operation is dispatched
 
-**LLM suggestions adopted:**
-- [Insert adopted suggestion, e.g., using a specific message format with fields for Version, Code, Data Length, and Payload]
+### 3.2 Application-Level Protocol
 
-**Decisions made by the team:**
-- [Insert specific team decisions, e.g., how the server delegates requests to the existing EAPLI controllers rather than rewriting business logic]
-
-### 3.1 Network Architecture & Protocol
-
-The system requires a **Client-Server Architecture**.
-1. **Server:** A concurrent TCP server running within the main AISafe application. It listens on a dedicated port for Weather Person connections, accepts incoming connections, and spawns a thread for each client.
-2. **Client:** A lightweight console application that connects to the server IP and port, sending text-based requests and receiving responses.
-3. **Protocol:** A custom application-layer text protocol is defined. Each message is terminated with `\n` and fields are separated by `|`.
+A simple text-based request/response protocol is defined for this connection.
+Each message is terminated with `\n`. Fields are separated by `|`.
 
 **Client to Server messages:**
 
 | Code | Format | Description |
 |------|--------|-------------|
-| `AUTH` | `AUTH\|<username>\|<password>` | Authenticate the session |
-| `REGISTER_WEATHER` | `REGISTER_WEATHER\|<area_code>\|<date>\|<params>` | Register weather data (US041) |
-| `IMPORT_WEATHER` | `IMPORT_WEATHER\|<area_code>\|<csv_payload>` | Import bulk weather data (US042) |
-| `CONSULT_WEATHER` | `CONSULT_WEATHER\|<area_code>\|<date>` | Consult weather data (US043) |
-| `QUIT` | `QUIT` | Gracefully close the session |
+| AUTH | `AUTH|<username>|<password>` | Authenticate the session |
+| REGISTER_WEATHER | `REGISTER_WEATHER|<area>|<lat>|<lon>|<alt>|<speed>|<dir>|<temp>|<provider>|<datetime>` | Register weather data (US041) |
+| IMPORT_WEATHER | `IMPORT_WEATHER|<area>|<csv_rows>` | Import bulk weather data (US042) |
+| CONSULT_WEATHER | `CONSULT_WEATHER|<area>|<date>` | Consult weather data (US043) |
+| LIST_AREAS | `LIST_AREAS` | List air control areas |
+| QUIT | `QUIT` | Gracefully close the session |
 
 **Server to Client messages:**
 
 | Code | Meaning |
 |------|---------|
 | `AUTH_OK` | Authentication successful |
-| `AUTH_FAIL\|<reason>` | Authentication failed |
-| `OK\|<optional_data>` | Operation succeeded |
-| `ERR\|<reason>` | Operation failed |
+| `AUTH_FAIL|<reason>` | Authentication failed |
+| `OK|<optional_data>` | Operation succeeded |
+| `ERR|<reason>` | Operation failed — reason included |
+| `BYE` | Server acknowledges QUIT |
+
+### 3.3 Session Flow
+
+1. Client establishes TCP connection to the server on the Weather-dedicated port (1044)
+2. Server accepts and spawns a handler thread for that connection
+3. Client sends `AUTH|<username>|<password>`
+4. Server validates credentials via EAPLI `AuthzRegistry`
+5. Server checks `securityClearanceExpiryDate` (US030.4)
+6. Server verifies the authenticated user holds the `WEATHER_PERSON` role
+7. If all valid: server responds `AUTH_OK` and session is bound to that Weather Person
+8. If invalid: server responds `AUTH_FAIL|<reason>` — connection stays open for retry or QUIT
+9. Server emits a UDP log event to the Remote Accesses Logging Server (US090) for both outcomes
+10. Any request other than AUTH or QUIT received before authentication is answered with `ERR|NOT_AUTHENTICATED`
+11. After QUIT or disconnect, the server closes the socket and cleans up the session
+
+### 3.4 Architecture with DTOs
+
+The system follows the **DTO pattern** to isolate the domain model from the TCP protocol layer.
+
+**DTOs in the Weather remote subdomain:**
+
+| DTO | Fields | Factory |
+|-----|--------|---------|
+| `AirControlAreaDTO` | areaCode, name, minLat, maxLat, minLon, maxLon, maxAltitudeMetres | `AirControlAreaDTO.from(AirControlArea)` |
+| `WeatherDataDTO` | areaCode, latitude, longitude, altitudeMetres, windSpeedKnots, windDirectionDegrees, temperatureCelsius, sourceProvider, recordedDateTime | `WeatherDataDTO.from(WeatherData)` |
+
+**DTO Flow:**
+```
+Domain Entity → DTO.from(entity) → DTO record → TCP Handler → format → Client
+```
+
+### 3.5 Diagrams
+
+**Sequence Diagram — Remote Weather Person Access:**
+
+![Sequence Diagram](sds/images/sd_us044_weather_remote_access.svg)
+
+*PlantUML source: `sds/uml/sd_us044_weather_remote_access.puml`*
+
+**Component Diagram — Client-Server-Architecture:**
+
+![Component Diagram](sds/images/component_us044_client_server.svg)
+
+*PlantUML source: `sds/uml/component_us044_client_server.puml`*
 
 ---
 
@@ -84,20 +126,22 @@ The system requires a **Client-Server Architecture**.
 
 ### 4.1 Realization
 
-**Classes to create/modify:**
+**Key classes (RCOMP side):**
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `WeatherClientApp` | `aisafe.app.weather.client` | Entry point for the client application; manages UI |
-| `TcpNetworkClient` | `aisafe.app.weather.client` | Handles TCP socket creation and stream I/O on the client |
-| `WeatherServerDaemon` | `aisafe.app.server` | Background service in the main app listening for TCP connections on the Weather Person port |
-| `WeatherClientHandler` | `aisafe.app.server` | Thread/Runnable that processes requests for a specific connected client |
-| `WeatherProtocolParser` | `aisafe.network.common` | Parses raw text messages into structured request objects |
-| `RemoteWeatherService` | `aisafe.app.server` | Delegates to existing US041–US043 application services; no direct DB access |
+| Class | Location | Responsibility |
+|-------|----------|---------------|
+| `AISafeClientApp` | `rcomp/us044/src/` | Standalone console client with area selection and validation |
+| `TcpClient` | `rcomp/us044/src/` | Reusable TCP client with area state persistence |
 
-**Sequence Diagram — Remote Login and Request Execution:**
+**Key classes (EAPLI side):**
 
-![Sequence Diagram — Remote Weather Person Access](sd_us044_weather_remote_access.png)
+| Class | Location | Responsibility |
+|-------|----------|---------------|
+| `WeatherServerDaemon` | `aisafe.base/app/src/.../server/` | Listens on port 1044; accepts connections |
+| `WeatherClientHandler` | `aisafe.base/app/src/.../server/` | Per-connection handler: protocol parsing, dispatch, response |
+| `RemoteWeatherService` | `aisafe.base/core/src/.../remote/weather/` | Facade wrapping weather controllers |
+| `RemoteProtocol` | `aisafe.base/core/src/.../remote/` | Protocol constants and helpers |
+| `UdpAccessLogger` | `aisafe.base/core/src/.../remote/` | UDP logging client for US090 |
 
 ### 4.2 Acceptance Tests
 
@@ -125,29 +169,48 @@ Given a user with valid credentials but holding a different role (e.g., `ATC_COL
 When the client sends `AUTH` on the Weather Person server port,
 Then the server responds with `AUTH_FAIL|INSUFFICIENT_ROLE` and the session remains unauthenticated.
 
+**AT5 — Area Selection from List**
+
+Given an authenticated Weather Person,
+When the client requests `LIST_AREAS` and chooses an area from the list,
+Then subsequent operations use the selected area code, improving user experience and reducing input errors.
+
 ---
 
 ## 5. Implementation
 
-**Key new/modified files:**
+### 5.1 Files (RCOMP)
 
-- `[TBD]`
+| File | Responsibility |
+|------|---------------|
+| `rcomp/us044/src/AISafeClientApp.java` | Console client with area selection, loop-based validation, and intuitive prompts |
+| `rcomp/us044/src/TcpClient.java` | TCP transport layer with selected area state |
 
-*Major commits: [TBD]*
+### 5.2 UI Improvements
+
+- **Area Selection**: User can choose from a numbered list of areas or enter the code manually
+- **Loop-based validation**: Each numeric/date field validates immediately and re-prompts on invalid input
+- **Explicit format hints**: Each field shows the expected format
+- **Null-safe**: Handles connection errors gracefully without crashing
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start the main AISafe server application (which initializes the remote database connection and starts the TCP listening thread for the Weather Person port).
-2. On a separate terminal or machine, launch the `WeatherClientApp`.
-3. Provide the server's IP address and port.
-4. Authenticate using valid Weather Person credentials.
-5. Execute a domain action (e.g., Register Weather Data) and verify the data matches the central system.
-6. Verify via network monitoring (e.g., Wireshark) that communication is restricted strictly to the defined TCP port and protocol.
+1. Start the main application — TCP server binds to the Weather-dedicated port (1044).
+2. Start the Remote Accesses Logging Server (US090) to receive UDP event logs.
+3. Launch the Weather Person Client App on a different network node.
+4. Connect to the main application IP and Weather port.
+5. Authenticate as `weather1` / `Password1`.
+6. Select an area from the list, then register weather data, import CSV data, and consult data.
+7. Check US090 logging server received login/logout events.
+8. Verify no direct database calls originated from the client process.
 
 ---
 
 ## 7. Observations
 
-[TBD]
+- The RCOMP component depends on `RemoteWeatherService` from EAPLI — this is the only integration point.
+- US090 (UDP logging) must be operational for login/logout events to be recorded.
+- The text protocol is identical in structure to US078 and US086 — only the command codes and port differ.
+- All input validation happens on the client side with retry loops for robust user experience.

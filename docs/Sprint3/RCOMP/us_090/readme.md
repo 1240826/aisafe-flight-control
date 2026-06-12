@@ -61,8 +61,9 @@ independently or where we deviated from the AI output.
 > intercept login success, login failure, logout and disconnect events?"
 
 **LLM suggestions adopted:**
-- A dedicated `UdpLoggerService` class is responsible for building the datagram payload and
-  sending it via `DatagramSocket` — keeps logging logic decoupled from the TCP handler
+- A dedicated `UdpAccessLogger` class (in the main application) is responsible for building
+  the datagram payload and sending it via `DatagramSocket` — keeps logging logic decoupled
+  from the TCP handler
 - The UDP send operation is placed immediately after the authentication result is known and
   on session teardown (logout request or connection drop detection)
 - UDP is fire-and-forget: the send call is wrapped in a try-catch; failures are silently
@@ -131,22 +132,23 @@ sends a UDP datagram to the Remote Accesses Logging Server.
 Each datagram contains a single log entry as a pipe-delimited string:
 
 ```
-<timestamp>|<username>|<clientIp>|<clientPort>|<serviceId>|<eventType>
+EVENT|<epochMs>|<username>|<clientIP>|<clientPort>|<service>|<eventType>
 ```
 
 Example:
 ```
-2026-06-01T14:32:01|weather.person@aisafe.com|192.168.1.10|52341|US44|LOGIN_SUCCESS
+EVENT|1717252321000|weather1|192.168.1.10|52341|US44|LOGIN_OK
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `timestamp` | ISO-8601 string | Date and time of the event |
+| `EVENT` | literal | Fixed prefix identifying this as a log event |
+| `epochMs` | long (millis) | Unix epoch milliseconds of the event |
 | `username` | string | Username of the user attempting access |
-| `clientIp` | string | IP address of the remote client |
+| `clientIP` | string | IP address of the remote client |
 | `clientPort` | integer | TCP port number of the remote client |
-| `serviceId` | enum string | `US44`, `US78`, or `US86` |
-| `eventType` | enum string | `LOGIN_SUCCESS`, `LOGIN_FAILURE`, `LOGOUT`, `DISCONNECT` |
+| `service` | enum string | `US44`, `US78`, or `US86` |
+| `eventType` | enum string | `LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, `DISCONNECT` |
 
 ---
 
@@ -163,11 +165,14 @@ Example:
 
 ### 3.4 Key Classes
 
-| Class | Responsibility |
-|-------|---------------|
-| `UdpLoggerService` | Builds the pipe-delimited payload string and sends a `DatagramPacket` to the configured logging server address and port |
-| `LoggingServerConfig` | Holds the logging server IP and port; loaded from configuration file at startup |
-| `TcpClientHandler` (US44/US78/US86) | TCP session handler; calls `UdpLoggerService` at each event trigger point, passing the appropriate `serviceId` |
+| Class | Location | Responsibility |
+|-------|----------|---------------|
+| `UdpAccessLogger` | `aisafe.base/.../remote/` | Builds the pipe-delimited payload and sends a `DatagramPacket` to the logging server |
+| `UdpLogReceiver` | `rcomp/us090/src/` | Listens on UDP port, receives datagrams, stores them in `LogStore` |
+| `LogStore` | `rcomp/us090/src/` | Thread-safe in-memory log store; persists to `access_log.csv` |
+| `LogEntry` | `rcomp/us090/src/` | Log entry model with static `parse()` factory for wire format |
+| `LoggingServerApp` | `rcomp/us090/src/` | Main entry point; starts the UDP receiver and HTTP server sharing the same `LogStore` |
+| `TcpClientHandler` (US44/US78/US86) | `aisafe.base/.../server/` | TCP session handler; calls `UdpAccessLogger` at each event trigger point |
 
 ---
 
@@ -218,13 +223,20 @@ Then the UDP send fails silently and the TCP session continues normally.
 
 ### 4.1 Realization
 
-Two sequence diagrams are provided:
+A sequence diagram is provided covering all event types:
 
-- **SD1** — Login event: successful and failed login logging flow.
-- **SD2** — Logout / Disconnect event: session teardown logging flow.
+**Sequence Diagram — External Logging of Remote Accesses:**
 
-![SD1 — Login Event](sd_us90_login_event.svg)
-![SD2 — Logout / Disconnect Event](sd_us90_logout_disconnect_event.svg)
+![Login Event](sds/images/sd_us90_login_event.svg)
+![Logout / Disconnect Event](sds/images/sd_us90_logout_disconnect_event.svg)
+
+*PlantUML source: `sds/uml/sd_us90_external_logging_remote_accesses.puml`*
+
+**Component Diagram — Client-Server-Architecture:**
+
+![Component Diagram](sds/images/component_us090_client_server.svg)
+
+*PlantUML source: `sds/uml/component_us090_client_server.puml`*
 
 ---
 
@@ -232,8 +244,11 @@ Two sequence diagrams are provided:
 
 | File | Responsibility |
 |------|---------------|
-| `UdpLoggerService.java` | Builds payload string and sends UDP datagram |
-| `LoggingServerConfig.java` | Loads and holds logging server IP and port from config |
+| `UdpAccessLogger.java` (aisafe.base) | Builds payload string and sends UDP datagram from TCP server |
+| `LoggingServerApp.java` (rcomp) | Main entry point for the logging server |
+| `UdpLogReceiver.java` (rcomp) | UDP receiver thread |
+| `LogStore.java` (rcomp) | Thread-safe in-memory store with CSV persistence |
+| `LogEntry.java` (rcomp) | Log entry model and parser |
 
 *Major commits: (to be filled after implementation)*
 

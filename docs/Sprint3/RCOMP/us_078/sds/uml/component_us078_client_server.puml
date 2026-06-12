@@ -1,0 +1,73 @@
+@startuml
+title US078 — Component Diagram (Deployment View)
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam componentStyle rectangle
+skinparam nodeStyle rectangle
+
+node "Workstation\n(TCP Client)" as ws1 {
+  [AtcClientApp]
+  [TcpClient]
+  AtcClientApp --> TcpClient
+}
+
+node "Cloud Node\nMain Application" as cloud1 {
+  package "TCP Server" as tcpSrv {
+    [AtcServerDaemon]
+    [AtcClientHandler]
+  }
+  package "Service" as srvPkg {
+    [RemoteAtcService]
+  }
+  package "Controller" as ctrlPkg {
+    [AddAircraftController]
+    [ListCompanyFleetController]
+    [ListPilotRosterController]
+    [RemovePilotController]
+  }
+  package "Domain" as domPkg {
+    [Aircraft]
+    [Pilot]
+  }
+  package "UDP Client" as udpPkg {
+    [UdpLoggerClient]
+  }
+  AtcServerDaemon --> AtcClientHandler
+  AtcClientHandler --> RemoteAtcService
+  RemoteAtcService --> AddAircraftController
+  RemoteAtcService --> ListCompanyFleetController
+  RemoteAtcService --> ListPilotRosterController
+  RemoteAtcService --> RemovePilotController
+  AddAircraftController --> [Aircraft]
+  ListCompanyFleetController --> [Aircraft]
+  ListPilotRosterController --> [Pilot]
+  RemovePilotController --> [Pilot]
+}
+
+node "Cloud Node\nDatabase Server" as dbNode {
+  [Relational Database]
+}
+
+node "Cloud Node\nRemote Access\nLogging Server" as logNode {
+  package "UDP Server" as udpSrv {
+    [UdpLogReceiver]
+  }
+  package "HTTP Server" as httpSrv {
+    [HttpLogServer]
+  }
+  [LogStore]
+  UdpLogReceiver --> LogStore
+  LogStore --> HttpLogServer
+}
+
+node "Workstation\n(Web Browser)" as ws2 {
+  [Browser]
+}
+
+TcpClient --> AtcServerDaemon : TCP (1078)
+AtcClientHandler --> UdpLoggerClient : UDP events
+UdpLoggerClient --> UdpLogReceiver : UDP (US90)
+RemoteAtcService --> [Relational Database] : SQL (JPA)
+Browser --> HttpLogServer : HTTP (US91)
+@enduml

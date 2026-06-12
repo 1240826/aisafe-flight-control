@@ -1,0 +1,43 @@
+@startuml sd_us91_events_page
+title US91 — Last Events Page (Initial Load + AJAX Polling)
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "Administrator\n(Browser)" as admin
+participant "HttpLogServer" as http
+participant "PageHandler" as page
+participant "ApiHandler" as api
+participant "LogStore" as store
+
+admin -> http : GET /events
+activate http
+http -> page : handle(request)
+activate page
+page --> http : HTML page (with AJAX script)
+deactivate page
+http --> admin : 200 OK — HTML
+deactivate http
+
+note over admin : Browser renders page\nand executes AJAX script
+
+loop every 5 seconds (and immediately on page load)
+    admin -> http : GET /api/events
+    activate http
+    http -> api : handle(request)
+    activate api
+    api -> store : getRecentEventsJson(50)
+    activate store
+    store --> api : JSON
+    deactivate store
+    api --> http : JSON response
+    deactivate api
+    http --> admin : 200 OK — JSON
+    deactivate http
+    note over admin : Replace table body\nUpdate last-updated timestamp
+end
+@enduml

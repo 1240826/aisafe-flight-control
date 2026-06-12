@@ -3,6 +3,7 @@ package eapli.aisafe.remote.pilot;
 import eapli.aisafe.aircraft.application.ListCompanyFleetController;
 import eapli.aisafe.flightplan.application.ImportFlightPlanController;
 import eapli.aisafe.flightplan.application.TestFlightPlanController;
+import eapli.aisafe.flightroute.application.ListFlightRoutesController;
 import eapli.aisafe.report.application.GenerateMonthlyReportController;
 import eapli.aisafe.report.domain.MonthlyReport;
 import eapli.aisafe.simulation.application.GenerateSimulationReportController;
@@ -19,6 +20,7 @@ public class RemotePilotService {
     private final TestFlightPlanController testController;
     private final GenerateSimulationReportController reportController;
     private final GenerateMonthlyReportController monthlyController;
+    private final ListFlightRoutesController flightRoutesController;
 
     public RemotePilotService() {
         this.fleetController = new ListCompanyFleetController();
@@ -26,18 +28,21 @@ public class RemotePilotService {
         this.testController = new TestFlightPlanController();
         this.reportController = new GenerateSimulationReportController();
         this.monthlyController = new GenerateMonthlyReportController();
+        this.flightRoutesController = new ListFlightRoutesController();
     }
 
     RemotePilotService(final ListCompanyFleetController fleetController,
                         final ImportFlightPlanController importController,
                         final TestFlightPlanController testController,
                         final GenerateSimulationReportController reportController,
-                        final GenerateMonthlyReportController monthlyController) {
+                        final GenerateMonthlyReportController monthlyController,
+                        final ListFlightRoutesController flightRoutesController) {
         this.fleetController = fleetController;
         this.importController = importController;
         this.testController = testController;
         this.reportController = reportController;
         this.monthlyController = monthlyController;
+        this.flightRoutesController = flightRoutesController;
     }
 
     public List<AircraftDTO> listFleet() {
@@ -68,15 +73,15 @@ public class RemotePilotService {
         return monthlyController.generateForMonth(YearMonth.of(year, month));
     }
 
-    public List<?> listFlights() {
+    public List<FlightDTO> listFlights() {
         return StreamSupport.stream(testController.allFlights().spliterator(), false)
+                .map(FlightDTO::from)
                 .collect(Collectors.toList());
     }
 
-    public List<?> listRoutes() {
-        return StreamSupport.stream(
-                eapli.aisafe.infrastructure.persistence.PersistenceContext
-                        .repositories().flightRoutes().findAll().spliterator(), false)
+    public List<FlightRouteDTO> listRoutes() {
+        return StreamSupport.stream(flightRoutesController.allRoutes().spliterator(), false)
+                .map(FlightRouteDTO::from)
                 .collect(Collectors.toList());
     }
 }

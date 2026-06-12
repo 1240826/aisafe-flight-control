@@ -10,6 +10,7 @@ import eapli.aisafe.company.domain.CompanyIATA;
 import eapli.aisafe.flight.domain.Flight;
 import eapli.aisafe.flightplan.application.ImportFlightPlanController;
 import eapli.aisafe.flightplan.application.TestFlightPlanController;
+import eapli.aisafe.flightroute.application.ListFlightRoutesController;
 import eapli.aisafe.report.application.GenerateMonthlyReportController;
 import eapli.aisafe.report.domain.MonthlyReport;
 import eapli.aisafe.simulation.application.GenerateSimulationReportController;
@@ -40,7 +41,8 @@ class RemotePilotServiceTest {
         testCtrl = mock(TestFlightPlanController.class);
         reportCtrl = mock(GenerateSimulationReportController.class);
         monthlyCtrl = mock(GenerateMonthlyReportController.class);
-        service = new RemotePilotService(fleetCtrl, importCtrl, testCtrl, reportCtrl, monthlyCtrl);
+        var routesCtrl = mock(ListFlightRoutesController.class);
+        service = new RemotePilotService(fleetCtrl, importCtrl, testCtrl, reportCtrl, monthlyCtrl, routesCtrl);
     }
 
     // ── listFleet ──────────────────────────────────────────────────────────

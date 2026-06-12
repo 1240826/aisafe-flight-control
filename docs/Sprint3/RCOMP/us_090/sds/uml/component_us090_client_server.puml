@@ -1,0 +1,36 @@
+@startuml
+title US090 — Component Diagram (Deployment View)
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam componentStyle rectangle
+skinparam nodeStyle rectangle
+
+node "Cloud Node\nMain Application" as cloud1 {
+  package "TCP Server" as tcpSrv {
+    [AbstractClientHandler]
+    (US44 / US78 / US86)
+  }
+  [UdpAccessLogger]
+  AbstractClientHandler --> UdpAccessLogger : login/logout events
+}
+
+node "Cloud Node\nRemote Access\nLogging Server" as logNode {
+  package "UDP Server" as udpSrv {
+    [UdpLogReceiver]
+  }
+  [LogStore]
+  package "HTTP Server" as httpSrv {
+    [HttpLogServer]
+  }
+  UdpLogReceiver --> LogStore
+  LogStore --> HttpLogServer
+}
+
+node "Workstation\n(Web Browser)" as ws {
+  [Browser]
+}
+
+UdpAccessLogger --> UdpLogReceiver : UDP (port 9090)
+Browser --> HttpLogServer : HTTP (port 8080)
+@enduml

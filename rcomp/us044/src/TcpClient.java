@@ -20,6 +20,7 @@ public final class TcpClient implements AutoCloseable {
     private final Socket       socket;
     private final BufferedReader in;
     private final PrintWriter    out;
+    private String selectedArea;
 
     public TcpClient(final String host, final int port) throws IOException {
         this.socket = new Socket();
@@ -29,6 +30,7 @@ public final class TcpClient implements AutoCloseable {
                 new InputStreamReader(socket.getInputStream(),  StandardCharsets.UTF_8));
         this.out = new PrintWriter(
                 new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), false);
+        this.selectedArea = null;
     }
 
     /**
@@ -41,6 +43,34 @@ public final class TcpClient implements AutoCloseable {
         out.print(command + "\n");
         out.flush();
         return in.readLine();
+    }
+
+    /**
+     * Get the currently selected area code.
+     * @return the selected area code, or null if none is selected
+     */
+    public String getSelectedArea() {
+        return selectedArea;
+    }
+
+    /**
+     * Set the currently selected area code.
+     * @param area the area code to set as selected
+     */
+    public void setSelectedArea(final String area) {
+        this.selectedArea = area;
+    }
+
+    /**
+     * Send a command with the selected area code if available.
+     * @param baseCommand the base command without area parameter
+     * @return the server response line, or {@code null} if no area selected
+     */
+    public String sendWithArea(final String baseCommand) throws IOException {
+        if (selectedArea != null && !selectedArea.isEmpty()) {
+            return send(baseCommand + "|" + selectedArea);
+        }
+        return null;
     }
 
     @Override

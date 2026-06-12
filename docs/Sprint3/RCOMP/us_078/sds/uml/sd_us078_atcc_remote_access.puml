@@ -1,0 +1,78 @@
+@startuml
+title sd_us078_atcc_remote_access
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 30
+
+participant "AtcClientApp" as client
+participant "TcpClient" as tcp
+participant "AtcServerDaemon" as daemon
+participant "AtcClientHandler" as handler
+participant "RemoteAtcService" as service
+participant "UdpLogReceiver" as logger
+
+autonumber
+
+client -> tcp : new TcpClient(host, 1078)
+activate client
+activate tcp
+tcp -> daemon : TCP connect
+activate daemon
+daemon -> handler : new AtcClientHandler(socket)
+deactivate daemon
+activate handler
+tcp --> client : connected
+deactivate tcp
+
+client -> handler : AUTH|atc1|Password1
+activate handler
+handler -> service : authenticate(atc1, Password1)
+activate service
+service --> handler : auth result
+deactivate service
+handler -> logger : UDP LOGIN_OK
+activate logger
+handler --> client : AUTH_OK
+
+client -> handler : LIST_FLEET
+handler -> service : listFleet()
+activate service
+service --> handler : OK|CS-TRA,...
+deactivate service
+handler --> client : OK|CS-TRA,...
+
+client -> handler : ADD_AIRCRAFT|CS-TRA|Portugal|A320|TP|2|2024-01-15
+handler -> service : addAircraft(CS-TRA, ...)
+activate service
+service --> handler : "Aircraft CS-TRA added"
+deactivate service
+handler --> client : OK|Aircraft CS-TRA added
+
+client -> handler : LIST_PILOTS|TP
+handler -> service : listPilots("TP")
+activate service
+service --> handler : List<PilotDTO>
+deactivate service
+handler --> client : OK|P100,P101,...
+
+client -> handler : REMOVE_PILOT|P100
+handler -> service : removePilot("P100")
+activate service
+service --> handler : "Pilot P100 removed"
+deactivate service
+handler --> client : OK|Pilot P100 removed
+
+client -> handler : QUIT
+handler -> logger : UDP LOGOUT
+deactivate logger
+handler --> client : BYE
+deactivate handler
+
+client -> tcp : close()
+activate tcp
+tcp -> tcp : socket.close()
+deactivate tcp
+deactivate client
+@enduml

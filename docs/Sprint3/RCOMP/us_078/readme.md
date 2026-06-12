@@ -1,42 +1,44 @@
-﻿# US078 — ATC Collaborator Remote Access (RCOMP)
+﻿# US078 — ATCC Remote Access (RCOMP)
 
 ## 1. Context
 
-This task is assigned in Sprint 3 within the Computer Networks (RCOMP) scope.
-The objective is to allow an Air Traffic Control (ATC) Collaborator to remotely access the system through a dedicated TCP-based client application. This makes all ATC Collaborator functionalities available over the network securely, without any direct database connection on the client side.
+This task was assigned in Sprint 3 within the Computer Networks (RCOMP) scope. The objective is to develop a standalone client application that allows an ATCC Collaborator to securely interact with the core system remotely over a network, without directly accessing the database.
 
-**Issue:** #61
-**Assigned to:** Jaime Simões
+**Assigned to:** Dinis Silva
 
 ### 1.1 List of Issues
 
-- Analysis: #61
-- Design: #61
-- Implement: #61
-- Test: #61
+- Analysis: #60
+- Design: #60
+- Implement: #60
+- Test: #60
 
 ---
 
 ## 2. Requirements
 
-**US078** As an ATC Collaborator, I want to remotely access the system in order to manage flight routes and air control areas.
+**US078** As an ATCC Collaborator, I want to remotely access the system in order to manage aircraft, flight crews, and routes.
 
 ### Acceptance Criteria
 
-- **US078.1** A specific TCP-based client application must be developed to communicate with a concurrent server application embedded in the main system.
-- **US078.2** The client application must interact with the system exclusively through the TCP connection — any direct interaction with the database from the client machine is strictly unacceptable.
-- **US078.3** All ATC Collaborator user stories must be remotely available via this client application:
-    - **US071** — Register Air Control Area (ACA)
-    - **US073** — Create Flight Route
-    - **US074** — Delete (Deactivate) Flight Route
-- **US078.4** Authentication and authorization must be enforced over the connection before any operation is executed. Only users holding the `ATC_COLLABORATOR` role can access this service.
+- **US078.1** A specific TCP-based network client application must be created to communicate with the server application embedded in the main system.
+- **US078.2** The client application's interaction with the system must be strictly limited to the TCP connection. Any direct interaction with the database from the client is unacceptable.
+- **US078.3** All ATCC Collaborator user stories must be accessible remotely via this client application:
+  - **US070** — Add aircraft
+  - **US071** — Decommission aircraft
+  - **US072** — List fleet
+  - **US073** — Create flight route
+  - **US075** — Add pilot
+  - **US076** — List pilots
+  - **US077** — Remove pilot
+- **US078.4** Authentication and authorization must be enforced over the remote connection.
 
 ### Dependencies/References
 
-- US071, US073, US074 — ATC Collaborator operations (Sprint 2/3).
-- US030 — Authentication and authorization infrastructure (applied to remote logins).
-- US090 — External logging of remote accesses (logs login/logout/disconnect via UDP).
-- NFR09 — Authentication and authorization enforced on all functionalities.
+- US030 — Authentication and authorization (must be applied to remote logins).
+- US070, US071, US072, US073, US075, US076, US077 — The ATCC functionality that must be exposed remotely.
+- US090 — External logging of remote accesses (logs every login/logout/disconnect via UDP).
+- NFR08 — Remote RDBMS configuration must be respected.
 
 ---
 
@@ -44,56 +46,88 @@ The objective is to allow an Air Traffic Control (ATC) Collaborator to remotely 
 
 ### 3.1 Network Architecture
 
-The system follows a two-tier concurrent remote access model:
+The system follows a two-tier remote access model:
 
-- A standalone **ATC Client App** (Java console) connects via TCP to a dedicated port exposed by the main system.
-- The **TCP Server** is embedded in the main system and spawns one handler thread (`AtccClientHandler`) per accepted connection to allow concurrent access by multiple ATC Collaborators.
-- All business logic (US071, US073, US074) executes strictly on the server side through existing application services.
-- The server enforces that the authenticated user holds the `ATC_COLLABORATOR` role before any operation is executed.
-
----
+- A standalone **ATCC Collaborator Client App** (Java console) connects via TCP to a dedicated port exposed by the main system
+- The **TCP Server** is embedded in the main system and spawns one handler thread per accepted connection
+- All business logic (US070–US077) executes on the server side through existing application services
+- The client sends text requests and receives text responses — it never touches the database
+- The server enforces that the authenticated user holds the `ATC_COLLABORATOR` role before any operation is dispatched
 
 ### 3.2 Application-Level Protocol
 
-A simple, lightweight text-based request/response protocol is defined for this connection.
-Each message is terminated with `\n`. Fields inside a message are separated by the pipe character (`|`).
+A simple text-based request/response protocol is defined for this connection.
+Each message is terminated with `\n`. Fields are separated by `|`.
 
 **Client to Server messages:**
 
 | Code | Format | Description |
 |------|--------|-------------|
-| `AUTH` | `AUTH\|<username>\|<password>` | Authenticate the session |
-| `REGISTER_ACA` | `REGISTER_ACA\|<area_code>\|<name>\|<min_lat>\|<max_lat>\|<min_lon>\|<max_lon>` | Register a new ACA (US071) |
-| `CREATE_ROUTE` | `CREATE_ROUTE\|<route_name>\|<company_iata>\|<origin_iata>\|<destination_iata>` | Create a new flight route (US073) |
-| `DEACTIVATE_ROUTE` | `DEACTIVATE_ROUTE\|<route_name>\|<deactivation_date>` | Deactivate an active route (US074) |
-| `LIST_COMPANIES` | `LIST_COMPANIES` | List registered companies for route selection helper |
-| `LIST_AIRPORTS` | `LIST_AIRPORTS` | List registered airports for route/ACA helper |
-| `QUIT` | `QUIT` | Gracefully close the TCP session |
+| AUTH | `AUTH|<username>|<password>` | Authenticate the session |
+| ADD_AIRCRAFT | `ADD_AIRCRAFT|<registration>|<country>|<model>|<operator>|<numCrew>|<certDate>` | Add aircraft (US070) |
+| DECOMMISSION_AIRCRAFT | `DECOMMISSION_AIRCRAFT|<registration>|<country>` | Decommission aircraft (US071) |
+| LIST_FLEET | `LIST_FLEET` | List all aircraft (US072) |
+| CREATE_ROUTE | `CREATE_ROUTE|<routeId>|<operator>|<departure>|<arrival>` | Create route (US073) |
+| ADD_PILOT | `ADD_PILOT|<mechNumber>|<operator>|<certDate>|<aircraftTypes>` | Add pilot (US075) |
+| LIST_PILOTS | `LIST_PILOTS|<operator>` | List pilots (US076) |
+| REMOVE_PILOT | `REMOVE_PILOT|<mechNumber>` | Remove pilot (US077) |
+| LIST_ROUTES | `LIST_ROUTES` | List all routes |
+| QUIT | `QUIT` | Gracefully close the session |
 
 **Server to Client messages:**
 
 | Code | Meaning |
 |------|---------|
 | `AUTH_OK` | Authentication successful |
-| `AUTH_FAIL\|<reason>` | Authentication failed (invalid credentials, expired clearance, or insufficient roles) |
-| `OK\|<optional_payload>` | Operation succeeded — returns data payload if applicable |
-| `ERR\|<reason>` | Operation failed — contains detailed error/exception message |
-
----
+| `AUTH_FAIL|<reason>` | Authentication failed |
+| `OK|<optional_data>` | Operation succeeded |
+| `ERR|<reason>` | Operation failed — reason included |
+| `BYE` | Server acknowledges QUIT |
 
 ### 3.3 Session Flow
 
-1. Client establishes a TCP connection to the server on the ATCC-dedicated port.
-2. Server accepts the socket and spawns a thread (`AtccClientHandler`) to handle the client.
-3. Client sends `AUTH|<username>|<password>`.
-4. Server validates credentials via EAPLI `AuthzRegistry`.
-5. Server checks `securityClearanceExpiryDate` (US030.4).
-6. Server verifies the user holds the `ATC_COLLABORATOR` role.
-7. If valid: Server responds `AUTH_OK`. The session is now authenticated.
-8. If invalid: Server responds `AUTH_FAIL|<reason>` (connection remains open for retry or QUIT).
-9. Server emits a UDP log event to the Logging Server (US90) for both outcomes.
-10. Any request other than `AUTH` or `QUIT` received before successful authentication is answered with `ERR|NOT_AUTHENTICATED`.
-11. After `QUIT` or client disconnect, the server closes the sockets, dispatches a UDP log event, and cleans up.
+1. Client establishes TCP connection to the server on the ATCC-dedicated port (1078)
+2. Server accepts and spawns a handler thread for that connection
+3. Client sends `AUTH|<username>|<password>`
+4. Server validates credentials via EAPLI `AuthzRegistry`
+5. Server checks `securityClearanceExpiryDate` (US030.4)
+6. Server verifies the authenticated user holds the `ATC_COLLABORATOR` role
+7. If all valid: server responds `AUTH_OK` and session is bound to that ATCC user
+8. If invalid: server responds `AUTH_FAIL|<reason>` — connection stays open for retry or QUIT
+9. Server emits a UDP log event to the Remote Accesses Logging Server (US090) for both outcomes
+10. Any request other than AUTH or QUIT received before authentication is answered with `ERR|NOT_AUTHENTICATED`
+11. After QUIT or disconnect, the server closes the socket and cleans up the session
+
+### 3.4 Architecture with DTOs
+
+The system follows the **DTO pattern** to isolate the domain model from the TCP protocol layer.
+
+**DTOs in the ATC remote subdomain:**
+
+| DTO | Fields | Factory |
+|-----|--------|---------|
+| `AircraftDTO` | registration, country, model, operator, numCrew, certDate, isActive | `AircraftDTO.from(Aircraft)` |
+| `FlightRouteDTO` | routeId, operator, departureAirport, arrivalAirport | `FlightRouteDTO.from(FlightRoute)` |
+| `PilotDTO` | mechNumber, operator, certDate, isActive | `PilotDTO.from(Pilot)` |
+
+**DTO Flow:**
+```
+Domain Entity → DTO.from(entity) → DTO record → TCP Handler → format → Client
+```
+
+### 3.5 Diagrams
+
+**Sequence Diagram — Remote ATCC Access:**
+
+![Sequence Diagram](sds/images/sd_us078_atcc_remote_access.svg)
+
+*PlantUML source: `sds/uml/sd_us078_atcc_remote_access.puml`*
+
+**Component Diagram — Client-Server Architecture:**
+
+![Component Diagram](sds/images/component_us078_client_server.svg)
+
+*PlantUML source: `sds/uml/component_us078_client_server.puml`*
 
 ---
 
@@ -101,55 +135,85 @@ Each message is terminated with `\n`. Fields inside a message are separated by t
 
 ### 4.1 Realization
 
-The system decomposes into clean network-layer classes and reuses EAPLI application controllers:
+**Key classes (RCOMP side):**
 
-**Key classes to create (RCOMP network layer):**
+| Class | Location | Responsibility |
+|-------|----------|---------------|
+| `AtcClientApp` | `rcomp/us078/src/rcomp/client/` | Standalone console client with validation |
+| `TcpClient` | `rcomp/us078/src/rcomp/client/` | Reusable TCP client |
 
-| Class | Responsibility |
-|-------|---------------|
-| `TcpAtccServer` (extends `AbstractTcpServer`) | Listens on the ATC-dedicated TCP port; accepts connections and spawns handlers |
-| `AtccClientHandler` (implements `Runnable`) | Handles one socket session: reads requests, parses commands, executes, writes responses |
-| `AtccRemoteSessionState` | Tracks authentication state and the authenticated ATC Collaborator |
-| `AtccClientApp` | Standalone console application for the remote client |
+**Key classes (EAPLI side):**
 
-**Key classes to reuse (EAPLI business layer):**
+| Class | Location | Responsibility |
+|-------|----------|---------------|
+| `AtcServerDaemon` | `aisafe.base/app/src/.../server/` | Listens on port 1078; accepts connections |
+| `AtcClientHandler` | `aisafe.base/app/src/.../server/` | Per-connection handler: protocol parsing, dispatch, response |
+| `RemoteAtcService` | `aisafe.base/core/src/.../remote/atc/` | Facade wrapping ATC controllers |
+| `RemoteProtocol` | `aisafe.base/core/src/.../remote/` | Protocol constants and helpers |
+| `UdpAccessLogger` | `aisafe.base/core/src/.../remote/` | UDP logging client for US090 |
 
-| Class | Responsibility |
-|-------|---------------|
-| `RegisterAirControlAreaController` | Core controller for US071 |
-| `CreateFlightRouteController` | Core controller for US073 |
-| `DeleteFlightRouteController` | Core controller for US074 |
+### 4.2 Acceptance Tests
 
-### 4.2 Diagrams
+**AT1 — No Direct Database Access**
 
-The sequence diagram for the remote operations is defined in `sd_us078_atcc_remote_access.puml` (which shows connection, authentication, and execution of `createRoute(...)` on the server-side controllers).
+Given the client application is running on a machine without database credentials or drivers,
+When the user requests to list the fleet (US072),
+Then the client successfully retrieves and displays the fleet by communicating solely over the TCP socket.
+
+**AT2 — Enforced Authentication**
+
+Given an unauthenticated TCP connection,
+When the client attempts to send a `LIST_FLEET` protocol message,
+Then the server rejects the request with `ERR|NOT_AUTHENTICATED` and does not execute the operation.
+
+**AT3 — Successful Remote Execution**
+
+Given an authenticated connection for a user with the `ATC_COLLABORATOR` role,
+When the client sends a formatted `ADD_AIRCRAFT` request,
+Then the server processes it using the core domain logic and replies with `OK`, updating the central system.
+
+**AT4 — Wrong Role is Rejected**
+
+Given a user with valid credentials but holding a different role (e.g., `WEATHER_PERSON`),
+When the client sends `AUTH` on the ATCC server port,
+Then the server responds with `AUTH_FAIL|INSUFFICIENT_ROLE` and the session remains unauthenticated.
 
 ---
 
 ## 5. Implementation
 
-**Key Files:**
-- `TcpAtccServer.java` — Server daemon listening on port
-- `AtccClientHandler.java` — Concurrent connection thread worker
-- `AtccClientApp.java` — Standalone client terminal console UI
+### 5.1 Files (RCOMP)
+
+| File | Responsibility |
+|------|---------------|
+| `rcomp/us078/src/rcomp/client/AtcClientApp.java` | Console client with loop-based validation and intuitive prompts |
+| `rcomp/us078/src/rcomp/client/TcpClient.java` | TCP transport layer — kept at original repository state |
+
+### 5.2 UI Improvements
+
+- **Loop-based validation**: Each input field validates immediately and re-prompts on invalid input
+- **Explicit format hints**: Each field shows the expected format (e.g., "Date format: YYYY-MM-DD")
+- **No area selection**: The ATC client does not require area selection — this is specific to the Weather Person client (US044)
+- **Null-safe**: Handles connection errors gracefully without crashing
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Start the main database and backend application (initializing `TcpAtccServer` thread).
-2. Start the UDP logging server (US090).
-3. Run `AtccClientApp` on a network node.
-4. Attempt executing an action without authentication → verifies `ERR|NOT_AUTHENTICATED` is returned.
-5. Log in with an invalid role or invalid credentials → verifies `AUTH_FAIL` is returned.
-6. Log in with an `ATC_COLLABORATOR` account → verifies `AUTH_OK`.
-7. Register an ACA, create a route, and deactivate it remotely → verifies `OK` responses and checks DB updates on the server.
-8. Verify UDP server logged all session actions.
+1. Start the main application — TCP server binds to the ATCC-dedicated port (1078).
+2. Start the Remote Accesses Logging Server (US090) to receive UDP event logs.
+3. Launch the ATCC Collaborator Client App on a different network node.
+4. Connect to the main application IP and ATCC port.
+5. Authenticate as `atc1` / `Password1`.
+6. Add aircraft, list fleet, create routes, manage pilots.
+7. Check US090 logging server received login/logout events.
+8. Verify no direct database calls originated from the client process.
 
 ---
 
 ## 7. Observations
 
-- Reuses existing EAPLI controllers without changing any underlying business logic.
-- Network transactions are decoupled from the DB (the client never sees database drivers, passwords, or connection pools).
-- Follows the exact protocol pattern as US044 (Weather) and US086 (Pilot), securing a standard approach to socket networking in the project.
+- The RCOMP component depends on `RemoteAtcService` from EAPLI — this is the only integration point.
+- US090 (UDP logging) must be operational for login/logout events to be recorded.
+- The text protocol is identical in structure to US044 and US086 — only the command codes and port differ.
+- All input validation happens on the client side with retry loops for robust user experience.

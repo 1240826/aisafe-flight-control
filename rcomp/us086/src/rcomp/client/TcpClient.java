@@ -9,22 +9,18 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Reusable TCP client for AISafe remote services.
- * Manages a single persistent connection and provides line-based send/receive.
- */
 public final class TcpClient implements AutoCloseable {
 
     private static final int CONNECT_TIMEOUT_MS = 5_000;
 
-    private final Socket socket;
+    private final Socket       socket;
     private final BufferedReader in;
-    private final PrintWriter out;
+    private final PrintWriter    out;
 
     public TcpClient(final String host, final int port) throws IOException {
         this.socket = new Socket();
         this.socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
-        this.socket.setSoTimeout(30_000); // readLine() timeout 5s
+        this.socket.setSoTimeout(30_000);
         this.in  = new BufferedReader(
                 new InputStreamReader(socket.getInputStream(),  StandardCharsets.UTF_8));
         this.out = new PrintWriter(
