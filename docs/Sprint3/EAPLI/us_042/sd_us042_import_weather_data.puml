@@ -3,7 +3,7 @@ title US042 — Import Bulk Weather Data
 
 skinparam sequenceMessageAlign center
 skinparam defaultFontName Arial
-skinparam defaultFontSize 12
+skinparam defaultFontSize 11
 skinparam ParticipantPadding 20
 
 autonumber
@@ -15,33 +15,33 @@ participant ":AuthorizationService"       as authz    <<framework>>
 participant ":AirControlAreaRepository"   as acaRepo  <<persistence>>
 participant ":WeatherDataRepository"      as repo     <<persistence>>
 
-actor -> ui : selects "Import Weather Data"
+actor -> ui : selects "Import Bulk Weather Data"
 activate ui
 
 ui -> actor : requests file path
 actor -> ui : provides file path
 
-ui -> ctrl : importFromCsv(csvPath)
+ui -> ctrl : importFromCsv(Path csvPath) : ImportResult
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(WEATHER_PERSON)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(WEATHER_PERSON) : void
 activate authz
 authz --> ctrl
 deactivate authz
 
 loop for each line in CSV
     alt line starts with '#'
-        ctrl -> ctrl : parseHeader(line) – extracts ACA mapping
+        ctrl -> ctrl : parseHeader(String line, Map<String,AreaCode>) : void
         activate ctrl
-        ctrl -> acaRepo : ofIdentity(areaCode)
+        ctrl -> acaRepo : ofIdentity(AreaCode) : Optional<AirControlArea>
         activate acaRepo
-        acaRepo --> ctrl : aca (or throws if unknown)
+        acaRepo --> ctrl : AirControlArea (or throws)
         deactivate acaRepo
         deactivate ctrl
     else data line
-        ctrl -> ctrl : parseLine(line, acaMapping) – 12 columns, European decimals
+        ctrl -> ctrl : parseLine(String line, int lineNum, Map<String,AreaCode>) : WeatherData
         
-        ctrl -> repo : save(weatherData)
+        ctrl -> repo : save(WeatherData) : void
         activate repo
         repo --> ctrl
         deactivate repo
@@ -51,7 +51,7 @@ loop for each line in CSV
     note right : on error: skipped++,\nerror added to list
 end
 
-ctrl --> ui : ImportResult(imported, skipped, errors)
+ctrl --> ui : ImportResult(imported:int, skipped:int, errors:List<String>)
 deactivate ctrl
 
 ui --> actor : displays import summary

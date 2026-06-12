@@ -3,7 +3,7 @@ title US112 — Monthly Report Generation
 
 skinparam sequenceMessageAlign center
 skinparam defaultFontName Arial
-skinparam defaultFontSize 12
+skinparam defaultFontSize 11
 skinparam ParticipantPadding 20
 
 autonumber
@@ -26,25 +26,24 @@ activate ui
 ui -> actor : requests month and year
 actor -> ui : provides month and year
 
-ui -> ctrl : generateForMonth(period)
+ui -> ctrl : generateForMonth(YearMonth period) : MonthlyReport
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(FLIGHT_CONTROL_OPERATOR)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(FLIGHT_CONTROL_OPERATOR) : void
 activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> collabRepo : findBySystemUser(currentUser)
+ctrl -> collabRepo : findBySystemUser(SystemUser) : Optional<Collaborator>
 activate collabRepo
 collabRepo --> ctrl : collaborator
 deactivate collabRepo
 
-ctrl -> ctrl : areaCodeOfCurrentUser()\n→ collaborator.areaCode()
-
-ctrl -> provider : generateForMonth(period, areaCode)
+ctrl -> ctrl : areaCodeOfCurrentUser() : AreaCode
+ctrl -> provider : generateForMonth(YearMonth period, AreaCode areaCode) : MonthlyReport
 activate provider
 
-provider -> flightRepo : findAll()
+provider -> flightRepo : findAll() : Iterable<Flight>
 activate flightRepo
 flightRepo --> provider : all flights
 deactivate flightRepo
@@ -52,40 +51,39 @@ deactivate flightRepo
 loop for each flight in period
     provider -> provider : count flight, flightsPerWeek
     loop for each flightPlan
-        provider -> provider : classify status\n(DRAFT/IN_TEST/TEST_PASSED/TEST_FAILED)
+        provider -> provider : classify status (DRAFT/IN_TEST/TEST_PASSED/TEST_FAILED)
     end
 end
 
-provider -> wdRepo : findByAreaCode(areaCode)
+provider -> wdRepo : findByAreaCode(AreaCode) : Iterable<WeatherData>
 activate wdRepo
-wdRepo --> provider : weather data
+wdRepo --> provider : weather data for area
 deactivate wdRepo
 
-provider -> pilotRepo : findAll()
+provider -> pilotRepo : findAll() : Iterable<Pilot>
 activate pilotRepo
 pilotRepo --> provider : all pilots
 deactivate pilotRepo
 
-provider -> acRepo : findAll()
+provider -> acRepo : findAll() : Iterable<Aircraft>
 activate acRepo
 acRepo --> provider : all aircraft
 deactivate acRepo
 
 create report
-provider -> report : MonthlyReport(period, totals, flightsPerWeek)
+provider -> report : MonthlyReport(YearMonth, totals, flightsPerWeek, ...)
 activate report
 report --> provider
 deactivate report
 
-provider --> ctrl : report
+provider --> ctrl : MonthlyReport
 deactivate provider
 
-ctrl --> ui : report
+ctrl --> ui : MonthlyReport
 deactivate ctrl
 
 ui -> ui : prints report to console
-
-ui -> ui : saves report to\nreports/monthly-report-YYYY-MM.txt
+ui -> ui : saves report to reports/monthly-report-YYYY-MM.txt
 
 ui --> actor : displays confirmation and file path
 deactivate ui
