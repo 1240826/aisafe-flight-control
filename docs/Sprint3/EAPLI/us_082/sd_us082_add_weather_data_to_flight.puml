@@ -3,7 +3,7 @@ title US082 — Insert Weather Data in a Flight
 
 skinparam sequenceMessageAlign center
 skinparam defaultFontName Arial
-skinparam defaultFontSize 12
+skinparam defaultFontSize 11
 skinparam ParticipantPadding 20
 
 autonumber
@@ -20,15 +20,15 @@ participant ":Flight"                      as flight  <<domain>>
 actor -> ui : selects "Add Weather Data to Flight"
 activate ui
 
-ui -> ctrl : allFlights()
+ui -> ctrl : allFlights() : Iterable<Flight>
 activate ctrl
 
-ctrl -> authz : ensureAuthenticatedUserHasAnyOf(PILOT)
+ctrl -> authz : ensureAuthenticatedUserHasAnyOf(PILOT) : void
 activate authz
 authz --> ctrl
 deactivate authz
 
-ctrl -> flightRepo : findAll()
+ctrl -> flightRepo : findAll() : Iterable<Flight>
 activate flightRepo
 flightRepo --> ctrl : flights
 deactivate flightRepo
@@ -39,18 +39,18 @@ deactivate ctrl
 ui -> actor : displays flight list
 actor -> ui : selects flight
 
-ui -> ctrl : weatherDataForFlight(flight)
+ui -> ctrl : weatherDataForFlight(Flight) : List<WeatherData>
 activate ctrl
 
-ctrl -> ctrl : computeMidpoint(flight) – midpoint lat/lon from route
-ctrl -> acaRepo : findAll()
+ctrl -> ctrl : computeMidpoint(Flight) : RouteMidpoint
+ctrl -> acaRepo : findAll() : Iterable<AirControlArea>
 activate acaRepo
 acaRepo --> ctrl : all ACAs
 deactivate acaRepo
 
-ctrl -> ctrl : findAcaForMidpoint(lat, lon) – finds ACA containing midpoint
+ctrl -> ctrl : findAcaForMidpoint(double lat, double lon) : AirControlArea
 
-ctrl -> wdRepo : findAll()
+ctrl -> wdRepo : findAll() : Iterable<WeatherData>
 activate wdRepo
 wdRepo --> ctrl : all weather data
 deactivate wdRepo
@@ -62,27 +62,27 @@ deactivate ctrl
 ui -> actor : displays weather data list
 actor -> ui : selects weather data
 
-ui -> ctrl : assignWeather(flightDesignator, weatherDataId)
+ui -> ctrl : assignWeather(String flightDesignator, Long weatherDataId) : Flight
 activate ctrl
 
-ctrl -> wdRepo : ofIdentity(weatherDataId)
+ctrl -> wdRepo : ofIdentity(Long weatherDataId) : Optional<WeatherData>
 activate wdRepo
 wdRepo --> ctrl : weatherData (or throws)
 deactivate wdRepo
 
-ctrl -> flightRepo : ofIdentity(flightDesignator)
+ctrl -> flightRepo : ofIdentity(FlightDesignator) : Optional<Flight>
 activate flightRepo
 flightRepo --> ctrl : flight
 deactivate flightRepo
 
-ctrl -> flight : assignWeatherData(weatherDataId)
+ctrl -> flight : assignWeatherData(Long weatherDataId) : void
 activate flight
 flight --> ctrl
 deactivate flight
 
-ctrl -> flightRepo : save(flight)
+ctrl -> flightRepo : save(Flight) : Flight
 activate flightRepo
-flightRepo --> ctrl
+flightRepo --> ctrl : saved flight
 deactivate flightRepo
 
 ctrl --> ui : updated flight
