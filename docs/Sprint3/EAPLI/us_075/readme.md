@@ -63,21 +63,20 @@ The operation creates a new `Pilot` entity within the ATCC's `AirTransportCompan
 
 ### 4.1 Realization
 
-**Classes to create/modify:**
+**Classes created/modified:**
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `AddPilotUI` | `aisafe.app.atcc.console` | Prompts ATCC for user and certified models, displays outcome |
-| `AddPilotController` | `aisafe.core` | Resolves the ATCC's company, validates inputs, delegates to service |
-| `PilotService` | `aisafe.core` | Contains business logic for creating and persisting a new Pilot |
-| `PilotRepository` | `aisafe.core` | Declares query methods (e.g., `findByUserAndCompany`, `save`) |
-| `JpaPilotRepository` | `aisafe.persistence.impl` | Implements the database queries |
-| `Pilot` | `aisafe.domain` | Aggregate root representing a pilot in a company |
-| `AircraftModelRepository` | `aisafe.core` | Used to validate that each certified model exists |
+| Class | Package | Responsibility |
+|-------|---------|----------------|
+| `Pilot` | `eapli.aisafe.pilot.domain` | Aggregate root — holds `PilotId`, `CompanyIATA`, `Set<AircraftModelCode>`, `certificationDate`, `active` flag; enforces invariants in constructor |
+| `PilotId` | `eapli.aisafe.pilot.domain` | Value Object — license number `[A-Z][0-9]{4,10}`; trims and uppercases before validating |
+| `PilotRepository` | `eapli.aisafe.pilot.repositories` | Interface — `findByLicenseNumber(PilotId)`, `findByCompany(CompanyIATA)`, `findActiveByCompany(CompanyIATA)`, `hasAssignedFlights(PilotId)` |
+| `AddPilotController` | `eapli.aisafe.pilot.application` | `@UseCaseController` — authorises with `ATC_COLLABORATOR`, calls `PilotId.valueOf()`, instantiates `Pilot`, saves via `PilotRepository`; also exposes `allCompanies()` and `allAircraftModels()` |
+| `AirTransportCompanyRepository` | `eapli.aisafe.company.repositories` | Interface — `findAll()` used to populate company selection in the UI |
+| `AircraftModelRepository` | `eapli.aisafe.aircraftmodel.repositories` | Interface — `findAll()` used to populate model multi-select in the UI |
 
 **Sequence Diagram — Add Pilot:**
 
-![Sequence Diagram — Add Pilot](sds/images/SD_US075_AddPilot.png)
+![Sequence Diagram — Add Pilot](SD_US075_AddPilot.png)
 
 ### 4.2 Acceptance Tests
 
@@ -126,24 +125,50 @@ Then the system rejects the operation with an authorization error.
 
 ## 5. Implementation
 
-**Key new/modified files:**
+**New files:**
 
-- `[TBD]`
+| Package | File | Role |
+|---------|------|------|
+| `eapli.aisafe.pilot.domain` | `Pilot.java` | Aggregate root — identity (`PilotId`), company (`CompanyIATA`), certified models (`Set<AircraftModelCode>`), certification date, active flag |
+| `eapli.aisafe.pilot.domain` | `PilotId.java` | Value Object — license number format `[A-Z][0-9]{4,10}`, trims and uppercases on creation |
+| `eapli.aisafe.pilot.repositories` | `PilotRepository.java` | Domain repository interface — `findByLicenseNumber`, `findByCompany`, `findActiveByCompany`, `hasAssignedFlights` |
+| `eapli.aisafe.pilot.application` | `AddPilotController.java` | `@UseCaseController` — authorises (`ATC_COLLABORATOR`), creates `PilotId` VO, instantiates `Pilot`, delegates save to repository |
 
-*Major commits: [TBD]*
+**Modified files:**
+
+| File | Change |
+|------|--------|
+| `RepositoryFactory` (interface) | Added `pilots()` factory method |
+| `JpaRepositoryFactory` | Implemented `pilots()` returning `JpaPilotRepository` |
+| `InMemoryRepositoryFactory` | Implemented `pilots()` returning `InMemoryPilotRepository` |
+| `persistence.xml` | Added `Pilot` and `PilotId` as managed entities |
+
+**Unit tests:**
+
+| Test class | Tests | Scope |
+|------------|-------|-------|
+| `AddPilotControllerTest` | 9 | Controller unit tests: happy path, auth guard, domain invariant rejection, support queries (`allCompanies`, `allAircraftModels`) |
+| `PilotIdValidationTest` | 38 | CSV-driven (`pilot_id_test_data.csv`, 20 scenarios) — valid/invalid license format, edge cases (trim, case, boundary lengths) |
+| `PilotCreationTest` | 12 | CSV-driven (`pilot_creation_test_data.csv`, 12 scenarios) — full `Pilot` construction including empty model set, future certification date |
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Log in as an Air Transport Company Collaborator.
-2. Navigate to the Pilots menu and select "Add Pilot".
-3. Select an existing system user to register as a pilot.
-4. Select one or more aircraft models the pilot is certified for.
-5. Confirm the operation and verify the pilot appears in the company's roster (US076).
+1. Log in as an Air Transport Company Collaborator (`atcc1` / `Password1`).
+2. Navigate to the **Pilots** menu and select **Add Pilot**.
+3. The system displays all registered companies — select the appropriate one.
+4. The system displays all registered aircraft models — select one or more to certify.
+5. Enter the pilot's license number (format: one letter followed by 4–10 digits, e.g. `P12345`).
+6. Enter the certification date (must not be in the future).
+7. The pilot is created as active and immediately appears in the pilot roster (US076).
 
 ---
 
 ## 7. Observations
 
-[TBD]
+- **Cross-aggregate references by identity VO only:** `Pilot` holds a `CompanyIATA` value object (not an `AirTransportCompany` reference) and a `Set<AircraftModelCode>` (not `AircraftModel` references). This is the DDD rule for cross-aggregate coupling.
+- **License format:** `PilotId` accepts `[A-Z][0-9]{4,10}` after trimming whitespace and uppercasing. The CSV tests PID18/PID19 confirm that `"P12345 "` and `" P12345"` are valid (whitespace is stripped before validation).
+- **Authorization:** the controller enforces `ATC_COLLABORATOR` via `authz.ensureAuthenticatedUserHasAnyOf(...)`. No role check is done in the domain entity itself.
+- **No SystemUser link in this sprint:** acceptance criterion US075.1 (pilot must already be a system user) is noted in the design. The `Pilot` entity in this implementation records the license number and company; the SystemUser association is left for the responsible colleague to integrate via US061.
+- **Package-private testing constructor:** `AddPilotController` exposes a package-private constructor that accepts all four dependencies — used by `AddPilotControllerTest` to inject mocks without requiring a running persistence context.

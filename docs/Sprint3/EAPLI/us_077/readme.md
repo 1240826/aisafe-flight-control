@@ -64,21 +64,24 @@ The operation performs a state transition on the `Pilot` aggregate, setting its 
 
 ### 4.1 Realization
 
-**Classes to create/modify:**
+**Classes created/modified:**
 
-| Class | Module | Responsibility |
-|-------|--------|----------------|
-| `RemovePilotUI` | `aisafe.app.atcc.console` | Lists active pilots, prompts ATCC for selection and confirmation, displays outcome |
-| `RemovePilotController` | `aisafe.core` | Resolves the ATCC's company, validates the pilot exists and is active, delegates to service |
-| `PilotService` | `aisafe.core` | Checks for assigned flight plans and performs the deactivation |
-| `PilotRepository` | `aisafe.core` | Declares query methods (e.g., `findActiveByCompany`, `save`) |
-| `FlightPlanRepository` | `aisafe.core` | Declares the query method (e.g., `existsActiveByPilot`) |
-| `JpaPilotRepository` | `aisafe.persistence.impl` | Implements the filtered database queries |
-| `Pilot` | `aisafe.domain` | Aggregate root; exposes `deactivate()` method that enforces the status transition |
+| Class | Package | Responsibility |
+|-------|---------|----------------|
+| `RemovePilotController` | `eapli.aisafe.pilot.application` | `@UseCaseController` — authorises with `ATC_COLLABORATOR`; exposes `allPilots()` for selection, `deactivatePilot(PilotId)` with cross-aggregate guard, `activatePilot(PilotId)` for re-activation |
+| `Pilot` | `eapli.aisafe.pilot.domain` | Added `deactivate()` (throws if already inactive), `activate()` (throws if already active), `isActive()` |
+| `FlightRepository` | `eapli.aisafe.flight.repositories` | Interface — added `existsByPilotLicense(PilotId)` used as cross-aggregate guard before deactivation |
+
+**Reused without modification:**
+
+| Class | Role in US077 |
+|-------|---------------|
+| `PilotRepository` | `findByLicenseNumber(PilotId)` to load the pilot; `findAll()` to list all pilots; `save(Pilot)` to persist the state change |
+| `PilotId` | Passed as parameter to `deactivatePilot()` / `activatePilot()` |
 
 **Sequence Diagram — Remove Pilot:**
 
-![Sequence Diagram — Remove Pilot](sds/images/sd_us077_remove_pilot.png)
+![Sequence Diagram — Remove Pilot](sd_us077_remove_pilot.png)
 
 ### 4.2 Acceptance Tests
 
@@ -117,25 +120,53 @@ Then the system rejects the operation with an authorization error.
 
 ## 5. Implementation
 
-**Key new/modified files:**
+**New files:**
 
-- `[TBD]`
+| Package | File | Role |
+|---------|------|------|
+| `eapli.aisafe.pilot.application` | `RemovePilotController.java` | `@UseCaseController` — authorises (`ATC_COLLABORATOR`), exposes `allPilots()` for selection list, `deactivatePilot(PilotId)` with cross-aggregate guard, `activatePilot(PilotId)` for re-activation |
 
-*Major commits: [TBD]*
+**Domain changes (Pilot — from US075):**
+
+| Method | Description |
+|--------|-------------|
+| `Pilot.deactivate()` | Sets `active = false`; throws `IllegalStateException` if already inactive |
+| `Pilot.activate()` | Sets `active = true`; throws `IllegalStateException` if already active |
+| `Pilot.isActive()` | Returns `active` flag |
+
+**Reused from US075/US076 (no changes needed):**
+
+| File | Role |
+|------|------|
+| `PilotRepository.java` | `findByLicenseNumber(PilotId)` used to load the pilot; `save(Pilot)` used to persist the state change |
+| `FlightRepository.java` | `existsByPilotLicense(PilotId)` used as cross-aggregate guard before deactivation |
+
+**Unit tests:**
+
+| Test class | Tests | Scope |
+|------------|-------|-------|
+| `RemovePilotControllerTest` | 7 | Controller unit tests: happy path, auth guard, pilot not found, already inactive, flight plans assigned guard |
+| `PilotDeactivationTest` | 6 | CSV-driven (`pilot_deactivation_test_data.csv`, 6 scenarios) — deactivate once (success), deactivate twice (fail), activate after deactivate (success), activate active pilot (fail) |
 
 ---
 
 ## 6. Integration/Demonstration
 
-1. Log in as an Air Transport Company Collaborator.
-2. Navigate to the Pilots menu and select "Remove Pilot".
-3. Select an active pilot with no assigned flight plans.
-4. Confirm the deactivation and verify the success message.
-5. Navigate to "List Pilot Roster" (US076) and confirm the pilot no longer appears.
-6. Attempt to deactivate a pilot with an active flight plan and verify the rejection.
+1. Log in as an Air Transport Company Collaborator (`atcc1` / `Password1`).
+2. Navigate to the **Pilots** menu and select **Remove Pilot**.
+3. The system displays all pilots (active and inactive) — select the pilot to deactivate.
+4. If the pilot has flight plans assigned, the system rejects the operation with a clear error message.
+5. If no flight plans are assigned, the pilot is marked inactive and a success message is shown.
+6. Navigate to **List Pilot Roster** (US076) — the deactivated pilot no longer appears in the active roster.
+7. To re-activate, select the same pilot and confirm re-activation.
 
 ---
 
 ## 7. Observations
 
-[TBD]
+- **Soft delete, not hard delete:** `Pilot.deactivate()` sets `active = false` — the record is never removed from the database. Historical data (past flights, flight plans) referencing this pilot remains intact.
+- **Cross-aggregate guard in the controller:** the rule "a pilot with assigned flight plans cannot be deactivated" spans two aggregates (`Pilot` and `Flight`). Per DDD, `Pilot` cannot hold a reference to `FlightRepository`. The check `flightRepo.existsByPilotLicense(pilotId)` is therefore placed in `RemovePilotController`, which is the correct DDD location for cross-aggregate coordination.
+- **Domain-level guard for double-deactivation:** `Pilot.deactivate()` enforces `Invariants.ensure(active, "Pilot is already inactive")`. This means the controller guard (flight plans check) and the entity guard (already inactive) are both enforced independently. If a pilot passes the controller guard but is already inactive, the entity still throws.
+- **`allPilots()` lists all pilots, not just active ones:** this allows the UI to display inactive pilots so they can be re-activated. The repository call is `pilotRepo.findAll()` with no active filter.
+- **`activatePilot(PilotId)` included:** although not explicitly required by the acceptance criteria, the reverse operation is provided for completeness and to support the "already inactive / re-activate" scenario (tested in `PilotDeactivationTest`).
+- **Package-private testing constructor:** `RemovePilotController` exposes a package-private constructor accepting `AuthorizationService`, `PilotRepository`, and `FlightRepository` — used by `RemovePilotControllerTest` to inject mocks without a running persistence context.
