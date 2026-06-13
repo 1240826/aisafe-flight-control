@@ -1,0 +1,17 @@
+# US077 — Pilot Deactivation Test Data
+# Columns:
+#   testCaseId          - unique identifier
+#   licenseNumber       - pilot license to create and then deactivate
+#   deactivateCount     - number of times to call deactivate() (1=once, 2=twice to test re-deactivation)
+#   expectSuccess       - true if the final deactivate() call succeeds, false if it throws
+#   expectedActiveState - INACTIVE if deactivation succeeded; ACTIVE if it was rejected
+#   failureReason       - description of why deactivation fails (empty if expectSuccess=true)
+#
+# Header row is skipped by the test parser.
+testCaseId,licenseNumber,deactivateCount,expectSuccess,expectedActiveState,failureReason
+PD01,P12345,1,true,INACTIVE,Active pilot can be deactivated
+PD02,P12346,1,true,INACTIVE,Active pilot with multiple models can be deactivated
+PD03,P12347,2,false,INACTIVE,Pilot already deactivated - second deactivate throws
+PD04,P12348,1,true,INACTIVE,Deactivation is irreversible - pilot stays inactive
+PD05,P11111,1,true,INACTIVE,Standard deactivation returns correct state
+PD06,P22222,2,false,INACTIVE,Double deactivation always throws on second call

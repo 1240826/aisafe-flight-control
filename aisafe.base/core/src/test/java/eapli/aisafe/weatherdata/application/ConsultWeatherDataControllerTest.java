@@ -7,6 +7,7 @@ import eapli.aisafe.weatherdata.repositories.WeatherDataRepository;
 import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import eapli.framework.infrastructure.authz.domain.model.Role;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
 
@@ -70,5 +71,17 @@ public class ConsultWeatherDataControllerTest {
         } else if (mockHasData) {
             assertTrue(result.iterator().hasNext(), "Expected results for " + areaCode + " on " + date);
         }
+    }
+
+    @Test
+    void ensureConsultWeatherDataWithNullAreaCodeThrows() {
+        assertThrows(Exception.class,
+                () -> controller.consultWeatherData(null, LocalDate.now()));
+    }
+
+    @Test
+    void ensureConsultWeatherDataWithEmptyAreaCodeThrows() {
+        assertThrows(Exception.class,
+                () -> controller.consultWeatherData("", LocalDate.now()));
     }
 }

@@ -99,4 +99,13 @@ class GenerateSimulationReportControllerTest {
         // Assert
         assertNotNull(result);
     }
+
+    @Test
+    void ensureGenerateReportThrowsWhenNoSimulationFound() {
+        when(repo.findByAreaCode(any())).thenReturn(List.of());
+
+        assertThrows(java.util.NoSuchElementException.class,
+                () -> controller.generateReport("LPPC"),
+                "Must throw when no simulation exists for the area code");
+    }
 }

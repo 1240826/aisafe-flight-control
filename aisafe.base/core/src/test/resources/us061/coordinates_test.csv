@@ -1,0 +1,9 @@
+testCaseId,latitude,longitude,expectedValid
+CR01,41.2481,-8.6814,true
+CR02,0.0,0.0,true
+CR03,90.0,180.0,true
+CR04,-90.0,-180.0,true
+CR05,90.001,0.0,false
+CR06,-90.001,0.0,false
+CR07,0.0,180.001,false
+CR08,0.0,-180.001,false

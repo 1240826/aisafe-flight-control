@@ -78,7 +78,7 @@ The operation performs a state transition on the `Pilot` aggregate, setting its 
 
 **Sequence Diagram — Remove Pilot:**
 
-![Sequence Diagram — Remove Pilot](sd_us077_remove_pilot.png)
+![Sequence Diagram — Remove Pilot](sds/images/sd_us077_remove_pilot.png)
 
 ### 4.2 Acceptance Tests
 

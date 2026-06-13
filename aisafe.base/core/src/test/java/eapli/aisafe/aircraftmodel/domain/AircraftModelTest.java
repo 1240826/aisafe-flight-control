@@ -3,6 +3,8 @@ package eapli.aisafe.aircraftmodel.domain;
 import eapli.aisafe.enginemodel.domain.EngineModelCode;
 import eapli.aisafe.manufacturer.domain.ManufacturerName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -223,5 +225,30 @@ class AircraftModelTest {
     void ensureNonPositiveEmptyWeightIsRejected() {
         assertThrows(Exception.class,
                 () -> new AircraftWeights(0, 79016, 62732, 26020));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/aircraft_model_test.csv", numLinesToSkip = 1)
+    void ensureAircraftModelCsvInvariants(final String testCaseId, final String code,
+                                           final String name, final String manufacturerName,
+                                           final String aircraftType, final String maxPassengersStr,
+                                           final boolean expectedValid) {
+        final var amCode = (code == null || code.isBlank()) ? null : new AircraftModelCode(code);
+        final var manName = (manufacturerName == null || manufacturerName.isBlank()) ? null : new ManufacturerName(manufacturerName);
+        final var aType = (aircraftType == null || aircraftType.isBlank()) ? null : AircraftType.valueOf(aircraftType);
+        final Integer maxPax = (maxPassengersStr == null || maxPassengersStr.isBlank()) ? null : Integer.valueOf(maxPassengersStr);
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new AircraftModel(
+                    amCode, name, manName, aType, maxPax,
+                    new AircraftWeights(41140, 79016, 62732, 26020),
+                    new AircraftPerformance(12500, 447, 3500),
+                    new AerodynamicCoefficients(125.0, 0.032, 1.2)));
+        } else {
+            assertThrows(Exception.class, () -> new AircraftModel(
+                    amCode, name, manName, aType, maxPax,
+                    new AircraftWeights(41140, 79016, 62732, 26020),
+                    new AircraftPerformance(12500, 447, 3500),
+                    new AerodynamicCoefficients(125.0, 0.032, 1.2)));
+        }
     }
 }

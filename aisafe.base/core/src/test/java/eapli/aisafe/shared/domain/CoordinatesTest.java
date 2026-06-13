@@ -1,6 +1,8 @@
 package eapli.aisafe.shared.domain;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -96,5 +98,16 @@ class CoordinatesTest {
         final String s = c.toString();
         assertTrue(s.contains("41.0"), "toString should contain latitude");
         assertTrue(s.contains("-8.0"), "toString should contain longitude");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/coordinates_test.csv", numLinesToSkip = 1)
+    void ensureCoordinatesCsvInvariants(final String testCaseId, final double latitude,
+                                         final double longitude, final boolean expectedValid) {
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new Coordinates(latitude, longitude));
+        } else {
+            assertThrows(Exception.class, () -> new Coordinates(latitude, longitude));
+        }
     }
 }

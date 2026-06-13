@@ -71,7 +71,7 @@ The `FlightPlan` aggregate will act as the operational instantiation of a `Fligh
 
 **Sequence Diagram — Create Flight Plan:**
 
-![Sequence Diagram — Create Flight Plan]([sd_us080_create_flight_plan.png)
+![Sequence Diagram — Create Flight Plan](sds/images/sd_us080_create_flight_plan.png)
 
 ### 4.2 Acceptance Tests
 

@@ -1,0 +1,8 @@
+testCaseId,flightPlanId,expectedValid
+FID01,FP001,true
+FID02,,false
+FID03,   ,false
+FID04,ABCDEFGHIJKLMNOPQRSTU,false
+FID05,FP@123,false
+FID06,FP002,true
+FID07,FP999,true

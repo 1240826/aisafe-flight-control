@@ -329,4 +329,62 @@ class TestFlightPlanControllerTest {
                 ============================================
                 """, violations, violations);
     }
+
+    @Test
+    void ensureTestFlightPlanWithDesignatorFlightNotFoundThrows() {
+        when(flightRepo.ofIdentity(FlightDesignator.valueOf("TP9999")))
+                .thenReturn(java.util.Optional.empty());
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.testFlightPlan("TP9999", "FP001"));
+    }
+
+    @Test
+    void ensureAllTestedEntriesReturnsOnlyTestedPlans() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("FP001"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        fp.markAsInTest();
+        fp.recordTestResult(true, null, "report content");
+        when(flightRepo.findAll()).thenReturn(List.of(flight));
+
+        final var result = controller.allTestedEntries();
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void ensureAllTestedEntriesSkipsNonTestedPlans() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        flight.addFlightPlan(FlightPlanId.valueOf("FP001"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        when(flightRepo.findAll()).thenReturn(List.of(flight));
+
+        final var result = controller.allTestedEntries();
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void ensureAllTestedEntriesChecksAuthorization() {
+        when(flightRepo.findAll()).thenReturn(List.of());
+        controller.allTestedEntries();
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
+
+    @Test
+    void ensureAllDraftEntriesReturnsDraftPlans() {
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        final var fp = flight.addFlightPlan(FlightPlanId.valueOf("TP1234"),
+                "departure LIS 10:00; arrival OPO 11:00");
+        when(flightRepo.findAll()).thenReturn(List.of(flight));
+
+        final var result = controller.allDraftEntries();
+        assertFalse(result.isEmpty());
+    }
+
+    @Test
+    void ensureAllDraftEntriesChecksAuthorization() {
+        when(flightRepo.findAll()).thenReturn(List.of());
+        controller.allDraftEntries();
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
 }

@@ -44,6 +44,25 @@ public class RemoteAtcService {
         this.removePilotCtrl    = new RemovePilotController();
     }
 
+    /** Package-private testing constructor — allows injecting mocks. */
+    RemoteAtcService(final AddAircraftController addAircraftCtrl,
+                      final DecommissionAircraftController decommAircraftCtrl,
+                      final ListCompanyFleetController listFleetCtrl,
+                      final CreateFlightRouteController createRouteCtrl,
+                      final DeleteFlightRouteController deleteRouteCtrl,
+                      final AddPilotController addPilotCtrl,
+                      final ListPilotRosterController listPilotsCtrl,
+                      final RemovePilotController removePilotCtrl) {
+        this.addAircraftCtrl = addAircraftCtrl;
+        this.decommAircraftCtrl = decommAircraftCtrl;
+        this.listFleetCtrl = listFleetCtrl;
+        this.createRouteCtrl = createRouteCtrl;
+        this.deleteRouteCtrl = deleteRouteCtrl;
+        this.addPilotCtrl = addPilotCtrl;
+        this.listPilotsCtrl = listPilotsCtrl;
+        this.removePilotCtrl = removePilotCtrl;
+    }
+
     // ── ADD_AIRCRAFT: regNumber|regCountry|modelCode|companyIata|crewMembers|date
 
     public String addAircraft(final String regNumber, final String regCountry,

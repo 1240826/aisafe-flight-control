@@ -154,4 +154,24 @@ class EditCollaboratorControllerTest {
         verify(repo).findAllActive();
         assertNotNull(result);
     }
+
+    @Test
+    void ensureEditCollaboratorUpdatesAssessmentAndSaves() {
+        final Collaborator collab = makeCollaborator();
+        when(repo.ofIdentity(1L)).thenReturn(Optional.of(collab));
+        when(repo.save(collab)).thenReturn(collab);
+        final LocalDate newAssessment = LocalDate.now().minusDays(5);
+
+        final Collaborator result = controller.editCollaborator(1L, null, null, null, null, newAssessment);
+
+        assertEquals(newAssessment, result.skillsAssessment().assessmentDate());
+        verify(repo).save(collab);
+    }
+
+    @Test
+    void ensureActiveCollaboratorsChecksAuthorization() {
+        when(repo.findAllActive()).thenReturn(List.of());
+        controller.activeCollaborators();
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
 }

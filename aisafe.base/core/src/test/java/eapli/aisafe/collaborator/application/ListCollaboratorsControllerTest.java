@@ -95,6 +95,13 @@ class ListCollaboratorsControllerTest {
         assertNotNull(result);
     }
 
+    @Test
+    void ensureAllActiveCollaboratorsChecksAuthorization() {
+        when(collaboratorRepo.findAllActive()).thenReturn(List.of());
+        controller.allActiveCollaborators();
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
+
     // ── All companies ─────────────────────────────────────────────────────────
 
     @Test

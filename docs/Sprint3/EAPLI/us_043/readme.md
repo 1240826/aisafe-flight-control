@@ -69,7 +69,7 @@ eapli.aisafe.weatherdata.application
 
 **Sequence Diagram — Consult Weather Data:**
 
-![Sequence Diagram — Consult Weather Data](sd_us043_consult_weather_data.puml)
+![Sequence Diagram — Consult Weather Data](sds/images/sd_us043_consult_weather_data.png)
 
 ### 4.2 Acceptance Tests
 

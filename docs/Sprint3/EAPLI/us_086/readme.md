@@ -138,8 +138,14 @@ Then all persistence access occurs only through the application/repository layer
 
 ### 4.1 Realization
 
-The sequence diagram for the full remote access flow is in the RCOMP US86 documentation:
-`docs/Sprint3/RCOMP/us_086/sd_us086_pilot_remote_access.puml`
+**Sequence Diagram — RemotePilotService Facade:**
+
+![Sequence Diagram — RemotePilotService Facade](sds/images/sd_us086_remote_pilot_service.png)
+
+The PlantUML source is at `sds/uml/sd_us086_remote_pilot_service.puml`.
+
+The full TCP-level remote access flow is documented in the RCOMP US86 documentation:
+`docs/Sprint3/RCOMP/us_086/sds/uml/sd_us086_pilot_remote_access.puml`
 
 ---
 

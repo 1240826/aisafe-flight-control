@@ -1,0 +1,9 @@
+testCaseId,description,expectedValid
+UB01,Test valid password policy builder creation,true
+UB02,Test builder uses correct types,true
+UB03,Test builder uses AISafePasswordPolicy,true
+UB04,Test builder uses PlainTextEncoder,true
+UB05,Test builder is not null,true
+UB06,Test builder has valid passwordPolicy,true
+UB07,Test builder has valid passwordEncoder,true
+UB08,Test builder is fully configured,true

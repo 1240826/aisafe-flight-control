@@ -1,0 +1,7 @@
+testCaseId,collaboratorType,name,position,companyIata,areaCode,expectedValid
+CL01,ATC,Alice Smith,ATC Officer,TP,,true
+CL02,ATC,,ATC Officer,TP,,false
+CL03,ATC,Alice Smith,,TP,,false
+CL04,FCO,Bob Jones,FCO Senior,,LPPC,true
+CL05,WEATHER,Carol White,Meteorologist,,LPPC,true
+CL06,ATC,Alice Smith,ATC Officer,,,false

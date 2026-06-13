@@ -107,7 +107,7 @@ the target flight from this filtered list.
 
 **Sequence Diagram:**
 
-![Sequence Diagram](sd_us082_add_weather_data_to_flight.svg)
+![Sequence Diagram](sds/images/sd_us082_add_weather_data_to_flight.svg)
 
 ### 4.2 Controller Acceptance Tests
 

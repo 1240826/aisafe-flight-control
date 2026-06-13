@@ -9,6 +9,7 @@ import eapli.framework.infrastructure.authz.application.AuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -60,5 +61,43 @@ class CreateFlightRouteControllerTest {
         controller.createFlightRoute("TP123", "TP", "OPO", "LIS");
 
         verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
+
+    // ── Support methods ─────────────────────────────────────────────────────
+
+    @Test
+    void ensureAllAirportsDelegatesToRepo() {
+        when(airportRepo.findAll()).thenReturn(List.of());
+        final var result = controller.allAirports();
+        verify(airportRepo).findAll();
+        assertNotNull(result);
+    }
+
+    @Test
+    void ensureAllCompaniesDelegatesToRepo() {
+        when(companyRepo.findAll()).thenReturn(List.of());
+        final var result = controller.allCompanies();
+        verify(companyRepo).findAll();
+        assertNotNull(result);
+    }
+
+    @Test
+    void ensureRouteExistsReturnsTrueWhenFound() {
+        when(routeRepo.ofIdentity(FlightRouteName.valueOf("TP123"))).thenReturn(Optional.of(mock(FlightRoute.class)));
+        assertTrue(controller.routeExists("TP123"));
+    }
+
+    @Test
+    void ensureRouteExistsReturnsFalseWhenNotFound() {
+        when(routeRepo.ofIdentity(FlightRouteName.valueOf("XY999"))).thenReturn(Optional.empty());
+        assertFalse(controller.routeExists("XY999"));
+    }
+
+    @Test
+    void ensureAllActiveRoutesDelegatesToRepo() {
+        when(routeRepo.findAllActive()).thenReturn(List.of());
+        final var result = controller.allActiveRoutes();
+        verify(routeRepo).findAllActive();
+        assertNotNull(result);
     }
 }

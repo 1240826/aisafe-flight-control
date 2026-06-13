@@ -70,7 +70,7 @@ The `FlightRoute` aggregate root will need to reference two `Airport` entities (
 
 **Sequence Diagram — Create Flight Route:**
 
-![Sequence Diagram — Create Flight Route](sd_us073_create_flight_route.png)
+![Sequence Diagram — Create Flight Route](sds/images/sd_us073_create_flight_route.png)
 
 ### 4.2 Acceptance Tests
 

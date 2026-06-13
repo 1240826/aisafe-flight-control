@@ -4,6 +4,7 @@ import eapli.aisafe.aircontrolarea.domain.AreaCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvFileSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.BufferedReader;
@@ -151,6 +152,28 @@ class WeatherDataTest {
             throw new RuntimeException("Failed to load CSV test data", e);
         }
         return rows.stream();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us043/weather_data_test.csv", numLinesToSkip = 1)
+    void ensureWeatherDataCsvInvariants(final String testCaseId, final String areaCodeStr,
+                                         final double windSpeed, final int windDir,
+                                         final double windLat, final double windLon,
+                                         final int windAlt, final double temperature,
+                                         final String sourceProvider, final String dateStr,
+                                         final String timeStr, final boolean expectedValid) {
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new WeatherData(
+                    AreaCode.valueOf(areaCodeStr),
+                    new WindCondition(windSpeed, windDir, windLat, windLon, windAlt),
+                    temperature, sourceProvider, parseDateTime(dateStr, timeStr)));
+        } else {
+            assertThrows(Exception.class, () -> new WeatherData(
+                    areaCodeStr == null || areaCodeStr.isBlank() ? null : AreaCode.valueOf(areaCodeStr),
+                    new WindCondition(windSpeed, windDir, windLat, windLon, windAlt),
+                    temperature, sourceProvider,
+                    timeStr == null || timeStr.isBlank() ? null : parseDateTime(dateStr, timeStr)));
+        }
     }
 
     private static LocalDateTime parseDateTime(final String dateStr, final String timeStr) {

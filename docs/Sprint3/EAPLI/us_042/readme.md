@@ -111,7 +111,7 @@ changes are required.
 
 **Sequence Diagram:**
 
-![Sequence Diagram](sd_us042_import_weather_data.svg)
+![Sequence Diagram](sds/images/sd_us042_import_weather_data.svg)
 
 ### 4.2 Acceptance Tests
 

@@ -155,8 +155,8 @@ TestFlightPlanController.testScenario(entries)
 
 ### 4.1 Sequence Diagrams
 
-- **Happy path:** `sd_us085_test_flight_plan.puml` — DSL passes → JSON export → C simulator → report parsed → TEST_PASSED
-- **Failure paths:** `sd_us085_validation_failures.puml` — DSL fails, C simulator reports violations
+- **Happy path:** `sds/uml/sd_us085_test_flight_plan.puml` — DSL passes → JSON export → C simulator → report parsed → TEST_PASSED
+- **Failure paths:** `sds/uml/sd_us085_validation_failures.puml` — DSL fails, C simulator reports violations
 
 ### 4.2 Realization
 

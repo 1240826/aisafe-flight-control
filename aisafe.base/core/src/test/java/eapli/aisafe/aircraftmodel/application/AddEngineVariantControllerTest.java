@@ -122,4 +122,12 @@ class AddEngineVariantControllerTest {
                 () -> controller.addVariant("B737", "CFM56", MotorizationType.TURBOFAN),
                 "Duplicate engine variant must be rejected");
     }
+
+    @Test
+    void ensureAllEngineModelsDelegatesToRepo() {
+        when(engineModelRepo.findAll()).thenReturn(List.of());
+        final var result = controller.allEngineModels();
+        verify(engineModelRepo).findAll();
+        assertNotNull(result);
+    }
 }

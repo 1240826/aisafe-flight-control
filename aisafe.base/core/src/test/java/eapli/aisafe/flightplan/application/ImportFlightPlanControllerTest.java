@@ -218,4 +218,92 @@ class ImportFlightPlanControllerTest {
         verify(flightRepo).ofIdentity(designator);
         verify(flight).flightPlans();
     }
+
+    @Test
+    void ensureFlightPlansForFlightUnknownThrows() {
+        when(flightRepo.ofIdentity(FlightDesignator.valueOf("TP9999")))
+                .thenReturn(java.util.Optional.empty());
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.flightPlansForFlight("TP9999"));
+    }
+
+    @Test
+    void ensureExistingFlightGetsUpdated() {
+        final var route = new FlightRoute(
+                FlightRouteName.valueOf("TP999"),
+                CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("LIS"),
+                AirportIATA.valueOf("CDG"));
+        when(flightRouteRepo.findByOriginAndDestinationAndCompany(any(), any(), any()))
+                .thenReturn(Optional.of(route));
+
+        final var aircraft = mock(Aircraft.class);
+        when(aircraft.isActive()).thenReturn(true);
+        when(aircraftRepo.findByRegistrationNumber(any())).thenReturn(Optional.of(aircraft));
+
+        final var pilot = mock(Pilot.class);
+        when(pilot.isActive()).thenReturn(true);
+        when(pilot.company()).thenReturn(CompanyIATA.valueOf("TP"));
+        when(pilotRepo.findByLicenseNumber(any())).thenReturn(Optional.of(pilot));
+
+        final var existingFlight = mock(Flight.class);
+        when(flightRepo.ofIdentity(FlightDesignator.valueOf("TP3000")))
+                .thenReturn(Optional.of(existingFlight));
+
+        final var result = controller.importFlightPlan(VALID_DSL, "test.flightplan", "AUTO");
+
+        assertTrue(result.lexicalPassed());
+    }
+
+    @Test
+    void ensureInactiveAircraftReturnsError() {
+        final var route = new FlightRoute(
+                FlightRouteName.valueOf("TP999"),
+                CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("LIS"),
+                AirportIATA.valueOf("CDG"));
+        when(flightRouteRepo.findByOriginAndDestinationAndCompany(any(), any(), any()))
+                .thenReturn(Optional.of(route));
+
+        final var aircraft = mock(Aircraft.class);
+        when(aircraft.isActive()).thenReturn(false);
+        when(aircraftRepo.findByRegistrationNumber(any())).thenReturn(Optional.of(aircraft));
+
+        final var result = controller.importFlightPlan(VALID_DSL, "test.flightplan", "FP001");
+
+        assertFalse(result.allPassed());
+        assertTrue(result.semanticErrors().stream().anyMatch(e -> e.contains("not active")));
+    }
+
+    @Test
+    void ensureInactivePilotReturnsError() {
+        final var route = new FlightRoute(
+                FlightRouteName.valueOf("TP999"),
+                CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("LIS"),
+                AirportIATA.valueOf("CDG"));
+        when(flightRouteRepo.findByOriginAndDestinationAndCompany(any(), any(), any()))
+                .thenReturn(Optional.of(route));
+
+        final var aircraft = mock(Aircraft.class);
+        when(aircraft.isActive()).thenReturn(true);
+        when(aircraftRepo.findByRegistrationNumber(any())).thenReturn(Optional.of(aircraft));
+
+        final var pilot = mock(Pilot.class);
+        when(pilot.isActive()).thenReturn(false);
+        when(pilotRepo.findByLicenseNumber(any())).thenReturn(Optional.of(pilot));
+
+        final var result = controller.importFlightPlan(VALID_DSL, "test.flightplan", "FP001");
+
+        assertFalse(result.allPassed());
+        assertTrue(result.semanticErrors().stream().anyMatch(e -> e.contains("not active")));
+    }
+
+    @Test
+    void ensureAllFlightsDelegatesToRepo() {
+        when(flightRepo.findAll()).thenReturn(List.of());
+        final var result = controller.allFlights();
+        verify(flightRepo).findAll();
+        assertNotNull(result);
+    }
 }

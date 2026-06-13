@@ -2,6 +2,8 @@ package eapli.aisafe.airport.domain;
 
 import eapli.aisafe.aircontrolarea.domain.AreaCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -192,5 +194,23 @@ class AirportTest {
                 "Humberto Delgado Airport", "Lisbon", "Portugal",
                 38.7739, -9.1340, new Elevation(114.0, "m"), new AreaCode("LPPC"));
         assertNotEquals(a1, a2);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/airport_test.csv", numLinesToSkip = 1)
+    void ensureAirportCsvInvariants(final String testCaseId, final String iata,
+                                     final String icao, final String name,
+                                     final String city, final String country,
+                                     final double lat, final double lon,
+                                     final String areaCode, final boolean expectedValid) {
+        final var iataVO = (iata == null || iata.isBlank()) ? null : new AirportIATA(iata);
+        final var icaoVO = (icao == null || icao.isBlank()) ? null : new AirportICAO(icao);
+        final var ac = (areaCode == null || areaCode.isBlank()) ? null : new AreaCode(areaCode);
+        final var elev = new Elevation(69.0, "m");
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new Airport(iataVO, icaoVO, name, city, country, lat, lon, elev, ac));
+        } else {
+            assertThrows(Exception.class, () -> new Airport(iataVO, icaoVO, name, city, country, lat, lon, elev, ac));
+        }
     }
 }

@@ -1,0 +1,9 @@
+testCaseId,iataCode,icaoCode,name,expectedValid
+TC01,RY,RYR,Ryanair,true
+TC02,TP,TAP,TAP Portugal,true
+TC03,RY,TAP,Empty Name,true
+TC04,,TAP,Some Company,false
+TC05,RY,,Some Company,false
+TC06,RY123,RYR,Invalid IATA,false
+TC07,R,RYP,Short IATA,false
+TC08,ry,RYR,Lowercase IATA,true

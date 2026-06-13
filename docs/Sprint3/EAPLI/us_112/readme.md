@@ -120,7 +120,7 @@ distribution.
 
 **Sequence Diagram:**
 
-![Sequence Diagram](sd_us112_monthly_report_generation.svg)
+![Sequence Diagram](sds/images/sd_us112_monthly_report_generation.svg)
 
 ### 4.2 Controller Tests
 

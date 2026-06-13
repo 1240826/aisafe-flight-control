@@ -1,0 +1,9 @@
+testCaseId,code,name,manufacturerName,aircraftType,maxPassengers,expectedValid
+AM01,B738,Boeing 737-800,Boeing,PASSENGER,189,true
+AM02,,Boeing 737-800,Boeing,PASSENGER,189,false
+AM03,B738,,Boeing,PASSENGER,189,false
+AM04,B738,Boeing 737-800,,PASSENGER,189,false
+AM05,B738,Boeing 737-800,Boeing,PASSENGER,0,false
+AM06,B738,Boeing 737-800,Boeing,PASSENGER,-1,false
+AM07,B738,Boeing 737-800,Boeing,CARGO,,true
+AM08,B738,Boeing 737-800,Boeing,PASSENGER,200,true

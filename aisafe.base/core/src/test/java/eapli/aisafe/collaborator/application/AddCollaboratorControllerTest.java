@@ -202,4 +202,18 @@ class AddCollaboratorControllerTest {
         verify(acaRepo).findAll();
         assertNotNull(result);
     }
+
+    @Test
+    void ensureAllCompaniesChecksAuthorization() {
+        when(companyRepo.findAll()).thenReturn(List.of());
+        controller.allCompanies();
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
+
+    @Test
+    void ensureAllAirControlAreasChecksAuthorization() {
+        when(acaRepo.findAll()).thenReturn(List.of());
+        controller.allAirControlAreas();
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
 }

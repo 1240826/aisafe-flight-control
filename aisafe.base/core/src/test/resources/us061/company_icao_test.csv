@@ -1,0 +1,31 @@
+﻿testCaseId,icaoCode,expectValid
+TC01,TAP,true
+TC02,RYR,true
+TC03,,false
+TC04,tap,true
+TC05,AB,true
+TC06,ABC,true
+TC07,ABCD,false
+TC08,AB1,false
+TC09,A,false
+TC10,T A,false
+TC11, TAP ,true
+TC12,123,false
+TC13,TAP,true
+TC14,tap,true
+TC15,ABC,true
+TC16,abc,true
+TC17,TAP,true
+TC18,TAP,true
+TC19,TAP,true
+TC20,TAP,true
+TC21,TAP,true
+TC22,TAP,true
+TC23,TAP,true
+TC24,TAP,true
+TC25,TAP,true
+TC26,TAP,true
+TC27,TAP,true
+TC28,TAP,true
+TC29,TAP,true
+TC30,tap,true

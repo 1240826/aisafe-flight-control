@@ -1,0 +1,5 @@
+testCaseId,startDate,startTime,endDate,endTime,expectedValid
+TR01,2026-06-01,08:00,2026-06-01,10:00,true
+TR02,2026-06-01,10:00,2026-06-01,08:00,false
+TR03,2026-06-01,08:00,2026-06-01,08:00,false
+TR04,2026-06-01,08:00,2026-06-02,08:00,true

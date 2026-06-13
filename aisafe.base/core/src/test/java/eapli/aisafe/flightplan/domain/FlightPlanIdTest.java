@@ -1,6 +1,8 @@
 package eapli.aisafe.flightplan.domain;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -56,5 +58,16 @@ class FlightPlanIdTest {
         assertTrue(a.compareTo(b) < 0);
         assertTrue(b.compareTo(a) > 0);
         assertEquals(0, a.compareTo(a));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us080/flight_plan_id_test.csv", numLinesToSkip = 1)
+    void ensureFlightPlanIdCsvInvariants(final String testCaseId, final String flightPlanId,
+                                          final boolean expectedValid) {
+        if (expectedValid) {
+            assertDoesNotThrow(() -> FlightPlanId.valueOf(flightPlanId));
+        } else {
+            assertThrows(Exception.class, () -> FlightPlanId.valueOf(flightPlanId));
+        }
     }
 }

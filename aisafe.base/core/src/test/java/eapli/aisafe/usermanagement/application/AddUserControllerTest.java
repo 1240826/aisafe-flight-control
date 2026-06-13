@@ -115,4 +115,44 @@ class AddUserControllerTest {
                         LocalDate.now().minusDays(1)),
                 "Past security clearance expiry date must be rejected");
     }
+
+    // ── Additional overloads ─────────────────────────────────────────────────
+
+    @Test
+    void ensureGetRoleTypesReturnsNonEmpty() {
+        final var roles = controller.getRoleTypes();
+        assertNotNull(roles);
+        assertTrue(roles.length > 0);
+    }
+
+    @Test
+    void ensureAddUserWithPhoneAndCalendarWorks() {
+        when(userSvc.registerNewUser(anyString(), anyString(), anyString(), anyString(),
+                anyString(), any(), any())).thenReturn(dummyUser("newuser"));
+
+        final SystemUser result = controller.addUser(
+                "newuser", "Password1!", "New", "User", "new@aisafe.pt",
+                Set.of(Role.valueOf("BACKOFFICE_OPERATOR")),
+                LocalDate.now().plusYears(1), "+351912345678",
+                java.util.Calendar.getInstance());
+
+        assertNotNull(result);
+        verify(userSvc).registerNewUser(anyString(), anyString(), anyString(), anyString(),
+                anyString(), any(), any());
+    }
+
+    @Test
+    void ensureAddUserWithPhoneConvenienceWorks() {
+        when(userSvc.registerNewUser(anyString(), anyString(), anyString(), anyString(),
+                anyString(), any(), any())).thenReturn(dummyUser("newuser"));
+
+        final SystemUser result = controller.addUser(
+                "newuser", "Password1!", "New", "User", "new@aisafe.pt",
+                Set.of(Role.valueOf("BACKOFFICE_OPERATOR")),
+                LocalDate.now().plusYears(1), "+351912345678");
+
+        assertNotNull(result);
+        verify(userSvc).registerNewUser(anyString(), anyString(), anyString(), anyString(),
+                anyString(), any(), any());
+    }
 }

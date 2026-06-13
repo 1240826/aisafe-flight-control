@@ -1,0 +1,138 @@
+@startuml sd_us086_remote_pilot_service
+title US086 — Pilot Remote Access (EAPLI Facade)
+
+skinparam sequenceMessageAlign center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ParticipantPadding 20
+
+autonumber
+
+actor "PilotClientHandler\n(RCOMP)" as handler <<TCP handler>>
+participant ":RemotePilotService" as facade <<application>>
+participant ":ListCompanyFleetController" as fleetCtrl <<application>>
+participant ":ImportFlightPlanController" as importCtrl <<application>>
+participant ":TestFlightPlanController" as testCtrl <<application>>
+participant ":GenerateSimulationReportController" as reportCtrl <<application>>
+participant ":GenerateMonthlyReportController" as monthlyCtrl <<application>>
+participant ":ListFlightRoutesController" as routesCtrl <<application>>
+participant ":AircraftRepository" as acRepo <<persistence>>
+participant ":FlightRepository" as flightRepo <<persistence>>
+participant ":SimulationRepository" as simRepo <<persistence>>
+
+== US072 — List Company Fleet ==
+
+handler -> facade : listFleet()
+activate facade
+facade -> fleetCtrl : allActiveAircraft()
+activate fleetCtrl
+fleetCtrl -> acRepo : findAllActive()
+activate acRepo
+acRepo --> fleetCtrl : Iterable<Aircraft>
+deactivate acRepo
+fleetCtrl --> facade : aircraft
+deactivate fleetCtrl
+facade -> facade : map to AircraftDTO list
+facade --> handler : List<AircraftDTO>
+deactivate facade
+
+== US080/US121 — Create/Import Flight Plan ==
+
+handler -> facade : createFlightPlan(flightId, dsl)
+activate facade
+facade -> importCtrl : importFlightPlan(dsl, "remote-" + flightId, flightId)
+activate importCtrl
+importCtrl -> importCtrl : ANTLR lexer + parser + semantic validation
+importCtrl -> importCtrl : validate route, aircraft, pilot
+importCtrl -> importCtrl : create Flight + FlightPlan in DRAFT status
+importCtrl -> flightRepo : save(flight)
+activate flightRepo
+flightRepo --> importCtrl : savedFlight
+deactivate flightRepo
+importCtrl --> facade : DslValidationResult
+deactivate importCtrl
+facade --> handler : DslValidationResult
+deactivate facade
+
+== US085 — Validate/Test Flight Plan ==
+
+handler -> facade : validateFlightPlan(flightPlanId)
+activate facade
+facade -> testCtrl : testFlightPlan(flightPlanId)
+activate testCtrl
+testCtrl -> testCtrl : check DRAFT status
+testCtrl -> testCtrl : check departure time
+testCtrl -> testCtrl : DSL re-validation
+testCtrl -> testCtrl : export JSON for simulator
+testCtrl -> testCtrl : run C simulation
+testCtrl -> testCtrl : parse report
+testCtrl -> testCtrl : record test result
+testCtrl -> flightRepo : save(flight)
+activate flightRepo
+flightRepo --> testCtrl : ok
+deactivate flightRepo
+testCtrl --> facade : TestResult(passed, message, reportContent)
+deactivate testCtrl
+facade --> handler : TestResult
+deactivate facade
+
+== US111 — Generate Simulation Report ==
+
+handler -> facade : generateReport(areaCode)
+activate facade
+facade -> reportCtrl : generateReport(areaCode)
+activate reportCtrl
+reportCtrl -> simRepo : findByAreaCode(areaCode)
+activate simRepo
+simRepo --> reportCtrl : Simulation
+deactivate simRepo
+reportCtrl -> reportCtrl : writeToFile(simulation, outputPath)
+reportCtrl --> facade : filePath (String)
+deactivate reportCtrl
+facade --> handler : String (file path)
+deactivate facade
+
+== US112 — Monthly Report Generation ==
+
+handler -> facade : monthlyReport(year, month)
+activate facade
+facade -> monthlyCtrl : generateForMonth(YearMonth.of(year, month))
+activate monthlyCtrl
+monthlyCtrl -> monthlyCtrl : resolve current user collaborator
+monthlyCtrl -> monthlyCtrl : get areaCode
+monthlyCtrl -> monthlyCtrl : aggregate all flights, weather, pilots, aircraft
+monthlyCtrl --> facade : MonthlyReport
+deactivate monthlyCtrl
+facade --> handler : MonthlyReport
+deactivate facade
+
+== List Flights ==
+
+handler -> facade : listFlights()
+activate facade
+facade -> testCtrl : allFlights()
+activate testCtrl
+testCtrl -> flightRepo : findAll()
+activate flightRepo
+flightRepo --> testCtrl : Iterable<Flight>
+deactivate flightRepo
+testCtrl --> facade : flights
+deactivate testCtrl
+facade -> facade : map to FlightDTO list
+facade --> handler : List<FlightDTO>
+deactivate facade
+
+== List Routes ==
+
+handler -> facade : listRoutes()
+activate facade
+facade -> routesCtrl : allRoutes()
+activate routesCtrl
+routesCtrl -> routesCtrl : query FlightRouteRepository
+routesCtrl --> facade : Iterable<FlightRoute>
+deactivate routesCtrl
+facade -> facade : map to FlightRouteDTO list
+facade --> handler : List<FlightRouteDTO>
+deactivate facade
+
+@enduml

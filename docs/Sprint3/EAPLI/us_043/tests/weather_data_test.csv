@@ -1,0 +1,6 @@
+testCaseId,areaCode,windSpeed,windDir,windLat,windLon,windAlt,temperature,sourceProvider,recordedDate,recordedTime,expectedValid
+WD01,LPPC,15.5,270,38.7,-9.1,1000,18.5,IPMA,14/05/2026,10:00,true
+WD02,LPPC,12.0,180,38.774,-9.134,5000,22.3,EUROCONTROL,15/05/2026,14:30,true
+WD03,,15.5,270,38.7,-9.1,1000,18.5,IPMA,14/05/2026,10:00,false
+WD04,LPPC,15.5,270,38.7,-9.1,1000,18.5,,14/05/2026,10:00,false
+WD05,LPPC,15.5,270,38.7,-9.1,1000,18.5,IPMA,14/05/2026,,false

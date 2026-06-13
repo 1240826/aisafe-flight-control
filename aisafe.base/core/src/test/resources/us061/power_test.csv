@@ -1,0 +1,11 @@
+testCaseId,powerValue,units,expectValid
+P01,100.0,kW,true
+P02,500.0,hp,true
+P03,1000.0,W,true
+P04,0.0,kW,false
+P05,-100.0,kW,false
+P06,100.0,invalidUnit,false
+P07,100.0,hp,true
+P08,50.5,W,true
+P09,999999.0,kW,true
+P10,100.0,kW,true

@@ -1,0 +1,20 @@
+# US082/FL - Flight domain validation (FlightDesignator)
+# Columns: testCaseId,designator,expectValid
+# --- Valid designators ---
+FL01,TP1234,true
+FL02,FR4567,true
+FL03,LH99,true
+FL04,AA12,true
+FL05,U21234,false
+FL06,BA1,true
+FL07,TK8A,true
+FL08,TP123A,true
+# --- Invalid designators ---
+FL09,,false
+FL10,   ,false
+FL11,ABC,false
+FL12,TP12345,false
+FL13,12ABCD,false
+FL14,TP-12,false
+FL15,TP 12,false
+FL16,tp,false

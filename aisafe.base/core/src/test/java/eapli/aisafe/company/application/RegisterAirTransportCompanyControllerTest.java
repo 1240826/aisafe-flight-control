@@ -102,4 +102,33 @@ class RegisterAirTransportCompanyControllerTest {
                 () -> controller.registerCompany("TP", "TAP", ""),
                 "Blank company name must be rejected");
     }
+
+    // ── Duplicate checks ────────────────────────────────────────────────────
+
+    @Test
+    void ensureRegisterCompanyWithDuplicateIataThrows() {
+        when(repo.ofIdentity(CompanyIATA.valueOf("TP"))).thenReturn(
+                java.util.Optional.of(mock(AirTransportCompany.class)));
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.registerCompany("TP", "TAP", "TAP Air Portugal"));
+    }
+
+    @Test
+    void ensureRegisterCompanyWithDuplicateIcaoThrows() {
+        when(repo.ofIdentity(any())).thenReturn(java.util.Optional.empty());
+        when(repo.findByIcao(CompanyICAO.valueOf("TAP"))).thenReturn(
+                java.util.Optional.of(mock(AirTransportCompany.class)));
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.registerCompany("TP", "TAP", "TAP Air Portugal"));
+    }
+
+    @Test
+    void ensureRegisterCompanyWithDuplicateNameThrows() {
+        when(repo.ofIdentity(any())).thenReturn(java.util.Optional.empty());
+        when(repo.findByIcao(any())).thenReturn(java.util.Optional.empty());
+        when(repo.findByName("TAP Air Portugal")).thenReturn(
+                java.util.Optional.of(mock(AirTransportCompany.class)));
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.registerCompany("TP", "TAP", "TAP Air Portugal"));
+    }
 }

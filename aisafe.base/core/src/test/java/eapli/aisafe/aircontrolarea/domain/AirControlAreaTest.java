@@ -1,6 +1,8 @@
 package eapli.aisafe.aircontrolarea.domain;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -176,5 +178,21 @@ class AirControlAreaTest {
                 37.0, 42.0,
                 -10.0, -6.0,
                 14000));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/area_test.csv", numLinesToSkip = 1)
+    void ensureAirControlAreaCsvInvariants(final String testCaseId, final String code,
+                                            final String name,
+                                            final double minLat, final double maxLat,
+                                            final double minLon, final double maxLon,
+                                            final int maxAlt, final boolean expectedValid) {
+        final var areaCode = (code == null || code.isBlank()) ? null : new AreaCode(code);
+        final var areaName = (name == null || name.isBlank()) ? null : new AreaName(name);
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new AirControlArea(areaCode, areaName, minLat, maxLat, minLon, maxLon, maxAlt));
+        } else {
+            assertThrows(Exception.class, () -> new AirControlArea(areaCode, areaName, minLat, maxLat, minLon, maxLon, maxAlt));
+        }
     }
 }

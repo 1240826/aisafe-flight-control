@@ -1,0 +1,8 @@
+testCaseId,name,country,expectedValid
+MF01,Airbus,France,true
+MF02,Boeing,United States,true
+MF03,,France,false
+MF04,Airbus,,false
+MF05,   ,France,false
+MF06,Airbus,   ,false
+MF07,Embraer,Brazil,true

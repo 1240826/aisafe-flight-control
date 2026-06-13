@@ -96,4 +96,18 @@ class RegisterManufacturerControllerTest {
                 () -> controller.registerManufacturer(null, "USA"),
                 "Null manufacturer name must be rejected");
     }
+
+    // ── Remove manufacturer ─────────────────────────────────────────────────
+
+    @Test
+    void ensureRemoveManufacturerDelegatesToRepo() {
+        controller.removeManufacturer("Boeing");
+        verify(repo).deleteOfIdentity(any());
+    }
+
+    @Test
+    void ensureRemoveManufacturerChecksAuthorization() {
+        controller.removeManufacturer("Boeing");
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
 }

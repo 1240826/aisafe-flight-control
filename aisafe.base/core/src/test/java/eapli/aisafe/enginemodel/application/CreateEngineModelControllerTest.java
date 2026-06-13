@@ -175,4 +175,12 @@ class CreateEngineModelControllerTest {
                         0.36, "lb/(lbf.h)"),
                 "Blank manufacturer name must be rejected");
     }
+
+    @Test
+    void ensureAllManufacturersDelegatesToRepo() {
+        when(manufacturerRepo.findAll()).thenReturn(List.of());
+        final var result = controller.allManufacturers();
+        verify(manufacturerRepo).findAll();
+        assertNotNull(result);
+    }
 }

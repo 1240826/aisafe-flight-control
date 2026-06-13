@@ -114,4 +114,21 @@ class SaveSimulationControllerTest {
                         "/tmp/scomp_output.txt", "SCOMP RESULT: OK"),
                 "Blank threshold unit must be rejected");
     }
+
+    // ── allAirControlAreas ──────────────────────────────────────────────────
+
+    @Test
+    void ensureAllAirControlAreasDelegatesToAcaRepo() {
+        when(acaRepo.findAll()).thenReturn(List.of());
+        final var result = controller.allAirControlAreas();
+        verify(acaRepo).findAll();
+        assertNotNull(result);
+    }
+
+    @Test
+    void ensureAllAirControlAreasChecksAuthorization() {
+        when(acaRepo.findAll()).thenReturn(List.of());
+        controller.allAirControlAreas();
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any(), any());
+    }
 }

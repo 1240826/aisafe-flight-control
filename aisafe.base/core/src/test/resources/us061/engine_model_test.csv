@@ -1,0 +1,9 @@
+testCaseId,code,engineName,manufacturerName,fuelType,motorizationType,expectedValid
+EM01,CFM56-7B,CFM56,CFM International,Jet-A1,TURBOFAN,true
+EM02,,CFM56,CFM International,Jet-A1,TURBOFAN,false
+EM03,CFM56-7B,,CFM International,Jet-A1,TURBOFAN,false
+EM04,CFM56-7B,CFM56,,Jet-A1,TURBOFAN,false
+EM05,CFM56-7B,CFM56,CFM International,,TURBOFAN,false
+EM06,CFM56-7B,CFM56,CFM International,Jet-A1,,false
+EM07,CFM56-7B,CFM56,CFM International,Jet-A1,TURBOPROP,true
+EM08,CFM56-7B,CFM56,CFM International,AvGas 100LL,TURBOFAN,true

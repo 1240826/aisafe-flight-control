@@ -1,0 +1,6 @@
+testCaseId,pilotId,companyIata,certifiedModels,certificationDate,expectedValid
+PL01,P12345,TP,B738,2026-01-15,true
+PL02,,TP,B738,2026-01-15,false
+PL03,P12345,,B738,2026-01-15,false
+PL04,P12345,TP,,2026-01-15,false
+PL05,P99999,FR,A320,2026-01-15,true

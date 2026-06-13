@@ -2,11 +2,15 @@ package eapli.aisafe.flight.domain;
 
 import eapli.aisafe.flightplan.domain.FlightPlanId;
 import eapli.aisafe.flightplan.domain.FlightPlanStatus;
+import eapli.aisafe.flightroute.domain.FlightRouteName;
+import eapli.aisafe.pilot.domain.PilotId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -215,5 +219,22 @@ class FlightTest {
         flight.updateFromDsl(newTime, null, "CS-TTT", null);
         assertEquals(newTime, flight.departureTime());
         assertEquals("CS-TTT", flight.aircraftRegistration());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us074/flight_test.csv", numLinesToSkip = 1)
+    void ensureFlightCsvInvariants(final String testCaseId, final String designator,
+                                    final String departureDate, final String departureTime,
+                                    final String routeName, final String aircraftReg,
+                                    final String pilotLicense, final boolean expectedValid) {
+        final var fd = (designator == null || designator.isBlank()) ? null : FlightDesignator.valueOf(designator);
+        final var dt = LocalDateTime.of(LocalDate.parse(departureDate), LocalTime.parse(departureTime));
+        final var rn = (routeName == null || routeName.isBlank()) ? null : FlightRouteName.valueOf(routeName);
+        final var pl = (pilotLicense == null || pilotLicense.isBlank()) ? null : PilotId.valueOf(pilotLicense);
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new Flight(fd, dt, rn, aircraftReg, pl));
+        } else {
+            assertThrows(Exception.class, () -> new Flight(fd, dt, rn, aircraftReg, pl));
+        }
     }
 }

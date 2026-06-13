@@ -3,6 +3,8 @@ package eapli.aisafe.flightplan.domain;
 import eapli.aisafe.flight.domain.Flight;
 import eapli.aisafe.flight.domain.FlightDesignator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import java.time.LocalDateTime;
 
@@ -129,5 +131,18 @@ class FlightPlanTest {
     void ensureIdentity() {
         final var fp = validFlightPlan();
         assertEquals(FlightPlanId.valueOf("FP001"), fp.identity());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us080/flight_plan_test.csv", numLinesToSkip = 1)
+    void ensureFlightPlanCsvInvariants(final String testCaseId, final String flightPlanId,
+                                        final String dslContent, final boolean expectedValid) {
+        final var fpId = (flightPlanId == null || flightPlanId.isBlank()) ? null : FlightPlanId.valueOf(flightPlanId);
+        final var flight = new Flight(FlightDesignator.valueOf("TP1234"), DEP_TIME);
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new FlightPlan(flight, fpId, dslContent));
+        } else {
+            assertThrows(Exception.class, () -> new FlightPlan(flight, fpId, dslContent));
+        }
     }
 }

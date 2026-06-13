@@ -1,0 +1,9 @@
+testCaseId,code,name,minLat,maxLat,minLon,maxLon,maxAlt,expectedValid
+AR01,LPPC,Lisboa FIR,37.0,42.0,-10.0,-6.0,14000,true
+AR02,,Lisboa FIR,37.0,42.0,-10.0,-6.0,14000,false
+AR03,LPPC,,37.0,42.0,-10.0,-6.0,14000,false
+AR04,LPPC,Lisboa FIR,42.0,37.0,-10.0,-6.0,14000,false
+AR05,LPPC,Lisboa FIR,37.0,42.0,-6.0,-10.0,14000,false
+AR06,LPPC,Lisboa FIR,37.0,42.0,-10.0,-6.0,0,false
+AR07,LPPC,Lisboa FIR,37.0,42.0,-10.0,-6.0,-1,false
+AR08,LPPO,Porto FIR,40.0,44.0,-11.0,-7.0,14000,true

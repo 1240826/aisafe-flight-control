@@ -1,0 +1,6 @@
+testCaseId,flightPlanId,dslContent,expectedValid
+FP01,FP001,departure LIS; arrival OPO;,true
+FP02,,departure LIS; arrival OPO;,false
+FP03,FP001,,false
+FP04,FP001,   ,false
+FP05,FP002,departure OPO; arrival MAD;,true

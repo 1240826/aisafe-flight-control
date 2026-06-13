@@ -1,0 +1,26 @@
+testCaseId,country,expectedValid
+US01,Australia,true
+US02,Brazil,true
+US03,Canada,true
+US04,China,true
+US05,Colombia,true
+US06,DR Congo,true
+US07,France,true
+US08,Germany,true
+US09,Iceland,true
+US10,Ireland,true
+US11,Italy,true
+US12,Japan,true
+US13,Kazakhstan,true
+US14,Mexico,true
+US15,Mozambique,true
+US16,Netherlands,true
+US17,Norway,true
+US18,Portugal,true
+US19,Russia,true
+US20,Singapore,true
+US21,South Africa,true
+US22,Spain,true
+US23,Switzerland,true
+US24,United Kingdom,true
+US25,United States,true

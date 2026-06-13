@@ -154,4 +154,18 @@ class RegisterWeatherDataControllerTest {
                 "Non-existent ACA must be rejected");
     }
 
+    @Test
+    void ensureAllAirControlAreasDelegatesToAcaRepo() {
+        when(acaRepo.findAll()).thenReturn(List.of());
+        final var result = controller.allAirControlAreas();
+        verify(acaRepo).findAll();
+        assertNotNull(result);
+    }
+
+    @Test
+    void ensureAllAirControlAreasChecksAuthorization() {
+        when(acaRepo.findAll()).thenReturn(List.of());
+        controller.allAirControlAreas();
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
 }

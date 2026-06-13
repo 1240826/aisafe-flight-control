@@ -1,0 +1,9 @@
+testCaseId,registration,country,modelCode,companyIata,crewMembers,expectedValid
+AC01,CS-TFG,Portugal,B738,TP,2,true
+AC02,,Portugal,B738,TP,2,false
+AC03,CS-TFG,,B738,TP,2,false
+AC04,CS-TFG,Portugal,,TP,2,false
+AC05,CS-TFG,Portugal,B738,,2,false
+AC06,CS-TFG,Portugal,B738,TP,0,false
+AC07,CS-TFG,Portugal,B738,TP,-1,false
+AC08,CS-ABC,Portugal,A320,FR,4,true

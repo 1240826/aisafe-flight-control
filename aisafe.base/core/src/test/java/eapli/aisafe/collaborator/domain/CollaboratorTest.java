@@ -8,6 +8,8 @@ import eapli.framework.infrastructure.authz.domain.model.Role;
 import eapli.framework.infrastructure.authz.domain.model.SystemUser;
 import eapli.framework.infrastructure.authz.domain.model.SystemUserBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import java.time.LocalDate;
 
@@ -310,5 +312,35 @@ class CollaboratorTest {
         c.updatePhone("+351912345678");
         c.updatePhone(null);
         assertNull(c.phone(), "Null phone must clear the value");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us050/collaborator_test.csv", numLinesToSkip = 1)
+    void ensureCollaboratorCsvInvariants(final String testCaseId, final String collaboratorType,
+                                          final String name, final String position,
+                                          final String companyIata, final String areaCode,
+                                          final boolean expectedValid) {
+        final var systemUser = dummySystemUser();
+        final var clearance = validClearance();
+        final var assessment = validAssessment();
+        final var ci = (companyIata == null || companyIata.isBlank()) ? null : new CompanyIATA(companyIata);
+        final var ac = (areaCode == null || areaCode.isBlank()) ? null : new AreaCode(areaCode);
+        if (expectedValid) {
+            if ("ATC".equals(collaboratorType)) {
+                assertDoesNotThrow(() -> Collaborator.ofATC(systemUser, name, position, clearance, assessment, ci));
+            } else if ("FCO".equals(collaboratorType)) {
+                assertDoesNotThrow(() -> Collaborator.ofFlightControlOperator(systemUser, name, position, clearance, assessment, ac));
+            } else {
+                assertDoesNotThrow(() -> Collaborator.ofWeatherPerson(systemUser, name, position, clearance, assessment, ac));
+            }
+        } else {
+            if ("ATC".equals(collaboratorType)) {
+                assertThrows(Exception.class, () -> Collaborator.ofATC(systemUser, name, position, clearance, assessment, ci));
+            } else if ("FCO".equals(collaboratorType)) {
+                assertThrows(Exception.class, () -> Collaborator.ofFlightControlOperator(systemUser, name, position, clearance, assessment, ac));
+            } else {
+                assertThrows(Exception.class, () -> Collaborator.ofWeatherPerson(systemUser, name, position, clearance, assessment, ac));
+            }
+        }
     }
 }

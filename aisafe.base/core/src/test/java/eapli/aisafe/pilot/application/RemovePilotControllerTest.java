@@ -123,4 +123,46 @@ class RemovePilotControllerTest {
         controller.allPilots();
         verify(authz).ensureAuthenticatedUserHasAnyOf(any());
     }
+
+    // ── Activate pilot ──────────────────────────────────────────────────────
+
+    @Test
+    void ensureActivatePilotSavesPilot() {
+        activePilot.deactivate();
+        when(pilotRepo.findByLicenseNumber(PILOT_ID)).thenReturn(Optional.of(activePilot));
+        when(pilotRepo.save(activePilot)).thenReturn(activePilot);
+
+        final Pilot result = controller.activatePilot(PILOT_ID);
+
+        verify(pilotRepo).save(activePilot);
+        assertNotNull(result);
+        assertTrue(result.isActive());
+    }
+
+    @Test
+    void ensureActivatePilotNotFoundThrows() {
+        when(pilotRepo.findByLicenseNumber(PILOT_ID)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.activatePilot(PILOT_ID));
+    }
+
+    @Test
+    void ensureActivateAlreadyActivePilotThrows() {
+        when(pilotRepo.findByLicenseNumber(PILOT_ID)).thenReturn(Optional.of(activePilot));
+
+        assertThrows(IllegalStateException.class,
+                () -> controller.activatePilot(PILOT_ID));
+    }
+
+    @Test
+    void ensureActivatePilotChecksAuthorization() {
+        activePilot.deactivate();
+        when(pilotRepo.findByLicenseNumber(PILOT_ID)).thenReturn(Optional.of(activePilot));
+        when(pilotRepo.save(any())).thenReturn(activePilot);
+
+        controller.activatePilot(PILOT_ID);
+
+        verify(authz).ensureAuthenticatedUserHasAnyOf(any());
+    }
 }

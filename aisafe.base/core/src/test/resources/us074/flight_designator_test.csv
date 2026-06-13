@@ -1,0 +1,15 @@
+testCaseId,designator,expectedValid
+FD01,TP1234,true
+FD02,FR4567,true
+FD03,LH99,true
+FD04,,false
+FD05,   ,false
+FD06,ABC,false
+FD07,TP12345,false
+FD08,12ABCD,false
+FD09,TP-12,false
+FD10,TP 12,false
+FD11,tp,false
+FD12,BA1,true
+FD13,TK8A,true
+FD14,TP123A,true

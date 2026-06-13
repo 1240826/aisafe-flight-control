@@ -1,0 +1,8 @@
+testCaseId,name,companyIata,originIata,destinationIata,expectedValid
+FR01,TP123,TP,OPO,LIS,true
+FR02,,TP,OPO,LIS,false
+FR03,TP123,,OPO,LIS,false
+FR04,TP123,TP,,LIS,false
+FR05,TP123,TP,OPO,,false
+FR06,TP123,TP,OPO,OPO,false
+FR07,FR456,FR,LIS,MAD,true

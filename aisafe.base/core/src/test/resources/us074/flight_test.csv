@@ -1,0 +1,6 @@
+testCaseId,designator,departureDate,departureTime,routeName,aircraftReg,pilotLicense,expectedValid
+FL01,TP1234,2026-06-02,10:00,TP123,CS-TFG,P12345,true
+FL02,,2026-06-02,10:00,TP123,CS-TFG,P12345,false
+FL03,TP1234,2026-06-02,10:00,,CS-TFG,P12345,false
+FL04,TP1234,2026-06-02,10:00,TP123,,P12345,false
+FL05,TP1234,2026-06-02,10:00,TP123,CS-TFG,,false

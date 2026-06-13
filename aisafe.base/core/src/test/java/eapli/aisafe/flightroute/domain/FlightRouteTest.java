@@ -165,4 +165,20 @@ class FlightRouteTest {
             assertThrows(Exception.class, () -> FlightRouteName.valueOf(nameInput));
         }
     }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us074/flight_route_test.csv", numLinesToSkip = 1)
+    void ensureFlightRouteCsvInvariants(final String testCaseId, final String name,
+                                         final String companyIata, final String originIata,
+                                         final String destinationIata, final boolean expectedValid) {
+        final var routeName = (name == null || name.isBlank()) ? null : FlightRouteName.valueOf(name);
+        final var company = (companyIata == null || companyIata.isBlank()) ? null : CompanyIATA.valueOf(companyIata);
+        final var origin = (originIata == null || originIata.isBlank()) ? null : AirportIATA.valueOf(originIata);
+        final var dest = (destinationIata == null || destinationIata.isBlank()) ? null : AirportIATA.valueOf(destinationIata);
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new FlightRoute(routeName, company, origin, dest));
+        } else {
+            assertThrows(Exception.class, () -> new FlightRoute(routeName, company, origin, dest));
+        }
+    }
 }

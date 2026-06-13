@@ -1,6 +1,8 @@
 package eapli.aisafe.flight.domain;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -88,5 +90,16 @@ class FlightDesignatorTest {
         assertTrue(d1.compareTo(d2) < 0);
         assertTrue(d2.compareTo(d1) > 0);
         assertEquals(0, d1.compareTo(new FlightDesignator("tp1000")));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us074/flight_designator_test.csv", numLinesToSkip = 1)
+    void ensureFlightDesignatorCsvInvariants(final String testCaseId, final String designator,
+                                              final boolean expectedValid) {
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new FlightDesignator(designator));
+        } else {
+            assertThrows(Exception.class, () -> new FlightDesignator(designator));
+        }
     }
 }

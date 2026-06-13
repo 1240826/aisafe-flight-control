@@ -134,4 +134,27 @@ class CreateAircraftModelControllerTest {
                         125.0, 0.026, 1.5),
                 "Zero max passengers must be rejected");
     }
+
+    @Test
+    void ensureAllManufacturersDelegatesToRepo() {
+        when(manufacturerRepo.findAll()).thenReturn(List.of());
+        final var result = controller.allManufacturers();
+        verify(manufacturerRepo).findAll();
+        assertNotNull(result);
+    }
+
+    @Test
+    void ensureCreateAircraftModelWithDuplicateNameAndManufacturerThrows() {
+        when(repo.findByNameAndManufacturer("Boeing 737-800", "Boeing"))
+                .thenReturn(java.util.Optional.of(makeModel()));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.createAircraftModel(
+                        "B738", "Boeing 737-800", "Boeing",
+                        AircraftType.PASSENGER, 189,
+                        41140, 79016, 71100, 20894,
+                        12500, 842, 5765,
+                        125.0, 0.026, 1.5),
+                "Duplicate name+manufacturer must be rejected");
+    }
 }

@@ -1,6 +1,8 @@
 package eapli.aisafe.manufacturer.domain;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -94,5 +96,51 @@ class ManufacturerTest {
         final var m2 = new Manufacturer("Boeing", "United States");
         // Identity is ManufacturerName — same name implies same entity
         assertEquals(m1.identity(), m2.identity());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/manufacturer_test.csv", numLinesToSkip = 1)
+    void ensureManufacturerCsvInvariants(final String testCaseId, final String name,
+                                          final String country, final boolean expectedValid) {
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new Manufacturer(name, country));
+        } else {
+            assertThrows(Exception.class, () -> new Manufacturer(name, country));
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/manufacturer_test.csv", numLinesToSkip = 1)
+    void ensureManufacturerEquals(final String testCaseId, final String name,
+                                   final String country, final boolean expectedValid) {
+        if (expectedValid) {
+            final var m1 = new Manufacturer(name, country);
+            final var m2 = new Manufacturer(name, country);
+            assertEquals(m1, m2);
+            assertEquals(m1.hashCode(), m2.hashCode());
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/manufacturer_test.csv", numLinesToSkip = 1)
+    void ensureManufacturerToString(final String testCaseId, final String name,
+                                     final String country, final boolean expectedValid) {
+        if (expectedValid) {
+            final var m = new Manufacturer(name, country);
+            assertNotNull(m.toString());
+            assertTrue(m.toString().contains(name.trim()));
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/manufacturer_test.csv", numLinesToSkip = 1)
+    void ensureManufacturerGetters(final String testCaseId, final String name,
+                                     final String country, final boolean expectedValid) {
+        if (expectedValid) {
+            final var m = new Manufacturer(name, country);
+            assertNotNull(m.identity());
+            assertNotNull(m.name());
+            assertNotNull(m.country());
+        }
     }
 }

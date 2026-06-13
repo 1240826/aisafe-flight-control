@@ -1,0 +1,11 @@
+testCaseId,tsfcValue,units,expectValid
+T01,10.0,g/kN/s,true
+T02,20.0,lb/(lbf.h),true
+T03,15.0,mg/N/s,true
+T04,0.0,g/kN/s,false
+T05,-5.0,g/kN/s,false
+T06,10.0,invalidUnit,false
+T07,12.5,lb/(lbf.h),true
+T08,8.0,mg/N/s,true
+T09,25.0,g/kN/s,true
+T10,10.0,g/kN/s,true

@@ -1,0 +1,30 @@
+package eapli.aisafe.simulation.domain;
+
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class SimulationTimeRangeTest {
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us070/time_range_test.csv", numLinesToSkip = 1)
+    void ensureSimulationTimeRangeInvariants(final String testCaseId, final String startDate,
+                                              final String startTime, final String endDate,
+                                              final String endTime, final boolean expectedValid) {
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new SimulationTimeRange(parse(startDate, startTime), parse(endDate, endTime)));
+        } else {
+            assertThrows(Exception.class, () -> new SimulationTimeRange(parse(startDate, startTime), parse(endDate, endTime)));
+        }
+    }
+
+    private static LocalDateTime parse(final String date, final String time) {
+        return LocalDateTime.of(LocalDate.parse(date), LocalTime.parse(time));
+    }
+}

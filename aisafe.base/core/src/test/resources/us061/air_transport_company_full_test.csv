@@ -1,0 +1,7 @@
+testCaseId,iata,icao,name,expectedValid
+TC01,TP,TAP,TAP Air Portugal,true
+TC02,,TAP,TAP Air Portugal,false
+TC03,TP,,TAP Air Portugal,false
+TC04,TP,TAP,,false
+TC05,FR,RYR,Ryanair,true
+TC06,TP,TAP,   ,false

@@ -106,4 +106,37 @@ class RegisterAirControlAreaControllerTest {
                         "", "Lisboa Oceânico", 36.0, 44.0, -25.0, -6.0, 14000),
                 "Blank area code must be rejected");
     }
+
+    // ── 6-param overload (reads from settings) ──────────────────────────────
+
+    @Test
+    void ensureRegisterAirControlAreaWithSixParamsWorks() {
+        final AirControlArea expected = new AirControlArea(
+                AreaCode.valueOf("LPPC"),
+                new AreaName("Lisboa Oceânico"),
+                36.0, 44.0, -25.0, -6.0,
+                14000);
+        when(repo.save(any(AirControlArea.class))).thenReturn(expected);
+
+        final AirControlArea result = controller.registerAirControlArea(
+                "LPPC", "Lisboa Oceânico", 36.0, 44.0, -25.0, -6.0);
+
+        assertNotNull(result);
+        verify(repo).save(any(AirControlArea.class));
+    }
+
+    // ── Overlapping boundaries ──────────────────────────────────────────────
+
+    @Test
+    void ensureRegisterAirControlAreaWithOverlappingBoundariesThrows() {
+        final AirControlArea existing = mock(AirControlArea.class);
+        when(existing.identity()).thenReturn(AreaCode.valueOf("LPPC"));
+        when(repo.findOverlapping(36.0, 44.0, -25.0, -6.0))
+                .thenReturn(List.of(existing));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.registerAirControlArea(
+                        "NEWA", "New Area", 36.0, 44.0, -25.0, -6.0, 14000),
+                "Overlapping boundaries must be rejected");
+    }
 }

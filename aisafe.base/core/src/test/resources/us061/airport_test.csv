@@ -1,0 +1,15 @@
+testCaseId,iata,icao,name,city,country,lat,lon,areaCode,expectedValid
+AT01,OPO,LPPR,Francisco Sa Carneiro Airport,Porto,Portugal,41.2481,-8.6814,LPPC,true
+AT02,LIS,LPPT,Humberto Delgado Airport,Lisbon,Portugal,38.7739,-9.134,LPPC,true
+AT03,MAD,LEMD,Adolfo Suarez Madrid-Barajas,Madrid,Spain,40.472,-3.561,LEMD,true
+AT04,CDG,LFPG,Charles de Gaulle,Paris,France,49.009,2.547,LFPG,true
+AT05,FRA,EDDF,Frankfurt,Frankfurt,Germany,50.033,8.57,EDDF,true
+AT06,,LPPR,Airport Without IATA,Porto,Portugal,41.0,-8.0,LPPC,false
+AT07,OPO,,Airport Without ICAO,Porto,Portugal,41.0,-8.0,LPPC,false
+AT08,OPO,LPPR,,Porto,Portugal,41.0,-8.0,LPPC,false
+AT09,OPO,LPPR,Airport,Porto,,41.0,-8.0,LPPC,false
+AT10,OPO,LPPR,Airport,Porto,Portugal,41.0,-8.0,,false
+AT11,,LPPR,Valid Airport No IATA,Porto,Portugal,41.0,-8.0,LPPC,false
+AT12,OPO,LPPR,Valid Airport,Porto,Portugal,41.0,-8.0,LPPC,true
+AT13,FNC,LPMA,Cristiano Ronaldo,Funchal,Portugal,32.698,-16.774,LPMA,true
+AT14,LHR,EGLL,Heathrow,London,United Kingdom,51.47,-0.454,EGLL,true

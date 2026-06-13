@@ -1,0 +1,7 @@
+testCaseId,areaCode,startDate,startTime,endDate,endTime,thresholdValue,thresholdUnit,filePath,content,expectedValid
+SM01,LPPC,2026-06-01,08:00,2026-06-01,10:00,50.0,kt,/sim/output.txt,content here,true
+SM02,,2026-06-01,08:00,2026-06-01,10:00,50.0,kt,/sim/output.txt,content here,false
+SM03,LPPC,2026-06-01,08:00,2026-06-01,08:00,50.0,kt,/sim/output.txt,content here,false
+SM04,LPPC,2026-06-01,10:00,2026-06-01,08:00,50.0,kt,/sim/output.txt,content here,false
+SM05,LPPC,2026-06-01,08:00,2026-06-01,10:00,0.0,kt,/sim/output.txt,content here,false
+SM06,LPPC,2026-06-01,08:00,2026-06-01,10:00,50.0,kt,,content here,false

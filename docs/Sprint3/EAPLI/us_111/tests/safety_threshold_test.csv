@@ -1,0 +1,11 @@
+testCaseId,value,unit,expectedValid
+ST01,10.0,meters,true
+ST02,5.0,seconds,true
+ST03,0.5,km,true
+ST04,0.0,meters,false
+ST05,-1.0,meters,false
+ST06,-10.0,seconds,false
+ST07,10.0,,false
+ST08,20.0,meters,true
+ST09,100.0,feet,true
+ST10,1.0,meters,true

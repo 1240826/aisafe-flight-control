@@ -125,4 +125,24 @@ class CreateAirportControllerTest {
                         38.7667, -9.1333, 113.0, "m", "LPPC"),
                 "Blank country must be rejected");
     }
+
+    @Test
+    void ensureCreateAirportWithNonExistentAcaThrows() {
+        when(acaRepo.ofIdentity(any(AreaCode.class))).thenReturn(Optional.empty());
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.createAirport(
+                        "LIS", "LPPT", "Humberto Delgado", "Lisboa", "Portugal",
+                        38.7667, -9.1333, 113.0, "m", "UNKNOWN"),
+                "Non-existent ACA must be rejected");
+    }
+
+    @Test
+    void ensureCreateAirportWithCoordinatesOutsideAcaThrows() {
+        when(mockAca.containsCoordinates(anyDouble(), anyDouble())).thenReturn(false);
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.createAirport(
+                        "LIS", "LPPT", "Humberto Delgado", "Lisboa", "Portugal",
+                        38.7667, -9.1333, 113.0, "m", "LPPC"),
+                "Coordinates outside ACA must be rejected");
+    }
 }

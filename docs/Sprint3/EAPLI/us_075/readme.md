@@ -77,7 +77,7 @@ The operation creates a new `Pilot` entity within the ATCC's `AirTransportCompan
 
 **Sequence Diagram — Add Pilot:**
 
-![Sequence Diagram — Add Pilot](SD_US075_AddPilot.png)
+![Sequence Diagram — Add Pilot](sds/images/SD_US075_AddPilot.png)
 
 ### 4.2 Acceptance Tests
 

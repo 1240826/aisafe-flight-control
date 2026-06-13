@@ -1,140 +1,111 @@
 package eapli.aisafe.company.domain;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Unit tests for AirTransportCompany aggregate root.
- * Covers US060 invariants: IATA uniqueness, ICAO uniqueness, name non-blank.
- */
 class AirTransportCompanyTest {
-
-    // ── Test fixtures ─────────────────────────────────────────────────────────
-
-    private static AirTransportCompany validCompany() {
-        return new AirTransportCompany(
-                new CompanyIATA("TP"),
-                new CompanyICAO("TAP"),
-                "TAP Air Portugal"
-        );
-    }
-
-    // ── Happy path ────────────────────────────────────────────────────────────
 
     @Test
     void ensureValidCompanyCanBeCreated() {
-        final var company = validCompany();
-        assertNotNull(company);
-        assertEquals("TP", company.iata().toString());
-        assertEquals("TAP", company.icao().toString());
+        final var iata = CompanyIATA.valueOf("TP");
+        final var icao = new CompanyICAO("TAP");
+        final var company = new AirTransportCompany(iata, icao, "TAP Air Portugal");
+        assertEquals(iata, company.identity());
+        assertEquals(iata, company.iata());
+        assertEquals(icao, company.icao());
         assertEquals("TAP Air Portugal", company.name());
     }
 
     @Test
-    void ensureIdentityReturnsIATA() {
-        final var company = validCompany();
-        assertEquals(new CompanyIATA("TP"), company.identity());
+    void ensureNameMustNotBeBlank() {
+        final var iata = CompanyIATA.valueOf("TP");
+        final var icao = new CompanyICAO("TAP");
+        assertThrows(Exception.class, () -> new AirTransportCompany(iata, icao, ""));
+        assertThrows(Exception.class, () -> new AirTransportCompany(iata, icao, "   "));
     }
 
     @Test
-    void ensureCompanyWithLowercaseIATAIsNormalised() {
-        // CompanyIATA should normalise to uppercase
-        final var iata = new CompanyIATA("tp");
-        assertEquals("TP", iata.toString());
+    void ensureNameMustContainAtLeastOneLetter() {
+        final var iata = CompanyIATA.valueOf("TP");
+        final var icao = new CompanyICAO("TAP");
+        assertThrows(Exception.class, () -> new AirTransportCompany(iata, icao, "12345"));
     }
 
     @Test
-    void ensureCompanyWithLowercaseICAOIsNormalised() {
-        final var icao = new CompanyICAO("tap");
-        assertEquals("TAP", icao.toString());
-    }
-
-    // ── Invariant violations ──────────────────────────────────────────────────
-
-    @Test
-    void ensureBlankNameIsRejected() {
-        assertThrows(Exception.class, () -> new AirTransportCompany(
-                new CompanyIATA("TP"),
-                new CompanyICAO("TAP"),
-                ""));
+    void ensureNullIataIsRejected() {
+        final var icao = new CompanyICAO("TAP");
+        assertThrows(Exception.class, () -> new AirTransportCompany(null, icao, "Test"));
     }
 
     @Test
-    void ensureWhitespaceOnlyNameIsRejected() {
-        assertThrows(Exception.class, () -> new AirTransportCompany(
-                new CompanyIATA("TP"),
-                new CompanyICAO("TAP"),
-                "   "));
-    }
-
-    @Test
-    void ensureNullIATAIsRejected() {
-        assertThrows(Exception.class, () -> new AirTransportCompany(
-                null,
-                new CompanyICAO("TAP"),
-                "TAP Air Portugal"));
-    }
-
-    @Test
-    void ensureNullICAOIsRejected() {
-        assertThrows(Exception.class, () -> new AirTransportCompany(
-                new CompanyIATA("TP"),
-                null,
-                "TAP Air Portugal"));
+    void ensureNullIcaoIsRejected() {
+        final var iata = CompanyIATA.valueOf("TP");
+        assertThrows(Exception.class, () -> new AirTransportCompany(iata, null, "Test"));
     }
 
     @Test
     void ensureNullNameIsRejected() {
-        assertThrows(Exception.class, () -> new AirTransportCompany(
-                new CompanyIATA("TP"),
-                new CompanyICAO("TAP"),
-                null));
-    }
-
-    // ── CompanyIATA VO ────────────────────────────────────────────────────────
-
-    @Test
-    void ensureCompanyIATARejectsBlank() {
-        assertThrows(Exception.class, () -> new CompanyIATA(""));
+        final var iata = CompanyIATA.valueOf("TP");
+        final var icao = new CompanyICAO("TAP");
+        assertThrows(Exception.class, () -> new AirTransportCompany(iata, icao, null));
     }
 
     @Test
-    void ensureCompanyIATARejectsNull() {
-        assertThrows(Exception.class, () -> new CompanyIATA(null));
-    }
-
-    // ── CompanyICAO VO ────────────────────────────────────────────────────────
-
-    @Test
-    void ensureCompanyICAORejectsBlank() {
-        assertThrows(Exception.class, () -> new CompanyICAO(""));
+    void ensureNameIsTrimmed() {
+        final var iata = CompanyIATA.valueOf("RY");
+        final var icao = new CompanyICAO("RYR");
+        final var company = new AirTransportCompany(iata, icao, "  Ryanair  ");
+        assertEquals("Ryanair", company.name());
     }
 
     @Test
-    void ensureCompanyICAORejectsNull() {
-        assertThrows(Exception.class, () -> new CompanyICAO(null));
-    }
-
-    // ── Equality ──────────────────────────────────────────────────────────────
-
-    @Test
-    void ensureCompaniesWithSameIATACodeAreEqual() {
-        final var c1 = validCompany();
-        final var c2 = new AirTransportCompany(
-                new CompanyIATA("TP"),
-                new CompanyICAO("TPT"),
-                "Different Name");
-        assertEquals(c1, c2, "Companies with same IATA are the same entity");
+    void ensureCompaniesWithSameIataAreEqual() {
+        final var iata = CompanyIATA.valueOf("TP");
+        final var icao = new CompanyICAO("TAP");
+        final var c1 = new AirTransportCompany(iata, icao, "TAP Air Portugal");
+        final var c2 = new AirTransportCompany(iata, new CompanyICAO("TAP"), "Different Name");
+        assertEquals(c1, c2, "Equality based on IATA identity");
     }
 
     @Test
-    void ensureCompaniesWithDifferentIATACodeAreNotEqual() {
-        final var c1 = validCompany();
-        final var c2 = new AirTransportCompany(
-                new CompanyIATA("FR"),
-                new CompanyICAO("RYR"),
-                "Ryanair");
+    void ensureCompaniesWithDifferentIataAreNotEqual() {
+        final var c1 = new AirTransportCompany(CompanyIATA.valueOf("TP"), new CompanyICAO("TAP"), "TAP");
+        final var c2 = new AirTransportCompany(CompanyIATA.valueOf("RY"), new CompanyICAO("RYR"), "Ryanair");
         assertNotEquals(c1, c2);
+    }
+
+    @Test
+    void ensureToStringContainsIataIcaoAndName() {
+        final var company = new AirTransportCompany(
+                CompanyIATA.valueOf("TP"), new CompanyICAO("TAP"), "TAP Air Portugal");
+        final var s = company.toString();
+        assertTrue(s.contains("TP"));
+        assertTrue(s.contains("TAP"));
+        assertTrue(s.contains("TAP Air Portugal"));
+    }
+
+    @ParameterizedTest(name = "{0}: iata={1} icao={2} name={3} expectedValid={4}")
+    @CsvFileSource(resources = "/us061/air_transport_company_test.csv", numLinesToSkip = 1)
+    void ensureCompanyCsvInvariants(
+            final String testCaseId, final String iataCode,
+            final String icaoCode, final String name, final boolean expectedValid) {
+        if (expectedValid) {
+            assertDoesNotThrow(() -> {
+                final var iata = CompanyIATA.valueOf(iataCode);
+                final var icao = new CompanyICAO(icaoCode);
+                new AirTransportCompany(iata, icao, name);
+            });
+        } else {
+            assertThrows(Exception.class, () -> {
+                final var iata = (iataCode == null || iataCode.isBlank())
+                        ? null : CompanyIATA.valueOf(iataCode);
+                final var icao = (icaoCode == null || icaoCode.isBlank())
+                        ? null : new CompanyICAO(icaoCode);
+                new AirTransportCompany(iata, icao, name);
+            });
+        }
     }
 }

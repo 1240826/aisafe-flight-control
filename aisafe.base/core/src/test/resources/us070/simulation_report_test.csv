@@ -1,0 +1,7 @@
+testCaseId,filePath,content,expectedValid
+SR01,/tmp/sim_output.txt,Simulation PASSED,true
+SR02,/tmp/report.txt,content,true
+SR03,/tmp/result.txt,no_content,true
+SR04,/tmp/valid.txt,Full report content,true
+SR05,/tmp/path.txt,content,true
+SR06,/tmp/x.txt,text,true

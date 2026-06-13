@@ -3,8 +3,11 @@ package eapli.aisafe.aircraft.domain;
 import eapli.aisafe.aircraftmodel.domain.AircraftModelCode;
 import eapli.aisafe.company.domain.CompanyIATA;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.util.Collections;
 import java.util.List;
 
@@ -226,5 +229,22 @@ class AircraftTest {
     @Test
     void ensureNullCabinConfigurationListIsRejected() {
         assertThrows(Exception.class, () -> new CabinConfiguration(null));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvFileSource(resources = "/us061/aircraft_test.csv", numLinesToSkip = 1, nullValues = {"N/A"})
+    void ensureAircraftCsvInvariants(final String testCaseId, final String registration,
+                                      final String country, final String modelCode,
+                                      final String companyIata, final int crewMembers,
+                                      final boolean expectedValid) {
+        final var reg = (registration == null || registration.isBlank() || country == null || country.isBlank())
+                ? null : new RegistrationNumber(registration, country);
+        final var mc = (modelCode == null || modelCode.isBlank()) ? null : new AircraftModelCode(modelCode);
+        final var ci = (companyIata == null || companyIata.isBlank()) ? null : new CompanyIATA(companyIata);
+        if (expectedValid) {
+            assertDoesNotThrow(() -> new Aircraft(reg, mc, ci, crewMembers, cabin170(), REG_DATE));
+        } else {
+            assertThrows(Exception.class, () -> new Aircraft(reg, mc, ci, crewMembers, cabin170(), REG_DATE));
+        }
     }
 }
