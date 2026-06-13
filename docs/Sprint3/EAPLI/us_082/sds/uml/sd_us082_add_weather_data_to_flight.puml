@@ -43,6 +43,7 @@ ui -> ctrl : weatherDataForFlight(Flight) : List<WeatherData>
 activate ctrl
 
 ctrl -> ctrl : computeMidpoint(Flight) : RouteMidpoint
+note right : uses static AIRPORT_COORDS\nmap (50+ airports) to resolve\norigin/dest IATA codes → lat/lon
 ctrl -> acaRepo : findAll() : Iterable<AirControlArea>
 activate acaRepo
 acaRepo --> ctrl : all ACAs
@@ -77,6 +78,7 @@ deactivate flightRepo
 
 ctrl -> flight : assignWeatherData(Long weatherDataId) : void
 activate flight
+note right : also resets flight plans\nTEST_PASSED/TEST_FAILED → DRAFT
 flight --> ctrl
 deactivate flight
 
