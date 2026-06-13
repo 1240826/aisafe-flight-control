@@ -13,7 +13,8 @@ participant ":GenerateMonthlyReportUI"        as ui        <<presentation>>
 participant ":GenerateMonthlyReportController" as ctrl     <<application>>
 participant ":AuthorizationService"           as authz     <<framework>>
 participant ":CollaboratorRepository"         as collabRepo <<persistence>>
-participant "provider\n:MonthlyReportDataProvider" as provider <<application>>
+participant "interface\n:MonthlyReportDataProvider" as provider <<application>>
+participant "impl\n:DatabaseMonthlyReportDataProvider" as providerImpl <<application>>
 participant ":FlightRepository"               as flightRepo <<persistence>>
 participant ":WeatherDataRepository"          as wdRepo    <<persistence>>
 participant ":PilotRepository"                as pilotRepo <<persistence>>
@@ -41,49 +42,49 @@ deactivate collabRepo
 
 ctrl -> ctrl : areaCodeOfCurrentUser() : AreaCode
 ctrl -> provider : generateForMonth(YearMonth period, AreaCode areaCode) : MonthlyReport
-activate provider
+activate providerImpl
 
-provider -> flightRepo : findAll() : Iterable<Flight>
+providerImpl -> flightRepo : findAll() : Iterable<Flight>
 activate flightRepo
-flightRepo --> provider : all flights
+flightRepo --> providerImpl : all flights
 deactivate flightRepo
 
 loop for each flight in period
-    provider -> provider : count flight, flightsPerWeek
+    providerImpl -> providerImpl : count flight, flightsPerWeek
     loop for each flightPlan
-        provider -> provider : classify status (DRAFT/IN_TEST/TEST_PASSED/TEST_FAILED)
+        providerImpl -> providerImpl : classify status\n(DRAFT/IN_TEST/TEST_PASSED/TEST_FAILED)
     end
 end
 
-provider -> wdRepo : findByAreaCode(AreaCode) : Iterable<WeatherData>
+providerImpl -> wdRepo : findByAreaCode(AreaCode) : Iterable<WeatherData>
 activate wdRepo
-wdRepo --> provider : weather data for area
+wdRepo --> providerImpl : weather data for area
 deactivate wdRepo
 
-provider -> pilotRepo : findAll() : Iterable<Pilot>
+providerImpl -> pilotRepo : findAll() : Iterable<Pilot>
 activate pilotRepo
-pilotRepo --> provider : all pilots
+pilotRepo --> providerImpl : all pilots
 deactivate pilotRepo
 
-provider -> acRepo : findAll() : Iterable<Aircraft>
+providerImpl -> acRepo : findAll() : Iterable<Aircraft>
 activate acRepo
-acRepo --> provider : all aircraft
+acRepo --> providerImpl : all aircraft
 deactivate acRepo
 
 create report
-provider -> report : MonthlyReport(YearMonth, totals, flightsPerWeek, ...)
+providerImpl -> report : MonthlyReport(\n  YearMonth period,\n  long totalFlights,\n  long totalFlightPlans,\n  long flightPlansDraft,\n  long flightPlansInTest,\n  long flightPlansPassed,\n  long flightPlansFailed,\n  long totalWeatherRecords,\n  long totalActivePilots,\n  long totalAircraft,\n  String flightsPerWeek\n)
 activate report
-report --> provider
+report --> providerImpl
 deactivate report
 
-provider --> ctrl : MonthlyReport
-deactivate provider
+providerImpl --> ctrl : MonthlyReport
+deactivate providerImpl
 
 ctrl --> ui : MonthlyReport
 deactivate ctrl
 
 ui -> ui : prints report to console
-ui -> ui : saves report to reports/monthly-report-YYYY-MM.txt
+ui -> ui : saves report to\nreports/monthly-report-YYYY-MM.txt
 
 ui --> actor : displays confirmation and file path
 deactivate ui
