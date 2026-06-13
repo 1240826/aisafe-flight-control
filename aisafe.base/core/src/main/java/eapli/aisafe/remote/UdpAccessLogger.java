@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
  * so that a logging failure never interrupts the business operation.
  *
  * <p>Datagram format (single UTF-8 line):
- * {@code EVENT_TYPE|timestamp|username|clientIP|clientPort|service}
+ * {@code eventType|ISOdatetime|username|clientIP|clientPort|service}
  */
 public final class UdpAccessLogger {
 

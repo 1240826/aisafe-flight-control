@@ -85,11 +85,13 @@ class PilotClientHandler extends AbstractClientHandler {
         }
         try {
             final String flightId = f[1];
-            final String dsl      = f[2];
+            final String dsl      = f[2].replace("\\n", "\n");
             final var result = pilotService.createFlightPlan(flightId, dsl);
             if (result.allPassed()) {
+                final String summary = result.summary() == null ? ""
+                        : result.summary().replace("\n", "\\n");
                 return RemoteProtocol.ok("Flight plan created for " + flightId
-                        + " | " + result.summary());
+                        + " | " + summary);
             }
             return RemoteProtocol.err("Validation failed: "
                     + String.join("; ", result.allErrors()));
@@ -114,7 +116,9 @@ class PilotClientHandler extends AbstractClientHandler {
         try {
             final String fpId = f[1];
             final var result = pilotService.validateFlightPlan(fpId);
-            return RemoteProtocol.ok(result.message() == null ? "PASSED" : result.message());
+            final String msg = result.message() == null ? "PASSED"
+                    : result.message().replace("\n", "\\n");
+            return RemoteProtocol.ok(msg);
         } catch (final Exception e) {
             return RemoteProtocol.err(e.getMessage());
         }
@@ -144,7 +148,8 @@ class PilotClientHandler extends AbstractClientHandler {
             final int year  = Integer.parseInt(f[1]);
             final int month = Integer.parseInt(f[2]);
             final MonthlyReport report = pilotService.monthlyReport(year, month);
-            return RemoteProtocol.ok(report.toString().replace("\\r\\n", "\\n").replace("\\n", "\\\\n"));
+            return RemoteProtocol.ok(report.toString()
+                    .replace("\r\n", "\n").replace("\n", "\\n"));
         } catch (final DateTimeParseException e) {
             return RemoteProtocol.err("Invalid date: " + e.getMessage());
         } catch (final Exception e) {
@@ -188,7 +193,7 @@ class PilotClientHandler extends AbstractClientHandler {
             for (final FlightRouteDTO r : routes) {
                 if (count > 0) sb.append(";");
                 sb.append(r.routeName()).append(",")
-                        .append(r.origin()).append(",->,")
+                        .append(r.origin()).append("->")
                         .append(r.destination());
                 count++;
             }

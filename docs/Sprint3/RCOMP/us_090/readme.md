@@ -132,23 +132,22 @@ sends a UDP datagram to the Remote Accesses Logging Server.
 Each datagram contains a single log entry as a pipe-delimited string:
 
 ```
-EVENT|<epochMs>|<username>|<clientIP>|<clientPort>|<service>|<eventType>
+eventType|ISOdatetime|username|clientIP|clientPort|service
 ```
 
 Example:
 ```
-EVENT|1717252321000|weather1|192.168.1.10|52341|US44|LOGIN_OK
+LOGIN_OK|2026-06-05T14:30:00|weather1|192.168.1.10|52341|US44
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `EVENT` | literal | Fixed prefix identifying this as a log event |
-| `epochMs` | long (millis) | Unix epoch milliseconds of the event |
+| `eventType` | enum string | `LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, or `DISCONNECT` |
+| `ISOdatetime` | ISO-8601 string | Date and time of the event (e.g. `2026-06-05T14:30:00`) |
 | `username` | string | Username of the user attempting access |
 | `clientIP` | string | IP address of the remote client |
 | `clientPort` | integer | TCP port number of the remote client |
 | `service` | enum string | `US44`, `US78`, or `US86` |
-| `eventType` | enum string | `LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, `DISCONNECT` |
 
 ---
 
@@ -156,8 +155,8 @@ EVENT|1717252321000|weather1|192.168.1.10|52341|US44|LOGIN_OK
 
 | Event | Trigger point in TCP handler |
 |-------|------------------------------|
-| `LOGIN_SUCCESS` | Immediately after successful authentication |
-| `LOGIN_FAILURE` | Immediately after failed authentication attempt |
+| `LOGIN_OK` | Immediately after successful authentication |
+| `LOGIN_FAIL` | Immediately after failed authentication attempt |
 | `LOGOUT` | When the client sends a logout/exit request |
 | `DISCONNECT` | When the TCP connection drops unexpectedly (IOException on read) |
 
@@ -183,14 +182,14 @@ EVENT|1717252321000|weather1|192.168.1.10|52341|US44|LOGIN_OK
 Given a Weather Person (US44) who successfully authenticates via TCP,
 When the login is processed by the TCP server,
 Then a UDP datagram is sent to the logging server containing: timestamp, username,
-client IP, client port, service = US44, eventType = LOGIN_SUCCESS.
+client IP, client port, service = US44, eventType = LOGIN_OK.
 
 **AT2 — Failed login is logged (US90.2, US90.3)**
 
 Given a Pilot (US86) who provides incorrect credentials,
 When the login attempt is processed by the TCP server,
 Then a UDP datagram is sent containing: timestamp, username, client IP, client port,
-service = US86, eventType = LOGIN_FAILURE.
+service = US86, eventType = LOGIN_FAIL.
 
 **AT3 — Logout is logged (US90.2)**
 
@@ -260,9 +259,9 @@ To demonstrate this user story:
 
 1. Start the Remote Accesses Logging Server (US91) on the configured cloud node.
 2. Configure the logging server IP and port in the application properties.
-3. Connect as a Weather Person (US44) with valid credentials → verify LOGIN_SUCCESS
+3. Connect as a Weather Person (US44) with valid credentials → verify LOGIN_OK
    appears on the US91 events page within 5 seconds.
-4. Attempt login with invalid credentials → verify LOGIN_FAILURE appears.
+4. Attempt login with invalid credentials → verify LOGIN_FAIL appears.
 5. Log out → verify LOGOUT appears.
 6. Drop the TCP connection without logging out → verify DISCONNECT appears.
 7. Confirm all entries include the correct timestamp, username, IP, port and service.

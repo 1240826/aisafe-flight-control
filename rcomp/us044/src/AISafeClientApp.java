@@ -98,15 +98,23 @@ public final class AISafeClientApp {
             final String option = sc.nextLine().trim();
             switch (option) {
                 case "1" -> {
-                    final String areas = c.send("LIST_AREAS");
-                    if (areas == null) {
+                    final String resp = c.send("LIST_AREAS");
+                    if (resp == null) {
                         System.out.println("Failed to retrieve areas from server.");
                         break;
                     }
-                    final String[] areaLines = areas.split("\\n");
+                    if (!resp.startsWith("OK|")) {
+                        System.out.println("Unexpected response: " + resp);
+                        break;
+                    }
+                    final String[] areas = resp.substring(3).split(";", -1);
+                    if (areas.length == 0 || (areas.length == 1 && areas[0].isEmpty())) {
+                        System.out.println("No areas available.");
+                        break;
+                    }
                     System.out.println("\nAvailable Areas:");
-                    for (int i = 0; i < areaLines.length; i++) {
-                        System.out.println((i + 1) + ". " + areaLines[i]);
+                    for (int i = 0; i < areas.length; i++) {
+                        System.out.println((i + 1) + ". " + areas[i]);
                     }
                     while (true) {
                         System.out.print("Enter area number (or empty to go back): ");
@@ -114,16 +122,19 @@ public final class AISafeClientApp {
                         if (areaNum.isEmpty()) break;
                         try {
                             final int index = Integer.parseInt(areaNum) - 1;
-                            if (index >= 0 && index < areaLines.length) {
-                                final String selected = areaLines[index];
-                                System.out.println("Selected area: " + selected);
-                                c.setSelectedArea(selected);
-                                return selected;
+                            if (index >= 0 && index < areas.length) {
+                                final String selected = areas[index];
+                                final String code = selected.contains(":")
+                                        ? selected.substring(0, selected.indexOf(':')).trim()
+                                        : selected.trim();
+                                System.out.println("Selected area: " + code);
+                                c.setSelectedArea(code);
+                                return code;
                             } else {
-                                System.out.println("Invalid area number. Choose between 1 and " + areaLines.length + ".");
+                                System.out.println("Invalid area number. Choose between 1 and " + areas.length + ".");
                             }
                         } catch (final NumberFormatException e) {
-                            System.out.println("Invalid number '" + areaNum + "'. Enter a number between 1 and " + areaLines.length + ".");
+                            System.out.println("Invalid number '" + areaNum + "'. Enter a number between 1 and " + areas.length + ".");
                         }
                     }
                 }
@@ -241,10 +252,10 @@ public final class AISafeClientApp {
             if (opt.equals("0")) { System.out.println("Cancelled."); return; }
             if (opt.equals("1")) {
                 System.out.println("CSV rows (lat,lon,alt,speed,dir,temp,provider[,datetime])");
-                System.out.println("Separate with  ;  — blank line to finish:");
+                System.out.println("Separate with  ;  — end with a line containing only '--':");
                 final StringBuilder csv = new StringBuilder();
                 String line;
-                while (!(line = sc.nextLine()).isBlank()) {
+                while (!(line = sc.nextLine()).equals("--")) {
                     if (csv.length() > 0) csv.append(";");
                     csv.append(line.trim());
                 }
@@ -349,14 +360,15 @@ public final class AISafeClientApp {
             System.out.println("Connection closed by server.");
             return;
         }
-        if (resp.startsWith("OK|")) {
-            System.out.println("OK  " + resp.substring(3));
-        } else if (resp.startsWith("ERR|")) {
-            System.out.println("ERR  " + resp.substring(4));
-        } else if (resp.startsWith("AUTH_FAIL")) {
-            System.out.println("AUTH FAIL  " + resp.substring(9));
+        final String display = resp.replace("\\n", "\n");
+        if (display.startsWith("OK|")) {
+            System.out.println("OK  " + display.substring(3));
+        } else if (display.startsWith("ERR|")) {
+            System.out.println("ERR  " + display.substring(4));
+        } else if (display.startsWith("AUTH_FAIL")) {
+            System.out.println("AUTH FAIL  " + display.substring(9));
         } else {
-            System.out.println("   " + resp);
+            System.out.println("   " + display);
         }
     }
 }

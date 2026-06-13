@@ -144,6 +144,10 @@ public abstract class AbstractClientHandler implements Runnable {
             }
             System.err.printf("[%s] Connection error from %s:%d — %s%n",
                     serviceId, clientIp, clientPort, e.getMessage());
+        } catch (final Throwable t) {
+            System.err.printf("[%s] Unexpected error from %s:%d — %s%n",
+                    serviceId, clientIp, clientPort, t.getMessage());
+            t.printStackTrace();
         }
     }
 
