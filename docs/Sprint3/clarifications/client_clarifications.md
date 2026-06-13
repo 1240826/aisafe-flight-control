@@ -1,4 +1,4 @@
-# Sprint 3 — Client Clarifications & Team Decisions
+﻿# Sprint 3 — Client Clarifications & Team Decisions
 
 > **Purpose:** Consolidate all client clarifications received during Sprint 3 (Moodle forum)
 > and document the team's design decisions based on each clarification, showing how each
@@ -510,6 +510,156 @@
 
 ---
 
+
+
+---
+
+### C16 — Pilot Design Refinement: License, Skills Assessment, Certifications, Company Relation
+
+**Date:** Sprint 3, Moodle forum
+**Asked by:** Ricardo Dias
+
+**Question:**
+> "As part of the refinement of US075, we have identified a set of open design questions:
+> 1) Regarding the pilot license number format, we need to define a standard. Our recommendation is
+>    PILOT-NNNNNN (e.g., PILOT-001234). Please let us know if you have an alternative format in mind.
+> 2) On the skills assessment date, should we allow only past dates or also future dates? Should there
+>    be a maximum age (e.g., 12 months)? Should this field be mandatory for every pilot?
+> 3) For certified aircraft models: (3a) minimum one certification at creation? (3b) maximum number of
+>    certifications? (3c) Should certifications be removable?
+> 4) Pilot-company cardinality: 1:N (pilot belongs to one company) or N:M (multiple companies)?
+> 5) Additional pilot attributes: license issue/expiration date, nationality, base airport, flight hours,
+>    status?"
+
+**Answer (Ângelo Martins):**
+> 1) Where is the pilot's licence mentioned in the requirements document? You are making things up.
+> 2) Page 8, lines 7 and 8. You don't schedule things in the past, thus you either have a skills'
+>    assessment (in the past) or you don't have any. Skills' assessment applies to all users, not just
+>    pilots. The important question: you must have at least one skills' assessment in order to register
+>    a new user? Let's say yes.
+> 3) US075, page 18, line 29, it is very clear: "A pilot is certified to pilot one or more aircraft
+>    models." 3.b is nonsense and 3.c is out of the scope of the project.
+> 4) US075 is very clear: a pilot works for an ATC. If he/she could work for more than one, then adding
+>    a pilot would have to be independent of the company. That's not the case.
+> 5) Stick to project the requirements. You mentioning that flight hours, a calculated field, could be
+>    an attribute gives me a full allergic reaction.
+
+**Team decisions:**
+
+1. **Decision:** No specific license number format is mandated by the client. The team chose `[A-Z][0-9]{4,10}` (e.g., "P12345") as a simple, readable format.
+   **Basis:** The client rejected any invented format not in the requirements. The chosen format is minimal and functional, enforced by the `PilotId` value object.
+
+2. **Decision:** Skills assessment is mandatory for ALL users (pilots, collaborators, operators), not just pilots.
+   **Basis:** Client confirmed "you must have at least one skills' assessment in order to register a new user." This aligns with the existing `SecurityClearanceAndSkillsAssessment` domain class.
+
+3. **Decision:** Skills assessment date must be in the past (cannot schedule future assessments).
+   **Basis:** Client said "you don't schedule things in the past" — a registered assessment is a historical record.
+
+4. **Decision:** A pilot MUST have at least one certified aircraft model at creation time.
+   **Basis:** US075 explicitly says "one or more aircraft models" — the client reaffirmed this. The `Pilot` constructor enforces a non-empty `certifiedModels` set.
+
+5. **Decision:** There is NO maximum limit on certified aircraft models.
+   **Basis:** Client called the question "nonsense" — no business rule restricts the count.
+
+6. **Decision:** Certification removal is OUT OF SCOPE for Sprint 3 MVP.
+   **Basis:** Client stated it is "out of the scope of the project" — certifications are additive only.
+
+7. **Decision:** Pilot-company relationship is strictly 1:N — a pilot belongs to exactly one ATC company.
+   **Basis:** Client confirmed US075 is company-scoped: "a pilot works for an ATC." The `Pilot` aggregate holds a single `CompanyIATA` reference.
+
+8. **Decision:** No additional attributes beyond the current domain model (licenseNumber, company, certifiedModels, certificationDate, active status).
+   **Basis:** Client explicitly rejected adding flight hours ("allergic reaction"), nationality, base airport, license dates — "stick to the requirements."
+
+---
+
+### C17 — Flight–FlightPlan Relationship: Exclusivity and Aircraft
+
+**Date:** Sprint 3, Moodle forum
+**Asked by:** Valente
+
+**Question:**
+> "1. For pilots of the same company, per requirement, can they all submit plans for the same flight?
+>    Is there any type of exclusivity on who can create a plan for a flight?
+> 2. Can the same flight have plans with different aircraft?"
+
+**Answer (Ângelo Martins):**
+> This is a MVP, so let's no be too creative.
+> 1) No
+> 2) No
+
+**Team decisions:**
+
+1. **Decision:** A flight has at most ONE flight plan at any given time. Multiple pilots cannot submit competing plans for the same flight.
+   **Basis:** Client ruled out multiple pilots submitting plans — "No."
+
+2. **Decision:** A flight's flight plan is locked to the aircraft specified at creation — cannot change aircraft in subsequent plan updates.
+   **Basis:** Client ruled out plans with different aircraft — "No."
+
+3. **Decision:** The `Flight` aggregate enforces a single active `FlightPlan` per flight. Updating a flight plan replaces the previous one (status reset to DRAFT).
+   **Basis:** Consistent with the one-plan-per-flight rule and the existing `Flight.updateFlightPlan()` method.
+
+---
+
+### C18 — US112 Monthly Report: Period, Data Source, Granularity, Format, Multi-Area
+
+**Date:** Sprint 3, Moodle forum
+**Asked by:** Silva
+
+**Question:**
+> "1. Report Period: Should 'monthly' mean strict calendar month, or custom date range? UTC or local
+>    timezone of the ACA?
+> 2. Data Source: Query the relational database directly, or parse output files from US109?
+> 3. Granularity of Violation Summary: List every individual violation or only aggregate counts?
+> 4. Report Format: Plain text (.txt) following US111, or structured format (e.g., PDF)?
+> 5. Multi-area Reports: One report per ACA or spanning multiple areas?"
+
+**Answer (Ângelo Martins):**
+> 1) Monthly means that it is related to a month. You have monthly invoicing reports, etc.
+> 2) Please read page 23, lines 8 to 11. The application of a strategy pattern is the key here. You
+>    just have to provide an example of a report. You can choose where you get the data from.
+> 3) You can choose.
+> 4) Text file is enough. But if you want to go fancy and provide graphs, be my guest.
+> 5) Please read page 23, line 7. Do you believe A Flight Control Operator should be able to generate
+>    reports for an ACA he/she doesn't work in? Wrong question, wasn't it?
+
+**Team decisions:**
+
+1. **Decision:** Monthly report period is a strict calendar month (e.g., January 2026 = 2026-01-01 to 2026-01-31).
+   **Basis:** Client confirmed "monthly means related to a month" — standard calendar month, enforced via `YearMonth` parameter.
+
+2. **Decision:** Database is the primary data source for monthly reports, using `DatabaseMonthlyReportDataProvider`.
+   **Basis:** The client referenced the strategy pattern — the team chose DB aggregation for speed and reliability.
+
+3. **Decision:** Aggregate counts per violation type (total violations across simulations, not per-instance listing).
+   **Basis:** Client left this to the team — aggregates are suitable for a management-facing monthly report.
+
+4. **Decision:** Output format is plain text (.txt), consistent with US111.
+   **Basis:** Client confirmed "text file is enough" — consistency over additional complexity.
+
+5. **Decision:** A monthly report is scoped to a single Air Control Area — the ACA of the authenticated Flight Control Operator.
+   **Basis:** Client challenged cross-ACA access — "Wrong question, wasn't it?" Resolved via `areaCodeOfCurrentUser()`.
+
+---
+
+### C19 — US112 Report Content
+
+**Date:** Sprint 3, Moodle forum
+**Asked by:** Abdelkefi
+
+**Question:**
+> "US112 says: 'As a Flight Control Operator, I want to generate a monthly statistics report.'
+> What statistics should the monthly report contain? What output format is expected?"
+
+**Answer (Ângelo Martins):**
+> Please see C18 discussion.
+
+**Team decisions:**
+
+1. **Decision:** Monthly report contains: total flights in period, flights per week breakdown, flight plan status distribution (DRAFT/IN_TEST/TEST_PASSED/TEST_FAILED), active pilots count, active aircraft count, and weather data availability for the ACA.
+   **Basis:** Computable from existing domain data; aligned with fields in the `MonthlyReport` domain class.
+
+2. **Decision:** Report format remains plain text (.txt) as confirmed in C18.
+   **Basis:** Consistency with C18 and US111 — no additional format required.
 ## 2. Summary of Design Impacts
 
 ### Domain Model Changes (from Sprint 2 → Sprint 3)
@@ -528,6 +678,12 @@
 | `Flight` aggregate extended with `departureTime` (LocalDateTime) | C15 | US080, US085 |
 | Fuel quantity stored in `FlightPlan.dslContent` **only** — `Flight` entity has no fuel field | C15 | US080 |
 | US085 cross-verifies `Flight.departureTime` against first-leg departure in DSL | C15 | US085 |
+| Pilot must have at least one certification at creation; no max limit | C16 | US075 |
+| Pilot-company is strictly 1:N (one company per pilot) | C16 | US075 |
+| Skills assessment mandatory for all users, date must be in the past | C16 | US061, US075 |
+| One flight plan per flight; aircraft locked at creation | C17 | US080, US081 |
+| Monthly report: calendar month, DB-sourced, plain text, single ACA | C18 | US112 |
+| Monthly report content: flights/week, status distribution, pilot/aircraft counts | C19 | US112 |
 
 ### Integration Architecture — US085 Detailed Workflow
 

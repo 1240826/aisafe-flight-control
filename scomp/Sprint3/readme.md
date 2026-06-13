@@ -9,44 +9,44 @@ scenario.json ──► load_plans() ──► init_hybrid_simulation()
                                            │
                   SHARED MEMORY (shm_open + mmap, MAP_SHARED)
                   ┌──────────────────────────────────────────────────────┐
-                  │  SharedData {                                       │
+                  │  SharedData {                                        │
                   │    FlightData flights[MAX_FLIGHTS];                  │
-                  │    FlightPlan plans[MAX_FLIGHTS];                   │
-                  │    Violation violations[MAX_VIOLATIONS];            │
-                  │    EnvironmentData env;                             │
-                  │    sem_t *sem_step_start, *sem_step_done;           │
-                  │    pthread_mutex_t pos_mutex, viol_mutex, ...;      │
-                  │    pthread_cond_t viol_cond, detect_cond, ...;      │
-                  │    volatile int running, current_step;              │
+                  │    FlightPlan plans[MAX_FLIGHTS];                    │
+                  │    Violation violations[MAX_VIOLATIONS];             │
+                  │    EnvironmentData env;                              │
+                  │    sem_t *sem_step_start, *sem_step_done;            │
+                  │    pthread_mutex_t pos_mutex, viol_mutex, ...;       │
+                  │    pthread_cond_t viol_cond, detect_cond, ...;       │
+                  │    volatile int running, current_step;               │
                   │    int n_flights, n_violations, ...;                 │
-                  │  }                                                  │
+                  │  }                                                   │
                   └──────────────────────────────────────────────────────┘
                                            │
             ┌──────────────────────────────┼──────────────────────────────┐
-            │         PARENT PROCESS        │                              │
-            │  ┌────────────────────────┐   │                              │
-            │  │ VIOLATION DETECTOR     │   │                              │
-            │  │ (US106 — pthread)      │   │                              │
-            │  │ waits on detect_cond   │   │                              │
-            │  │ scans all pairs,       │   │                              │
-            │  │ signals viol_cond      │   │                              │
-            │  └───────────┬────────────┘   │                              │
-            │              │ viol_cond       │                              │
-            │              ▼                │                              │
-            │  ┌────────────────────────┐   │                              │
-            │  │ REPORT GENERATOR       │   │                              │
-            │  │ (US107 — pthread)      │   │                              │
-            │  │ timedwait on viol_cond │   │                              │
-            │  │ prints [REPORT],       │   │                              │
-            │  │ calls write_report()   │   │                              │
-            │  └────────────────────────┘   │                              │
-            │                               │                              │
-            │  ┌────────────────────────┐   │                              │
-            │  │ ENVIRONMENT THREAD     │   │                              │
-            │  │ (US110 — pthread)      │   │                              │
-            │  │ loads weather from JSON│   │                              │
-            │  │ sets wind per flight   │   │                              │
-            │  └────────────────────────┘   │                              │
+            │         PARENT PROCESS        │                             │
+            │  ┌────────────────────────┐   │                             │
+            │  │ VIOLATION DETECTOR     │   │                             │
+            │  │ (US106 — pthread)      │   │                             │
+            │  │ waits on detect_cond   │   │                             │
+            │  │ scans all pairs,       │   │                             │
+            │  │ signals viol_cond      │   │                             │
+            │  └───────────┬────────────┘   │                             │
+            │              │ viol_cond       │                            │
+            │              ▼                │                             │
+            │  ┌────────────────────────┐   │                             │
+            │  │ REPORT GENERATOR       │   │                             │
+            │  │ (US107 — pthread)      │   │                             │
+            │  │ timedwait on viol_cond │   │                             │
+            │  │ prints [REPORT],       │   │                             │
+            │  │ calls write_report()   │   │                             │
+            │  └────────────────────────┘   │                             │
+            │                               │                             │
+            │  ┌────────────────────────┐   │                             │
+            │  │ ENVIRONMENT THREAD     │   │                             │
+            │  │ (US110 — pthread)      │   │                             │
+            │  │ loads weather from JSON│   │                             │
+            │  │ sets wind per flight   │   │                             │
+            │  └────────────────────────┘   │                             │
             └──────────────────────────────┘                              │
                                            │
                ┌───────────────────────────┼───────────────────────────┐
