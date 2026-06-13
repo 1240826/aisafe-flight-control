@@ -33,7 +33,7 @@ loop for each line in CSV
     alt line starts with '#'
         ctrl -> ctrl : parseHeader(String line, Map<String,AreaCode>) : void
         activate ctrl
-        ctrl -> acaRepo : ofIdentity(AreaCode) : Optional<AirControlArea>
+        ctrl -> acaRepo : ofIdentity(AreaCode.valueOf(areaCodeStr)) : Optional<AirControlArea>
         activate acaRepo
         acaRepo --> ctrl : AirControlArea (or throws)
         deactivate acaRepo
