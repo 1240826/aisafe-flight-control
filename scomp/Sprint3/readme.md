@@ -31,7 +31,7 @@ scenario.json ──► load_plans() ──► init_hybrid_simulation()
             │  │ scans all pairs,       │   │                             │
             │  │ signals viol_cond      │   │                             │
             │  └───────────┬────────────┘   │                             │
-            │              │ viol_cond       │                            │
+            │              │ viol_cond      │                             │
             │              ▼                │                             │
             │  ┌────────────────────────┐   │                             │
             │  │ REPORT GENERATOR       │   │                             │
@@ -301,9 +301,9 @@ This avoids contention: the detector can scan positions while the report thread 
 
 **Three weather providers.** Crazy Weather (`CW.json`, 45 zones, 0–12 000 ft), Happy Weather (`HP.json`, 45 zones, 0–12 000 ft), and Synthetic (`SYNTHETIC.json`, 20 zones, 0–45 000 ft, full coverage). The real providers only cover low altitude; the synthetic dataset fills the gap with jet-stream patterns at FL350–FL450. When no file is selected, a simple sine-wave formula generates wind.
 
-**Safety cap.** `SAFETY_CAP_S = 10 800 s` (3 hours, 10 800 steps) limits the maximum iteration count. Exists only to prevent infinite loops if a JSON segment is unreachable. Normal termination is always `all flights completed`.
+**Safety cap.** `SAFETY_CAP_S = 28 800 s` (8 hours, 28 800 steps) limits the maximum iteration count. This covers the full flight duration for demo scenarios (e.g., LIS-CDG ~5.5h). Exists only to prevent infinite loops if a JSON segment is unreachable. Normal termination is always `all flights completed`.
 
-**`MAX_VIOLATIONS = 10800`** — equal to the maximum possible number of steps, so no violation is silently dropped.
+**`MAX_VIOLATIONS = 10800`** — generous upper bound for the violation queue (3 hours' worth at the maximum possible violation rate of 1 per step per pair). No violation is silently dropped under any realistic scenario.
 
 ---
 
@@ -597,9 +597,66 @@ The fallback synthetic formula generates periodic wind: speed varies between 3 a
 
 ---
 
+## System Flow Summary
+
+**Who does what — parent process, child processes, and threads:**
+
+```
+1. ARRANQUE (main.c):
+   main() → carrega scenario.json (N FlightPlans com segmentos climb/cruise/descend,
+            hora de partida UTC) → run_simulation()
+
+2. INICIALIZAÇÃO (us105_init.c — processo PAI):
+   shm_open + mmap    → 1 bloco de memória partilhada (SharedData)
+   sem_open × 2       → sem_step_start / sem_step_done (barreira de step)
+   mutex_init × 4     → pos_mutex, viol_mutex, detect_mutex, env_mutex
+                         (todos PTHREAD_PROCESS_SHARED)
+   cond_init × 3      → viol_cond, detect_cond, env_cond
+   fast_forward        → voos com departure < sim_start são avançados
+                         (climb + cruise + descend) até à posição atual
+   pthread_create × 3  → 3 THREADS NO PAI:
+                         - violation_detector_thread  (US106)
+                         - report_generator_thread    (US107)
+                         - environment_thread         (US110)
+   fork() × N          → N PROCESSOS FILHO (1 por voo)
+                         Cada filho corre run_flight_process(i, shm)
+
+3. LOOP DE SIMULAÇÃO (main.c — o PAI controla o ritmo):
+   Para cada step:
+     a) simulation_step() — barreira:
+          sem_post(sem_step_start) × N   → liberta todos os filhos
+          sem_wait(sem_step_done)  × N   → espera todos terminarem
+     b) Sinaliza threads do pai:
+          detect_cond → detector varre pares, deteta violações
+          env_cond    → ambiente atribui vento a cada voo
+     c) draw_airspace() — mapa 70×20 no terminal
+
+4. PROCESSO FILHO (us108_sync.c — cada voo):
+     sem_wait(sem_step_start)        → espera ordem do pai
+     se current_time >= departure    → ativa o voo (1ª vez)
+     advance() → move 1s na rota:
+       CLIMB:   altitude sobe  (vz da tabela de perfil)
+       CRUISE:  altitude fixa  (vz = 0, velocidade = cruise_kt)
+       DESCEND: altitude desce (vz da tabela de perfil)
+     aplica wind drift (vento lido da shared memory)
+     escreve pos/vel/status na shared memory (sob pos_mutex)
+     sem_post(sem_step_done)         → avisa o pai "terminei"
+
+5. QUEM GERA O REPORT? O PAI (thread), NÃO OS FILHOS:
+     Detetor (pai) → lê posições da shared memory
+                   → safety_breach(h < 9260m && v < 305m)
+                   → sinaliza viol_cond
+     Report  (pai) → recebe sinal, imprime [REPORT] em tempo real
+                   → no fim, write_report() → ficheiro timestamped
+     Filhos apenas simulam o voo e escrevem posição na shared memory.
+     O ficheiro de report é gerado pelo processo pai.
+```
+
+---
+
 ## UI Display
 
-The map grid (70×20 characters) shows the Iberian airspace with lat/lon axes:
+The map grid shows the Iberian airspace with lat/lon axes:
 
 ```
   IBERIAN AIRSPACE MONITOR  09:35 (UTC+1)  step=300  [LAT 38-44N  LON 10-2W]
@@ -677,7 +734,7 @@ SIMULATION RUNNING — Ctrl+C to stop
 ...
 
   +------------ SIMULATION SUMMARY ------------+
-  | Steps: 10800  Flights: 2  Violations: 600 |
+  | Steps: 10800  Flights: 2  Violations: 600  |
   | RESULT: FAIL                               |
   +--------------------------------------------+
 
@@ -783,7 +840,6 @@ RESULT: FAIL
 - Flight altitude orders (alt_adjust from Sprint 2) are not implemented in Sprint 3 — violations are detected but not resolved
 - Named semaphores leave entries in `/dev/shm` until `sem_unlink` on cleanup — not a problem under normal shutdown but may leak if process is killed with SIGKILL
 - No TCP remote access integration (out of scope for SCOMP)
-- Weather file must be in JSON format — no direct xlsx parsing (done offline via `convert-weather.ps1`)
 - `SYNTHETIC.json` is generated, not from a real provider — wind patterns are simplified
 
 ---
@@ -815,3 +871,15 @@ MAX_HISTORY    = 600                      (trail snapshots per flight)
 | US108 | Enforce step-by-step simulation synchronisation with semaphores | Fábio Costa | 100% |
 | US109 | Generate and store final simulation report | André Barcelos | 100% |
 | US110 | Integrate environmental influences (wind) into simulation | All team | 100% (shared) |
+
+---
+
+## Note on TCP Server Mode (`--server` and `sim_server.c`)
+
+The TCP server functionality (`main.c --server` mode and the standalone `sim_server.c`) is **not part of the SCOMP sprint**. It exists solely for integration testing with the LAPR project (Java back-end):
+
+- It accepts a JSON flight plan + optional weather JSON over a TCP socket
+- It runs the simulation and returns the report file as a length-prefixed response
+- This allows LAPR to send flight plans programmatically and receive validation results
+
+SCOMP is fully self-contained and independent — the simulation binary (`./simulation`) works entirely on its own with local scenario JSON files. The server mode is a bridge for the LAPR team to test their flight plan generator against the SCOMP simulation engine. No SCOMP requirements depend on the server, and no SCOMP US references it.
