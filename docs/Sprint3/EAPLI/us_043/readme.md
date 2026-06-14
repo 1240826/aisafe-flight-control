@@ -58,14 +58,14 @@ The query requires traversing or filtering the `WeatherData` entity (or aggregat
 ### 4.1 Realization
 
 **Classes to create/modify:**
-eapli.aisafe.weatherdata.application
-| Class                      | Module                        | Responsibility |
-|----------------------------|-------------------------------|----------------|
-| `ConsultWeatherUI`         | `eapli.aisafe.ui.weatherdata` | Prompts user for area and date, displays results |
-| `ConsultWeatherController` | `eapli.aisafe.weatherdata.application`                 | Orchestrates the query, enforces authorization |
-| `WeatherData`              | `eapli.aisafe.weatherdata.domain`                 | Contains business logic for retrieving weather |
-| `WeatherDataRepository`    | `eapli.aisafe.weatherdata.repositories`                 | Declares the query method (e.g., `findByAreaAndDate`) |
-| `JpaWeatherDataRepository` | `eapli.aisafe.persistence.jpa`     | Implements the database query |
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `ConsultWeatherDataUI` | `eapli.aisafe.ui.weatherdata` | Prompts user for area and date, displays results |
+| `ConsultWeatherDataController` | `eapli.aisafe.weatherdata.application` | Orchestrates the query, enforces authorization |
+| `WeatherDataRepository` | `eapli.aisafe.weatherdata.repositories` | Added `findByAreaCodeAndDate(AreaCode, LocalDate)` method |
+| `JpaWeatherDataRepository` | `eapli.aisafe.persistence.jpa` | JPQL implementation using parameterized `BETWEEN` query |
+| `InMemoryWeatherDataRepository` | `eapli.aisafe.persistence.inmemory` | In-memory implementation with lambda predicate |
+| `ConsultWeatherDataControllerTest` | `eapli.aisafe.weatherdata.application` (test) | 6 CSV-driven parameterized tests |
 
 **Sequence Diagram — Consult Weather Data:**
 
@@ -95,9 +95,20 @@ Then the system displays a clear message indicating no data is available.
 
 **Key new/modified files:**
 
-- `[List relevant files created or altered]`
+- `aisafe.base/core/src/main/java/eapli/aisafe/weatherdata/application/ConsultWeatherDataController.java` — Controller with production and testing constructors, authorizes `WEATHER_PERSON`, `PILOT`, `FLIGHT_CONTROL_OPERATOR`
+- `aisafe.base/app/src/main/java/eapli/aisafe/ui/weatherdata/ConsultWeatherDataUI.java` — Console UI prompting area code and date (`yyyy-MM-dd`), displays observations
+- `aisafe.base/core/src/main/java/eapli/aisafe/weatherdata/repositories/WeatherDataRepository.java` — Added `findByAreaCodeAndDate(AreaCode, LocalDate)` method declaration
+- `aisafe.base/persistence/src/main/java/eapli/aisafe/persistence/jpa/JpaWeatherDataRepository.java` — JPQL implementation using parameterized `match()` with `:areaCode`, `:start`, `:end` parameters (avoids Hibernate 6 `SemanticException` from string concatenation)
+- `aisafe.base/persistence/src/main/java/eapli/aisafe/persistence/inmemory/InMemoryWeatherDataRepository.java` — In-memory implementation using stream filter with `LocalDate` range predicate
+- `aisafe.base/app/src/main/java/eapli/aisafe/ui/MainMenu.java` — Weather submenu now visible to `PILOT` and `FLIGHT_CONTROL_OPERATOR`; Consult option registered
+- `aisafe.base/core/src/test/java/eapli/aisafe/weatherdata/application/ConsultWeatherDataControllerTest.java` — 6 parameterized tests driven by `consult_weather_test.csv`
+- `aisafe.base/core/src/test/java/eapli/aisafe/weatherdata/application/consult_weather_test.csv` — Test scenarios for all authorized roles + unauthorized + empty results
 
-*Major commits: [Insert links or hashes]*
+**Key implementation decisions:**
+
+- JPQL uses parameterized `match(whereClause, Map)` instead of string concatenation because Hibernate 6 throws `SemanticException: Cannot interpret expression` when comparing `LocalDateTime` columns with string literals
+- Date range uses `recordedDateTime BETWEEN :start AND :end` where `start = date.atStartOfDay()` and `end = date.atTime(LocalTime.MAX)`
+- Controller accepts primitive types (`String`, `LocalDate`) and constructs domain `AreaCode` value objects internally
 
 ---
 
@@ -112,4 +123,6 @@ Then the system displays a clear message indicating no data is available.
 
 ## 7. Observations
 
-[Insert any technical debt, difficulties encountered, or architectural notes here]
+- Hibernate 6 rejects string-concatenated JPQL date comparisons — the `JpaWeatherDataRepository.findByAreaCodeAndDate` method was initially implemented with `"e.areaCode.code = '" + areaCode + "'"` style concatenation, which caused a `SemanticException`. The fix uses parameterized queries via `match("e.areaCode.code = :areaCode AND e.recordedDateTime BETWEEN :start AND :end", params)`.
+- Parameterized tests use CSV data source for clean separation of test logic from test data.
+- The `InMemoryWeatherDataRepository.findByAreaCodeAndDate` uses a simple lambda: `w -> w.areaCode().equals(areaCode) && w.recordedDateTime().toLocalDate().equals(date)` — suitable for unit tests but does not match the exact `BETWEEN` semantics of the JPA version (the in-memory version compares only the date portion, while JPA uses the full timestamp range).
