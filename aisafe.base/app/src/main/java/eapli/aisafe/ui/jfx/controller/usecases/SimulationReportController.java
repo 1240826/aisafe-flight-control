@@ -1,16 +1,12 @@
 package eapli.aisafe.ui.jfx.controller.usecases;
 
-import eapli.aisafe.flight.domain.Flight;
-import eapli.aisafe.flight.domain.FlightDesignator;
-import eapli.aisafe.flight.repositories.FlightRepository;
-import eapli.aisafe.infrastructure.persistence.PersistenceContext;
 import eapli.aisafe.simulation.application.GenerateSimulationReportController;
 import eapli.aisafe.simulation.domain.Simulation;
 import eapli.aisafe.simulation.domain.ValidationResult;
 import eapli.aisafe.ui.jfx.SceneManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.beans.property.SimpleStringProperty;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -28,7 +24,6 @@ import javafx.util.Duration;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
@@ -110,15 +105,17 @@ public class SimulationReportController {
     private TextArea reportOutput;
 
     private final GenerateSimulationReportController ctrl = new GenerateSimulationReportController();
-    private final FlightRepository flightRepo = PersistenceContext.repositories().flights();
     private final ObservableList<SimulationRow> sims = FXCollections.observableArrayList();
     private Timeline autoRefresh;
     private boolean liveMode = false;
+    private boolean updating = false;
 
-    private static final Pattern SUMMARY_LINE = Pattern.compile(
-            "Flights:\\s*(\\d+)\\s+Violations:\\s*(\\d+)");
+    private static final Pattern FLIGHTS_LINE = Pattern.compile(
+            "Flights:\\s*(\\d+)");
+    private static final Pattern VIOLATIONS_LINE = Pattern.compile(
+            "Total violations detected:\\s*(\\d+)");
     private static final Pattern FLIGHT_LINE = Pattern.compile(
-            "[\\s●•]*([A-Z]{2}\\d{3,4})\\s+(\\w+)\\s+violations=(\\d+)");
+            "^\\s+(\\w+):\\s+n_viol=(\\d+)", Pattern.MULTILINE);
     private static final Pattern RESULT_LINE = Pattern.compile(
             "RESULT:\\s*(PASS|FAIL)", Pattern.CASE_INSENSITIVE);
 
@@ -126,7 +123,7 @@ public class SimulationReportController {
     private void initialize() {
         loadSimulations();
         simulationSelector.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
-            if (sel != null) showSimulationDetails(sel);
+            if (sel != null && !updating) showSimulationDetails(sel);
         });
         startAutoRefresh();
     }
@@ -135,7 +132,6 @@ public class SimulationReportController {
         autoRefresh = new Timeline(new KeyFrame(Duration.seconds(5), e -> {
             if (liveMode && simulationSelector.getValue() != null) {
                 reloadSimulationData();
-                refreshCharts();
             }
         }));
         autoRefresh.setCycleCount(Timeline.INDEFINITE);
@@ -148,10 +144,17 @@ public class SimulationReportController {
             sims.clear();
             StreamSupport.stream(ctrl.allSimulations().spliterator(), false)
                     .forEach(s -> sims.add(new SimulationRow(s)));
-            simulationSelector.setItems(FXCollections.observableArrayList(
-                    sims.stream().map(SimulationRow::getDisplayName).toList()));
+            updating = true;
+            try {
+                simulationSelector.setItems(FXCollections.observableArrayList(
+                        sims.stream().map(SimulationRow::getDisplayName).toList()));
+                if (!sims.isEmpty()) {
+                    simulationSelector.getSelectionModel().selectFirst();
+                }
+            } finally {
+                updating = false;
+            }
             if (!sims.isEmpty()) {
-                simulationSelector.getSelectionModel().selectFirst();
                 showSimulationDetails(sims.get(0).getDisplayName());
             }
         } catch (final Exception e) {
@@ -169,12 +172,18 @@ public class SimulationReportController {
             sims.addAll(freshSims);
             final var items = FXCollections.observableArrayList(
                     freshSims.stream().map(SimulationRow::getDisplayName).toList());
-            simulationSelector.setItems(items);
-            if (selectedName != null && items.contains(selectedName)) {
-                simulationSelector.setValue(selectedName);
-            } else if (!items.isEmpty()) {
-                simulationSelector.getSelectionModel().selectFirst();
+            updating = true;
+            try {
+                simulationSelector.setItems(items);
+                if (selectedName != null && items.contains(selectedName)) {
+                    simulationSelector.setValue(selectedName);
+                } else if (!items.isEmpty()) {
+                    simulationSelector.getSelectionModel().selectFirst();
+                }
+            } finally {
+                updating = false;
             }
+            refreshCharts();
         } catch (final Exception ignored) {}
     }
 
@@ -234,6 +243,16 @@ public class SimulationReportController {
         return map.values().stream().mapToInt(Integer::intValue).sum();
     }
 
+    private static void updateChart(final Chart chart, final Runnable updater) {
+        final boolean animated = chart.getAnimated();
+        chart.setAnimated(false);
+        try {
+            updater.run();
+        } finally {
+            chart.setAnimated(animated);
+        }
+    }
+
     private void updateMetrics(final int totalFlights, final int totalViolations,
                                 final int totalCompanies, final ValidationResult result) {
         metricFlights.setText(String.valueOf(totalFlights));
@@ -255,23 +274,27 @@ public class SimulationReportController {
             return new CReportParseResult(0, 0, null, List.of(), Map.of(), trend);
         }
 
-        // Parse only from "SIMULATION SUMMARY" to end
         final var lines = content.lines().toList();
-        int summaryStart = 0;
+        int summaryStart = -1;
         for (int i = lines.size() - 1; i >= 0; i--) {
-            if (lines.get(i).contains("SIMULATION SUMMARY")) {
+            final var line = lines.get(i);
+            if (line.contains("FLIGHT SUMMARY") || line.contains("SIMULATION SUMMARY")) {
                 summaryStart = i;
                 break;
             }
         }
 
-        for (int i = summaryStart; i < lines.size(); i++) {
+        for (int i = 0; i < lines.size(); i++) {
             final var line = lines.get(i);
 
-            final var summaryMatcher = SUMMARY_LINE.matcher(line);
-            if (summaryMatcher.find()) {
-                totalFlights = Integer.parseInt(summaryMatcher.group(1));
-                totalViolations = Integer.parseInt(summaryMatcher.group(2));
+            final var flightsMatcher = FLIGHTS_LINE.matcher(line);
+            if (flightsMatcher.find()) {
+                totalFlights = Integer.parseInt(flightsMatcher.group(1));
+            }
+
+            final var violationsMatcher = VIOLATIONS_LINE.matcher(line);
+            if (violationsMatcher.find()) {
+                totalViolations = Integer.parseInt(violationsMatcher.group(1));
             }
 
             final var resultMatcher = RESULT_LINE.matcher(line);
@@ -279,16 +302,19 @@ public class SimulationReportController {
                 vr = "PASS".equalsIgnoreCase(resultMatcher.group(1))
                         ? ValidationResult.PASSED : ValidationResult.FAILED;
             }
+        }
 
-            final var flightMatcher = FLIGHT_LINE.matcher(line);
-            if (flightMatcher.find()) {
+        if (summaryStart >= 0) {
+            final var flightMatcher = FLIGHT_LINE.matcher(content);
+            while (flightMatcher.find()) {
                 final var fid = flightMatcher.group(1);
-                final var fv = Integer.parseInt(flightMatcher.group(3));
+                final var fv = Integer.parseInt(flightMatcher.group(2));
                 flightIds.add(fid);
                 perFlightViolations.put(fid, fv);
             }
+        }
 
-            // Parse violation details for trend
+        for (final var line : lines) {
             final var lower = line.toLowerCase();
             if (lower.contains("step=") && lower.contains("<->")) {
                 trend.add(1);
@@ -302,18 +328,10 @@ public class SimulationReportController {
     private Map<String, Integer> lookupCompanies(final List<String> flightIds) {
         final Map<String, Integer> result = new LinkedHashMap<>();
         for (final var fid : flightIds) {
-            try {
-                final var designator = FlightDesignator.valueOf(fid);
-                final var flight = flightRepo.ofIdentity(designator).orElse(null);
-                if (flight != null && flight.routeName() != null) {
-                    final var routeName = flight.routeName().toString();
-                    // Extract company from route name prefix (e.g., "TP123" -> "TP")
-                    final var company = routeName.replaceAll("\\d+", "");
-                    if (!company.isEmpty()) {
-                        result.merge(company.toUpperCase(), 1, Integer::sum);
-                    }
-                }
-            } catch (final Exception ignored) {}
+            final var company = fid.replaceAll("\\d+", "");
+            if (!company.isEmpty()) {
+                result.merge(company.toUpperCase(), 1, Integer::sum);
+            }
         }
         if (result.isEmpty() && !flightIds.isEmpty()) {
             result.put("Unknown", flightIds.size());
@@ -322,96 +340,108 @@ public class SimulationReportController {
     }
 
     private void buildViolationsChart(final Map<String, Integer> perFlight) {
-        violationsChart.getData().clear();
-        final var series = new XYChart.Series<String, Number>();
-        series.setName("Violations");
-        if (perFlight.isEmpty()) {
-            series.getData().add(new XYChart.Data<>("No Violations", 0));
-        } else {
-            perFlight.forEach((flight, count) ->
-                    series.getData().add(new XYChart.Data<>(flight, count)));
-        }
-        violationsChart.getData().add(series);
+        updateChart(violationsChart, () -> {
+            violationsChart.getData().clear();
+            final var series = new XYChart.Series<String, Number>();
+            series.setName("Violations");
+            if (perFlight.isEmpty()) {
+                series.getData().add(new XYChart.Data<>("No Violations", 0));
+            } else {
+                perFlight.forEach((flight, count) ->
+                        series.getData().add(new XYChart.Data<>(flight, count)));
+            }
+            violationsChart.getData().add(series);
+        });
     }
 
     private void buildValidationPieChart(final ValidationResult result) {
-        validationPieChart.getData().clear();
-        final var passed = new PieChart.Data("Passed", 0);
-        final var failed = new PieChart.Data("Failed", 0);
-        final var pending = new PieChart.Data("Pending", 0);
+        updateChart(validationPieChart, () -> {
+            validationPieChart.getData().clear();
+            final var passed = new PieChart.Data("Passed", 0);
+            final var failed = new PieChart.Data("Failed", 0);
+            final var pending = new PieChart.Data("Pending", 0);
 
-        switch (result) {
-            case PASSED -> passed.pieValueProperty().set(1);
-            case FAILED -> failed.pieValueProperty().set(1);
-            default -> pending.pieValueProperty().set(1);
-        }
-        validationPieChart.getData().addAll(passed, failed, pending);
+            switch (result) {
+                case PASSED -> passed.pieValueProperty().set(1);
+                case FAILED -> failed.pieValueProperty().set(1);
+                default -> pending.pieValueProperty().set(1);
+            }
+            validationPieChart.getData().addAll(passed, failed, pending);
 
-        validationPieChart.getData().forEach(d -> {
-            if ("Passed".equals(d.getName())) d.getNode().setStyle("-fx-pie-color: #3fb950;");
-            else if ("Failed".equals(d.getName())) d.getNode().setStyle("-fx-pie-color: #f85149;");
-            else d.getNode().setStyle("-fx-pie-color: #d29922;");
+            Platform.runLater(() -> validationPieChart.getData().forEach(d -> {
+                final var node = d.getNode();
+                if (node != null) {
+                    if ("Passed".equals(d.getName())) node.setStyle("-fx-pie-color: #3fb950;");
+                    else if ("Failed".equals(d.getName())) node.setStyle("-fx-pie-color: #f85149;");
+                    else node.setStyle("-fx-pie-color: #d29922;");
+                }
+            }));
         });
     }
 
     private void buildViolationsTrendChart(final List<Integer> trend) {
-        violationsTrendChart.getData().clear();
-        if (trend.isEmpty()) {
+        updateChart(violationsTrendChart, () -> {
+            violationsTrendChart.getData().clear();
+            if (trend.isEmpty()) {
+                final var series = new XYChart.Series<Number, Number>();
+                series.setName("Violations");
+                series.getData().add(new XYChart.Data<>(0, 0));
+                violationsTrendChart.getData().add(series);
+                return;
+            }
             final var series = new XYChart.Series<Number, Number>();
             series.setName("Violations");
-            series.getData().add(new XYChart.Data<>(0, 0));
+            for (int i = 0; i < trend.size(); i++) {
+                series.getData().add(new XYChart.Data<>(i, trend.get(i)));
+            }
             violationsTrendChart.getData().add(series);
-            return;
-        }
-        final var series = new XYChart.Series<Number, Number>();
-        series.setName("Violations");
-        for (int i = 0; i < trend.size(); i++) {
-            series.getData().add(new XYChart.Data<>(i, trend.get(i)));
-        }
-        violationsTrendChart.getData().add(series);
+        });
     }
 
     private void buildCompanyChart(final Map<String, Integer> companies,
                                     final List<String> flightIds) {
-        companyChart.getData().clear();
-        final var series = new XYChart.Series<String, Number>();
-        series.setName("Flights");
-        if (companies.isEmpty()) {
-            series.getData().add(new XYChart.Data<>("Unknown", flightIds.size()));
-        } else {
-            companies.entrySet().stream()
-                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                    .forEach(e -> series.getData().add(new XYChart.Data<>(e.getKey(), e.getValue())));
-        }
-        companyChart.getData().add(series);
+        updateChart(companyChart, () -> {
+            companyChart.getData().clear();
+            final var series = new XYChart.Series<String, Number>();
+            series.setName("Flights");
+            if (companies.isEmpty()) {
+                series.getData().add(new XYChart.Data<>("Unknown", flightIds.size()));
+            } else {
+                companies.entrySet().stream()
+                        .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                        .forEach(e -> series.getData().add(new XYChart.Data<>(e.getKey(), e.getValue())));
+            }
+            companyChart.getData().add(series);
+        });
     }
 
     private void buildFlightsPerHourChart(final SimulationRow sim) {
-        flightsPerHourChart.getData().clear();
-        final var series = new XYChart.Series<String, Number>();
-        series.setName("Flights");
-        // Parse time range from sim metadata
-        try {
-            final var range = sim.timeRange();
-            final var parts = range.split("\\s+");
-            int startHour = 0, endHour = 23;
-            if (parts.length >= 2) {
-                final var timePattern = Pattern.compile("(\\d{1,2}):\\d{2}");
-                var m = timePattern.matcher(parts[0]);
-                if (m.find()) startHour = Integer.parseInt(m.group(1));
-                m = timePattern.matcher(parts[parts.length - 1]);
-                if (m.find()) endHour = Integer.parseInt(m.group(1));
+        updateChart(flightsPerHourChart, () -> {
+            flightsPerHourChart.getData().clear();
+            final var series = new XYChart.Series<String, Number>();
+            series.setName("Flights");
+            try {
+                final var range = sim.timeRange();
+                final var parts = range.split("\\s+");
+                int startHour = 0, endHour = 23;
+                if (parts.length >= 2) {
+                    final var timePattern = Pattern.compile("(\\d{1,2}):\\d{2}");
+                    var m = timePattern.matcher(parts[0]);
+                    if (m.find()) startHour = Integer.parseInt(m.group(1));
+                    m = timePattern.matcher(parts[parts.length - 1]);
+                    if (m.find()) endHour = Integer.parseInt(m.group(1));
+                }
+                for (int h = 0; h < 24; h++) {
+                    int count = (h >= startHour && h <= endHour) ? 1 : 0;
+                    series.getData().add(new XYChart.Data<>(String.format("%02d:00", h), count));
+                }
+            } catch (final Exception e) {
+                for (int h = 0; h < 24; h++) {
+                    series.getData().add(new XYChart.Data<>(String.format("%02d:00", h), 0));
+                }
             }
-            for (int h = 0; h < 24; h++) {
-                int count = (h >= startHour && h <= endHour) ? 1 : 0;
-                series.getData().add(new XYChart.Data<>(String.format("%02d:00", h), count));
-            }
-        } catch (final Exception e) {
-            for (int h = 0; h < 24; h++) {
-                series.getData().add(new XYChart.Data<>(String.format("%02d:00", h), 0));
-            }
-        }
-        flightsPerHourChart.getData().add(series);
+            flightsPerHourChart.getData().add(series);
+        });
     }
 
     @FXML
