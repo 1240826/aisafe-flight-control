@@ -63,7 +63,7 @@ independently or where we deviated from the AI output.
   no additional persistence layer needed
 
 **Decisions made by the team / deviations from LLM output:**
-- The LLM suggested WebSockets for real-time updates — replaced with AJAX polling every 5 seconds,
+- The LLM suggested WebSockets for real-time updates — replaced with AJAX polling every 3 seconds,
   as required by the acceptance criteria and simpler to implement
 - The LLM proposed a single handler class with conditional routing — split into one class per
   endpoint for clarity and alignment with the Single Responsibility Principle
@@ -137,14 +137,17 @@ through synchronization.
 ```json
 [
   {
+    "timestamp": "2026-06-10T14:20:00",
     "username": "atcc.user@airline.com",
     "clientIp": "192.168.1.72",
     "clientPort": 61234,
     "service": "US78",
-    "connectedSince": "2026-06-10T14:20:00"
+    "eventType": "LOGIN_OK"
   }
 ]
 ```
+
+> **Note:** The `/api/active` endpoint returns the same event structure as `/api/events` (the LOGIN_OK event that started the session). The `connectedSince` concept is represented by the event's `timestamp` field.
 
 ---
 
@@ -153,11 +156,11 @@ through synchronization.
 Both pages use the same client-side pattern:
 
 1. On page load, immediately fetch data from the JSON endpoint and render the table.
-2. Use `setInterval` to repeat the fetch every 5 seconds.
+2. Use `setTimeout` to repeat the fetch every 3 seconds.
 3. On each interval, replace only the table body (`innerHTML`) with the newly received data.
 4. Display a last-updated timestamp so the administrator can confirm data is live.
 
-No external JavaScript libraries are required — native `fetch` API and vanilla DOM manipulation.
+No external JavaScript libraries are required — native `XMLHttpRequest` API and vanilla DOM manipulation.
 
 ---
 
@@ -254,9 +257,28 @@ To demonstrate this user story:
 
 ## 7. Observations
 
-- The HTTP server and UDP receiver share `RemoteAccessEventStore` — all access to it must be
+- The HTTP server and UDP receiver share `LogStore` — all access to it must be
   synchronized to avoid race conditions between the two threads.
 - Active user derivation is computed on demand per API request. If performance becomes a concern
   with large event logs, a separate maintained map can be introduced without changing the API.
-- The 5-second polling interval is a deliberate simplification over WebSockets, as required by
+- The 3-second polling interval is a deliberate simplification over WebSockets, as required by
   the acceptance criteria (AJAX).
+- Classes are in package `rcomp.logging` (both us090 and us091).
+
+## 8. Build and Run
+
+```bash
+# Compile
+cd rcomp/us090
+javac -d out src/*.java ../us091/src/*.java
+
+# Run (default ports: UDP 9090, HTTP 8080)
+java -cp out rcomp.logging.LoggingServerApp
+
+# Or with custom ports
+java -cp out rcomp.logging.LoggingServerApp 9090 8080
+```
+
+Then open in browser:
+- `http://<host>:8080/events` — Last Events page
+- `http://<host>:8080/active` — Active Users page
