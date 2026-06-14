@@ -57,16 +57,19 @@ The `FlightRoute` aggregate root will need to reference two `Airport` entities (
 
 ### 4.1 Realization
 
-**Classes to create:**
+**Classes to create/modify:**
 
-| Class | Module                                  | Responsibility |
-|-------|-----------------------------------------|----------------|
-| `CreateFlightRouteUI` | `eapli.aisafe.ui.flightroute`           | Captures route details from the user |
-| `CreateFlightRouteController` | `eapli.aisafe.flightroute.application`  | Coordinates creation, validates uniqueness |
-| `FlightRoute` | `eapli.aisafe.flightroute.domain`       | Aggregate root representing the route |
-| `FlightRouteName` | `eapli.aisafe.flightroute.domain`       | Value Object enforcing the 2-letter, 1 to 4-number format |
+| Class | Module | Responsibility |
+|-------|--------|----------------|
+| `CreateFlightRouteUI` | `eapli.aisafe.ui.flightroute` | Captures route details from the user |
+| `CreateFlightRouteController` | `eapli.aisafe.flightroute.application` | Coordinates creation, validates uniqueness |
+| `FlightRoute` | `eapli.aisafe.flightroute.domain` | Aggregate root representing the route |
+| `FlightRouteName` | `eapli.aisafe.flightroute.domain` | Value Object enforcing the 2-letter, 1 to 4-number format |
 | `FlightRouteRepository` | `eapli.aisafe.flightroute.repositories` | Interface for persistence |
-| `JpaFlightRouteRepository`| `eapli.aisafe.persistence.jpa`          | JPA implementation |
+| `JpaFlightRouteRepository`| `eapli.aisafe.persistence.jpa` | JPA implementation |
+| `CreateFlightRouteControllerTest` | test | 3 parameterized tests: save, reject existing, check authorization |
+| `FlightRouteTest` | test | Domain unit tests for FlightRoute |
+| `DeleteFlightRouteControllerTest` | test | Tests for deactivation (US074) |
 
 **Sequence Diagram — Create Flight Route:**
 
@@ -93,11 +96,18 @@ Then the system successfully saves the `FlightRoute` and it becomes available fo
 
 ## 5. Implementation
 
-**Key new files:**
+**Key new/modified files:**
 
-- `[List relevant files created or altered]`
-
-*Major commits: [Insert links or hashes]*
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightroute/domain/FlightRoute.java` — Aggregate root with origin/destination airports, company reference, active status
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightroute/domain/FlightRouteName.java` — Value Object validating format `[A-Z]{2}\d{1,4}`
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightroute/repositories/FlightRouteRepository.java` — Repository interface
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightroute/application/CreateFlightRouteController.java` — Controller with authorization (`ATC_COLLABORATOR`), validates route name prefix matches company IATA, checks uniqueness
+- `aisafe.base/app/src/main/java/eapli/aisafe/ui/flightroute/CreateFlightRouteUI.java` — Console UI with airport selection and route name input
+- `aisafe.base/persistence/src/main/java/eapli/aisafe/persistence/jpa/JpaFlightRouteRepository.java` — JPA implementation
+- `aisafe.base/persistence/src/main/java/eapli/aisafe/persistence/inmemory/InMemoryFlightRouteRepository.java` — In-memory implementation
+- `aisafe.base/core/src/test/java/eapli/aisafe/flightroute/application/CreateFlightRouteControllerTest.java` — 3 tests: save, reject existing, verify auth
+- `aisafe.base/core/src/test/java/eapli/aisafe/flightroute/domain/FlightRouteTest.java` — Domain tests
+- `aisafe.base/core/src/test/java/eapli/aisafe/flightroute/application/DeleteFlightRouteControllerTest.java` — Deactivation tests
 
 ---
 
@@ -113,4 +123,6 @@ Then the system successfully saves the `FlightRoute` and it becomes available fo
 
 ## 7. Observations
 
-[Insert any technical debt, difficulties encountered, or architectural notes here]
+- The route name format validation (`[A-Z]{2}\d{1,4}`) is enforced both in the `FlightRouteName` value object and client-side in the RCOMP ATCC client app.
+- The `CreateFlightRouteController` was already complete in Sprint 2 — only the `CreateFlightRouteControllerTest` was added in Sprint 3.
+- The `DeleteFlightRouteController` (US074) was reused for the `DELETE_ROUTE` remote command in US078.
