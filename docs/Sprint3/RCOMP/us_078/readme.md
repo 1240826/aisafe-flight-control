@@ -28,6 +28,7 @@ This task was assigned in Sprint 3 within the Computer Networks (RCOMP) scope. T
   - **US071** — Decommission aircraft
   - **US072** — List fleet
   - **US073** — Create flight route
+  - **US074** — Deactivate flight route
   - **US075** — Add pilot
   - **US076** — List pilots
   - **US077** — Remove pilot
@@ -36,7 +37,7 @@ This task was assigned in Sprint 3 within the Computer Networks (RCOMP) scope. T
 ### Dependencies/References
 
 - US030 — Authentication and authorization (must be applied to remote logins).
-- US070, US071, US072, US073, US075, US076, US077 — The ATCC functionality that must be exposed remotely.
+- US070, US071, US072, US073, US074, US075, US076, US077 — The ATCC functionality that must be exposed remotely.
 - US090 — External logging of remote accesses (logs every login/logout/disconnect via UDP).
 - NFR08 — Remote RDBMS configuration must be respected.
 
@@ -67,10 +68,11 @@ Each message is terminated with `\n`. Fields are separated by `|`.
 | ADD_AIRCRAFT | `ADD_AIRCRAFT|<registration>|<country>|<model>|<operator>|<numCrew>|<certDate>` | Add aircraft (US070) |
 | DECOMMISSION_AIRCRAFT | `DECOMMISSION_AIRCRAFT|<registration>|<country>` | Decommission aircraft (US071) |
 | LIST_FLEET | `LIST_FLEET` | List all aircraft (US072) |
-| CREATE_ROUTE | `CREATE_ROUTE|<routeId>|<operator>|<departure>|<arrival>` | Create route (US073) |
-| ADD_PILOT | `ADD_PILOT|<mechNumber>|<operator>|<certDate>|<aircraftTypes>` | Add pilot (US075) |
+| CREATE_ROUTE | `CREATE_ROUTE|<routeName>|<operator>|<departure>|<arrival>` | Create route (US073) |
+| DELETE_ROUTE | `DELETE_ROUTE|<routeName>|<date>` | Deactivate route (US074) |
+| ADD_PILOT | `ADD_PILOT|<licenseNumber>|<operator>|<certDate>|<aircraftTypes>` | Add pilot (US075) |
 | LIST_PILOTS | `LIST_PILOTS|<operator>` | List pilots (US076) |
-| REMOVE_PILOT | `REMOVE_PILOT|<mechNumber>` | Remove pilot (US077) |
+| REMOVE_PILOT | `REMOVE_PILOT|<licenseNumber>` | Remove pilot (US077) |
 | LIST_ROUTES | `LIST_ROUTES` | List all routes |
 | QUIT | `QUIT` | Gracefully close the session |
 
@@ -106,11 +108,11 @@ The system follows the **DTO pattern** to isolate the domain model from the TCP 
 
 | DTO | Fields | Factory |
 |-----|--------|---------|
-| `AircraftDTO` | registration, country, model, operator, numCrew, certDate, isActive | `AircraftDTO.from(Aircraft)` |
-| `FlightRouteDTO` | routeId, operator, departureAirport, arrivalAirport | `FlightRouteDTO.from(FlightRoute)` |
-| `PilotDTO` | mechNumber, operator, certDate, isActive | `PilotDTO.from(Pilot)` |
+| `AircraftDTO` | registrationNumber, registrationCountry, aircraftModelCode, companyIata, crewMembers, totalCapacity, operationalStatus, registrationDate, ageInYears | `AircraftDTO.from(Aircraft)` |
+| `FlightRouteDTO` | routeName, companyIata, originIata, destinationIata, active, deactivationDate | `FlightRouteDTO.from(FlightRoute)` |
+| `PilotDTO` | licenseNumber, companyIata, certifiedModels, certificationDate, active | `PilotDTO.from(Pilot)` |
 
-**DTO Flow:**
+**DTO Flow (intended, see note in Observations):**
 ```
 Domain Entity → DTO.from(entity) → DTO record → TCP Handler → format → Client
 ```
@@ -137,10 +139,11 @@ Domain Entity → DTO.from(entity) → DTO record → TCP Handler → format →
 
 **Key classes (RCOMP side):**
 
-| Class | Location | Responsibility |
-|-------|----------|---------------|
+| Class / File | Location | Responsibility |
+|--------------|----------|---------------|
 | `AtcClientApp` | `rcomp/us078/src/rcomp/client/` | Standalone console client with validation |
 | `TcpClient` | `rcomp/us078/src/rcomp/client/` | Reusable TCP client |
+| `run-atcc-client.bat` | `rcomp/us078/` | Windows build & run script |
 
 **Key classes (EAPLI side):**
 
@@ -151,6 +154,9 @@ Domain Entity → DTO.from(entity) → DTO record → TCP Handler → format →
 | `RemoteAtcService` | `aisafe.base/core/src/.../remote/atc/` | Facade wrapping ATC controllers |
 | `RemoteProtocol` | `aisafe.base/core/src/.../remote/` | Protocol constants and helpers |
 | `UdpAccessLogger` | `aisafe.base/core/src/.../remote/` | UDP logging client for US090 |
+| `AircraftDTO` | `aisafe.base/core/src/.../remote/atc/` | DTO for aircraft data |
+| `FlightRouteDTO` | `aisafe.base/core/src/.../remote/atc/` | DTO for flight route data |
+| `PilotDTO` | `aisafe.base/core/src/.../remote/atc/` | DTO for pilot data |
 
 ### 4.2 Acceptance Tests
 
@@ -188,6 +194,7 @@ Then the server responds with `AUTH_FAIL|INSUFFICIENT_ROLE` and the session rema
 |------|---------------|
 | `rcomp/us078/src/rcomp/client/AtcClientApp.java` | Console client with loop-based validation and intuitive prompts |
 | `rcomp/us078/src/rcomp/client/TcpClient.java` | TCP transport layer — kept at original repository state |
+| `rcomp/us078/run-atcc-client.bat` | Windows build & run script (`javac` + `java`) |
 
 ### 5.2 UI Improvements
 
@@ -214,6 +221,7 @@ Then the server responds with `AUTH_FAIL|INSUFFICIENT_ROLE` and the session rema
 ## 7. Observations
 
 - The RCOMP component depends on `RemoteAtcService` from EAPLI — this is the only integration point.
+- The DTO classes (`AircraftDTO`, `FlightRouteDTO`, `PilotDTO`) exist in the `remote/atc` package but are not yet consumed by `RemoteAtcService` — it currently formats domain entities directly into strings. A future refactor should integrate the DTO layer.
 - US090 (UDP logging) must be operational for login/logout events to be recorded.
 - The text protocol is identical in structure to US044 and US086 — only the command codes and port differ.
 - All input validation happens on the client side with retry loops for robust user experience.
