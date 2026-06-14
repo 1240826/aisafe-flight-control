@@ -68,6 +68,7 @@ The `FlightPlan` aggregate will act as the operational instantiation of a `Fligh
 | `FlightPlanStatus` | `eapli.aisafe.flightplan.domain` | Enum containing `DRAFT` (and future states like `VALIDATED`) |
 | `FlightPlanRepository` | `eapli.aisafe.flightplan.repositories` | Interface for persistence |
 | `JpaFlightPlanRepository` | `eapli.aisafe.persistence.jpa`| JPA implementation |
+| `ImportFlightPlanController` | `eapli.aisafe.flightplan.application` | Handles DSL import (used by US080 and US121) |
 
 **Sequence Diagram — Create Flight Plan:**
 
@@ -89,11 +90,23 @@ Then its internal status is automatically initialized as "DRAFT".
 
 ## 5. Implementation
 
-**Key new files:**
+**Key new/modified files:**
 
-- `[List relevant files created or altered]`
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightplan/domain/FlightPlan.java` — Aggregate root with aircraft, pilot, route, departure time, fuel, status (`DRAFT`)
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightplan/domain/FlightPlanStatus.java` — Enum: `DRAFT`, `VALIDATED`, `SIMULATED`
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightplan/repositories/FlightPlanRepository.java` — Repository interface
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightplan/application/CreateFlightPlanController.java` — Enforces pilot-route company alignment, sets initial status to `DRAFT`
+- `aisafe.base/core/src/main/java/eapli/aisafe/flightplan/application/ImportFlightPlanController.java` — Alternative creation path via DSL parsing
+- `aisafe.base/app/src/main/java/eapli/aisafe/ui/flightplan/CreateFlightPlanUI.java` — Console UI with route/aircraft/pilot selection
+- `aisafe.base/persistence/src/main/java/eapli/aisafe/persistence/jpa/JpaFlightPlanRepository.java` — JPA implementation
+- `aisafe.base/persistence/src/main/java/eapli/aisafe/persistence/inmemory/InMemoryFlightPlanRepository.java` — In-memory implementation
+- `aisafe.base/core/src/test/java/eapli/aisafe/flightplan/domain/FlightPlanTest.java` — 14 domain tests
+- `aisafe.base/core/src/test/java/eapli/aisafe/flightplan/application/CreateFlightPlanControllerTest.java` — 6 controller tests
 
-*Major commits: [Insert links or hashes]*
+**Key implementation decisions:**
+
+- Pilot company alignment is enforced in `CreateFlightPlanController` by comparing `pilot.companyIata()` with `route.companyIata()`
+- `ImportFlightPlanController` reuses the same domain validation but parses DSL content instead of interactive input
 
 ---
 
@@ -109,4 +122,6 @@ Then its internal status is automatically initialized as "DRAFT".
 
 ## 7. Observations
 
-[Insert any technical debt, difficulties encountered, or architectural notes here]
+- US080 was fully implemented in Sprint 2 through the `CreateFlightPlanController` and `ImportFlightPlanController` — no Sprint 3 code changes were needed.
+- The `ImportFlightPlanController` serves dual duty: interactive creation (US080) and DSL file import (US121).
+- The `RemotePilotService` exposes `createFlightPlan(flightId, dsl)` for the Pilot remote client (US086), which delegates to `ImportFlightPlanController`.
