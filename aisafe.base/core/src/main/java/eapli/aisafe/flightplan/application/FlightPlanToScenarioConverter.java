@@ -54,7 +54,10 @@ public class FlightPlanToScenarioConverter {
     }
 
     private String visitFlightDecl(final FlightPlanParser.FlightDeclContext ctx) {
-        final var flightId = ctx.flightId().IDENTIFIER().getText();
+        final var fidCtx = ctx.flightId();
+        final var flightId = fidCtx.IDENTIFIER() != null
+                ? fidCtx.IDENTIFIER().getText()
+                : fidCtx.NUMBER().getText();
         final var flightType = ctx.flightType().REGULAR() != null ? "regular" : "charter";
         final var routeOrigin = ctx.routeDecl().airportCode(0).getText();
         final var routeDestination = ctx.routeDecl().airportCode(1).getText();

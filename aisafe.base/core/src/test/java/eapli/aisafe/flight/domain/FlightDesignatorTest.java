@@ -45,9 +45,9 @@ class FlightDesignatorTest {
     }
 
     @Test
-    void ensureFormatWithoutLeadingLettersIsRejected() {
-        assertThrows(IllegalStateException.class,
-                () -> new FlightDesignator("12345"));
+    void ensureNumericDesignatorIsAccepted() {
+        final var d = new FlightDesignator("12345");
+        assertEquals("12345", d.toString());
     }
 
     @Test

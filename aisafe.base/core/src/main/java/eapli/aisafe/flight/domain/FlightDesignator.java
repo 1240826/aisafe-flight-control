@@ -23,8 +23,8 @@ public class FlightDesignator implements ValueObject, Comparable<FlightDesignato
         Preconditions.noneNull(designator);
         final var trimmed = designator.trim().toUpperCase();
         Invariants.ensure(!trimmed.isBlank(), "Flight designator must not be blank");
-        Invariants.ensure(trimmed.matches("[A-Z]{2}[0-9]{1,4}[A-Z]?"),
-                "Flight designator must match format: xxn(n)(n)(n)(a) (e.g. TP1234)");
+        Invariants.ensure(trimmed.matches("[A-Z]{2}[0-9]{1,4}[A-Z]?|[0-9]{3,}"),
+                "Flight designator must match format: xxn(n)(n)(n)(a) (e.g. TP1234) or numeric (e.g. 123456)");
         this.designator = trimmed;
     }
 

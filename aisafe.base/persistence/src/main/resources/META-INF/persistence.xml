@@ -35,13 +35,13 @@
     <class>eapli.aisafe.pilot.domain.Pilot</class>
 
     <properties>
-      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://vsgate-s1.dei.isep.ipp.pt:10309/aisafe"/>
-
-      <property name="jakarta.persistence.jdbc.user" value="postgres"/>
-      <property name="jakarta.persistence.jdbc.password" value="9FL4Fk6VEcJz"/>
-      <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+      <!-- H2 local development -->
+      <property name="jakarta.persistence.jdbc.url" value="jdbc:h2:~/aisafe_local;AUTO_SERVER=TRUE"/>
+      <property name="jakarta.persistence.jdbc.user" value="sa"/>
+      <property name="jakarta.persistence.jdbc.password" value=""/>
+      <property name="jakarta.persistence.jdbc.driver" value="org.h2.Driver"/>
       <property name="hibernate.hbm2ddl.auto" value="update"/>
-      <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
+      <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
 
     </properties>
   </persistence-unit>

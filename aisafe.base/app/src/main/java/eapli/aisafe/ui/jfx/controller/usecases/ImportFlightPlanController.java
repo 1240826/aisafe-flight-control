@@ -88,6 +88,10 @@ public class ImportFlightPlanController {
     }
 
     private static final List<ExampleEntry> EXAMPLES = List.of(
+            new ExampleEntry("LAPR4: OPO -> MAD (professor)", "/examples/Flight_plan_LAPR4.flightplan"),
+            new ExampleEntry("LAPR4: OPO -> MAD (collision TP9999)", "/examples/Flight_plan_LAPR4_collision.flightplan"),
+            new ExampleEntry("Invalid: Bad airport (demo)", "/examples/invalid_bad_airport.flightplan"),
+            new ExampleEntry("Invalid: Missing fuel", "/examples/invalid_missing_fuel.flightplan"),
             new ExampleEntry("Valid: LIS \u2192 OPO (charter)", "/examples/valid_lis_opo.flightplan"),
             new ExampleEntry("Valid: LIS \u2192 LHR (regular)", "/examples/valid_direct_flight.flightplan"),
             new ExampleEntry("Valid: LIS \u2192 MAD (charter)", "/examples/valid_demo_charter_lis_mad.flightplan"),

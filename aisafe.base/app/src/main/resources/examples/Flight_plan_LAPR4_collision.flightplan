@@ -1,0 +1,51 @@
+// TP9999 - Guaranteed collision with TP4257 (LAPR4 flight plan)
+// Same route OPO -> MAD, same departure time 09:00, same cruise altitude 7405m
+// Slightly offset coordinates (~100m) to avoid exact overlap but stay inside safety cylinder
+// The C simulator will detect violation at multiple points along the shared path
+
+flight TP9999 : regular {
+
+    route {
+        origin      : OPO;
+        destination : MAD;
+    }
+
+    aircraft : CS-TUB;
+    pilot    : P12345;
+
+    leg {
+
+        departure {
+            airport  : OPO;
+            day      : Monday;
+            datetime : 2026-06-02T09:00+01:00;
+        }
+
+        arrival {
+            airport  : MAD;
+            datetime : 2026-06-02T10:30+02:00;
+        }
+
+        fuel {
+            quantity : 39000 l;
+        }
+
+        segment {
+            from      : (41.263, -8.684);
+            to        : (41.501, -8.159);
+            altitudes : [7405 m WIDTH 60 m];
+        }
+
+        segment {
+            from      : (41.501, -8.159);
+            to        : (41.001, -5.399);
+            altitudes : [7405 m WIDTH 60 m];
+        }
+
+        segment {
+            from      : (41.001, -5.399);
+            to        : (40.490, -3.563);
+            altitudes : [7405 m WIDTH 50 m, 610 m WIDTH 30 m];
+        }
+    }
+}

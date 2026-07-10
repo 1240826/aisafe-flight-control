@@ -159,24 +159,14 @@ public class ImportFlightPlanController {
                         FlightDesignator.valueOf(flightDesigStr);
 
                 // Extract company code from designator (first 2 letters)
-                final CompanyIATA company = CompanyIATA.valueOf(
-                        flightDesigStr.substring(0, 2));
-
-                // ── Validate route ───────────────────────────────────────
-                final String originCode = ctx.flightDecl().routeDecl()
-                        .airportCode(0).getText();
-                final String destCode = ctx.flightDecl().routeDecl()
-                        .airportCode(1).getText();
-                final AirportIATA origin = AirportIATA.valueOf(originCode);
-                final AirportIATA destination = AirportIATA.valueOf(destCode);
-
-                final FlightRoute route = flightRouteRepo
-                        .findByOriginAndDestinationAndCompany(origin, destination, company)
-                        .orElse(null);
-                if (route == null) {
-                    domainErrors.add("No active route found for "
-                            + originCode + " -> " + destCode
-                            + " (company " + company + ")");
+                // For numeric-only designators (e.g. "123456"), use pilot's company
+                final boolean isNumericDesig = flightDesigStr.matches("[0-9]+");
+                final CompanyIATA company;
+                if (isNumericDesig) {
+                    company = null; // resolved later from pilot
+                } else {
+                    company = CompanyIATA.valueOf(
+                            flightDesigStr.substring(0, 2));
                 }
 
                 // ── Validate aircraft ────────────────────────────────────
@@ -218,7 +208,36 @@ public class ImportFlightPlanController {
                     domainErrors.add("Pilot not found: " + pilotLicenseStr);
                 } else if (!pilot.get().isActive()) {
                     domainErrors.add("Pilot is not active: " + pilotLicenseStr);
-                } else if (route != null && !pilot.get().company().equals(route.companyIATA())) {
+                }
+
+                // ── Resolve company for numeric designators ──────────────
+                final CompanyIATA resolvedCompany;
+                if (isNumericDesig) {
+                    resolvedCompany = pilot.map(p -> p.company())
+                            .orElse(CompanyIATA.valueOf("TP"));
+                } else {
+                    resolvedCompany = company;
+                }
+
+                final String originCode = ctx.flightDecl().routeDecl()
+                        .airportCode(0).getText();
+                final String destCode = ctx.flightDecl().routeDecl()
+                        .airportCode(1).getText();
+                final AirportIATA origin = AirportIATA.valueOf(originCode);
+                final AirportIATA destination = AirportIATA.valueOf(destCode);
+
+                final FlightRoute route = flightRouteRepo
+                        .findByOriginAndDestinationAndCompany(origin, destination, resolvedCompany)
+                        .orElse(null);
+                if (route == null) {
+                    domainErrors.add("No active route found for "
+                            + originCode + " -> " + destCode
+                            + " (company " + resolvedCompany + ")");
+                }
+
+                if (!pilot.isEmpty() && route != null
+                        && pilot.get().company() != null
+                        && !pilot.get().company().equals(route.companyIATA())) {
                     domainErrors.add("Pilot " + pilotLicenseStr
                             + " does not belong to company " + route.companyIATA());
                 }
@@ -286,12 +305,16 @@ public class ImportFlightPlanController {
         final CommonTokenStream tokens = new CommonTokenStream(lexer);
         final FlightPlanParser parser = new FlightPlanParser(tokens);
         final var ctx = parser.flightFile();
-        return ctx.flightDecl().flightId().IDENTIFIER().getText();
+        return extractFlightDesignator(ctx);
     }
 
     private static String extractFlightDesignator(
             final FlightPlanParser.FlightFileContext ctx) {
-        return ctx.flightDecl().flightId().IDENTIFIER().getText();
+        final var fidCtx = ctx.flightDecl().flightId();
+        if (fidCtx.IDENTIFIER() != null) {
+            return fidCtx.IDENTIFIER().getText();
+        }
+        return fidCtx.NUMBER().getText();
     }
 
     private static LocalDateTime parseTimestamp(final String ts) {

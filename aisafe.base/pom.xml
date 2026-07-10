@@ -96,6 +96,14 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- H2 for local development / testing -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>2.2.224</version>
+			<scope>runtime</scope>
+		</dependency>
+
 		<!-- drivers for PostgreSQL -->
 		<dependency>
 			<groupId>org.postgresql</groupId>

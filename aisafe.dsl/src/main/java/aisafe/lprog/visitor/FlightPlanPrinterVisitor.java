@@ -23,7 +23,10 @@ public class FlightPlanPrinterVisitor extends FlightPlanBaseVisitor<String> {
 
     @Override
     public String visitFlightId(FlightPlanParser.FlightIdContext ctx) {
-        return ctx.IDENTIFIER().getText();
+        if (ctx.IDENTIFIER() != null) {
+            return ctx.IDENTIFIER().getText();
+        }
+        return ctx.NUMBER().getText();
     }
 
     @Override

@@ -730,7 +730,9 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         // Demo superuser — Lisboa FIR (LPPC)
         final SystemUser demo = registerUser("demo", TestDataConstants.PASSWORD1,
                 "Demo", "Superuser", "demo@aisafe.local",
-                Set.of(AISafeRoles.ADMIN));
+                Set.of(AISafeRoles.ADMIN, AISafeRoles.FLIGHT_CONTROL_OPERATOR,
+                        AISafeRoles.WEATHER_PERSON, AISafeRoles.PILOT,
+                        AISafeRoles.ATC_COLLABORATOR, AISafeRoles.BACKOFFICE_OPERATOR));
         saveCollaboratorFCO(demo, "Demo Superuser",
                 "Full Access FCO", AreaCode.valueOf("LPPC"));
 
@@ -833,6 +835,9 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
         saveAircraft("CS-TAC", "Portugal", "A320", "TP", 2,
                 List.of(new SeatClass("BUSINESS", 8), new SeatClass("ECONOMY", 162)),
                 LocalDate.of(2021, 6, 1));
+        saveAircraft("A380", "Portugal", "A388", "TP", 2,
+                List.of(new SeatClass("FIRST", 14), new SeatClass("BUSINESS", 76), new SeatClass("ECONOMY", 399)),
+                LocalDate.of(2019, 1, 1));
 
         // Ryanair — B738
         saveAircraft("EIRKI", "Ireland", "B738", "FR", 2,
@@ -927,6 +932,8 @@ public class AISafeDemoDataBootstrapper extends AbstractUserBootstrapper impleme
                 AirportIATA.valueOf("LIS"), AirportIATA.valueOf("OPO"));
         saveRoute("TP789", CompanyIATA.valueOf("TP"),
                 AirportIATA.valueOf("LIS"), AirportIATA.valueOf("MAD"));
+        saveRoute("TP258", CompanyIATA.valueOf("TP"),
+                AirportIATA.valueOf("OPO"), AirportIATA.valueOf("MAD"));
     }
 
     private void saveRoute(final String routeName, final CompanyIATA company,

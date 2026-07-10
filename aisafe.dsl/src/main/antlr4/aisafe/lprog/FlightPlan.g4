@@ -12,7 +12,7 @@ flightDecl
       RBRACE
     ;
 
-flightId   : IDENTIFIER ;
+flightId   : IDENTIFIER | NUMBER ;
 flightType : REGULAR | CHARTER ;
 
 routeDecl

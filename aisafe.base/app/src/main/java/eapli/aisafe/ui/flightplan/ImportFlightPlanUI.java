@@ -17,15 +17,18 @@ public class ImportFlightPlanUI extends AbstractUI {
 
     private final ImportFlightPlanController controller = new ImportFlightPlanController();
 
-    private static final java.util.Set<String> CURATED_FILES = java.util.Set.of(
+    private static final java.util.Set<String> CURATED_FILES = java.util.Set.copyOf(java.util.List.of(
             "valid_lis_cdg.flightplan",
             "valid_opo_waw.flightplan",
             "valid_lis_opo.flightplan",
             "invalid_sem_zero_fuel.flightplan",
+            "invalid_bad_airport.flightplan",
             "valid_demo_conflict_a.flightplan",
             "valid_demo_conflict_b.flightplan",
             "valid_demo_regular_usa_lis.flightplan",
-            "valid_demo_charter_lis_mad.flightplan");
+            "valid_demo_charter_lis_mad.flightplan",
+            "Flight_plan_LAPR4.flightplan",
+            "Flight_plan_LAPR4_collision.flightplan"));
 
     @Override
     protected boolean doShow() {

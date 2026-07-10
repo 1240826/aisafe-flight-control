@@ -1,0 +1,14 @@
+============================================
+  AISafe Simulation Report
+  Generated: Wed Jun 17 00:50:02 2026
+  Total steps: 0  (0 seconds simulated)
+  Flights: 1
+  Total violations detected: 0
+============================================
+
+FLIGHT SUMMARY:
+  123456: n_viol=0  ever_in_area=yes  completed=yes
+
+============================================
+  RESULT: PASS
+============================================
