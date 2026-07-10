@@ -16,10 +16,10 @@ AISafe is a full back-office platform for air traffic operations. It allows oper
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    JavaFX GUI (20+ screens)                   │
+│                    JavaFX GUI (20+ screens)                  │
 │  Dashboard │ Aircraft │ Airports │ Weather │ Flights │ Admin │
 ├──────────────────────────────────────────────────────────────┤
-│              EAPLI Framework (DDD + Repository Pattern)       │
+│             EAPLI Framework (DDD + Repository Pattern)       │
 ├──────────────────┬──────────────────┬────────────────────────┤
 │   ANTLR4 DSL     │  C Simulation    │  TCP/UDP Networking    │
 │   (Flight Plans) │  (Collision Det) │  (Remote Access)       │
