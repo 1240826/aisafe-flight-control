@@ -21,8 +21,8 @@ AISafe is a full back-office platform for air traffic operations. It allows oper
 ├───────────────────────────────────────────────────────────────────────┤
 │             EAPLI Framework (DDD + Repository Pattern)                │
 ├───────────────────────────────────────────────────────────────────────┤
-│      ANTLR4 DSL        │   C Simulation     │   TCP/UDP Networking    │
-│     (Flight Plans)     │  (Collision Det)   │   (Remote Access)       │
+│      ANTLR4 DSL        │     C Simulation     │   TCP/UDP Networking  │
+│    (Flight Plans)      │   (Collision Det)    │     (Remote Access)   │
 ├───────────────────────────────────────────────────────────────────────┤
 │                  JPA / Hibernate (PostgreSQL / H2)                    │
 └───────────────────────────────────────────────────────────────────────┘
